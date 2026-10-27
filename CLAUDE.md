@@ -4,6 +4,9 @@ Read this file before writing code in this repository. It is the source of truth
 written here; when it disagrees with habit or a generic best practice, follow this file. If a rule
 here is wrong, change the file in its own pull request.
 
+At the start of a session, read `docs/status.md` for what is built and what comes next. At the
+end, update it.
+
 ## Ground rules
 
 1. Never copy code from OroCommerce or any copyleft project. Read them for behaviour only.
