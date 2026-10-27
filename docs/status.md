@@ -20,9 +20,10 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Database   | Connection, ordered migrations, per-test-file databases                                                                 | `packages/db`         |
 | Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
+| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
 
-Decisions are recorded in `docs/adr/0001` to `0005`.
+Decisions are recorded in `docs/adr/0001` to `0005` and `0007`.
 
 ## Next, in order (pilot plan)
 
@@ -30,8 +31,8 @@ Decisions are recorded in `docs/adr/0001` to `0005`.
 
 1. Access control: admin roles and permissions; buyer roles with access levels (own records,
    my customer, my customer and subsidiaries), enforced in queries, not after them.
-2. Workflow engine: declarative steps, transitions, guards and actions, state in PostgreSQL,
-   full transition log.
+2. Workflow engine: built in `modules/workflow` (ADR 0007). The order workflow (week 4), RFQs
+   and quotes declare their workflows with `defineWorkflow`.
 3. Customers: hierarchy (parent and subsidiaries), customer groups, buyer users linked to
    identity users, invitations, addresses with India and US rules (PIN code and GST state
    code, ZIP code), GSTIN validation.
@@ -56,6 +57,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
+- Time-based workflow transitions (quote expiry) need the job runner to call
+  `performTransition` with the system actor.
 
 ## Running the tests locally
 
