@@ -1,5 +1,5 @@
 import type { Database } from '@muziris/db';
-import { findUserById, type Realm } from '@muziris/identity';
+import { activeUserIds, findUserById, type Realm } from '@muziris/identity';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { adminRolePermissions, adminRoles, adminUserRoles } from './db/schema.js';
@@ -243,8 +243,9 @@ export async function assignAdminRole(
 }
 
 /**
- * Takes an admin role away. Refuses to remove the last holder of a role that grants every
- * permission, so the install can never be left without an administrator.
+ * Takes an admin role away. Refuses to remove it from the last active holder of a role that
+ * grants every permission, so the install can never be left without an administrator who can
+ * sign in.
  */
 export async function unassignAdminRole(
   db: Database,
@@ -266,8 +267,10 @@ export async function unassignAdminRole(
         .from(adminUserRoles)
         .innerJoin(adminRoles, eq(adminRoles.id, adminUserRoles.roleId))
         .where(eq(adminRoles.grantsAllPermissions, true));
-      const others = holders.filter((h) => h.adminUserId !== userId);
-      if (others.length === 0 && holders.length > 0) {
+      // Disabled admins cannot sign in, so they do not count as another administrator.
+      const others = holders.map((h) => h.adminUserId).filter((id) => id !== userId);
+      const activeOthers = await activeUserIds(db, 'admin', others);
+      if (holders.some((h) => h.adminUserId === userId) && activeOthers.size === 0) {
         throw new AccessControlError(
           'last_administrator',
           'At least one admin user must keep the administrator role',

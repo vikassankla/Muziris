@@ -4,7 +4,7 @@ import {
   runMigrations,
   type DatabaseHandle,
 } from '@muziris/db';
-import { createUser } from '@muziris/identity';
+import { createUser, disableUser } from '@muziris/identity';
 import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
 import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -248,6 +248,38 @@ describe.skipIf(!url)('access module against PostgreSQL', () => {
         'last_administrator',
       );
       expect((await getAdminAccess(handle.db, asha.id)).all).toBe(true);
+    });
+
+    it.each([
+      ['another active administrator remains', 'active', 'allowed'],
+      ['the only other administrator is disabled', 'disabled', 'last_administrator'],
+    ] as const)('removing an administrator when %s', async (_label, meeraStatus, expected) => {
+      const id = await administratorRoleId();
+      const asha = await newUser('admin', 'asha@acme.example');
+      const meera = await newUser('admin', 'meera@acme.example');
+      await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, asha.id, id);
+      await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, meera.id, id);
+      if (meeraStatus === 'disabled') await disableUser(handle.db, meera.id);
+
+      const attempt = unassignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, asha.id, id);
+      if (expected === 'allowed') {
+        await attempt;
+        expect((await getAdminAccess(handle.db, asha.id)).all).toBe(false);
+      } else {
+        await expectRefused(attempt, expected);
+        expect((await getAdminAccess(handle.db, asha.id)).all).toBe(true);
+      }
+    });
+
+    it('lets a disabled administrator lose the role while an active one remains', async () => {
+      const id = await administratorRoleId();
+      const asha = await newUser('admin', 'asha@acme.example');
+      const meera = await newUser('admin', 'meera@acme.example');
+      await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, asha.id, id);
+      await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, meera.id, id);
+      await disableUser(handle.db, meera.id);
+      await unassignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, meera.id, id);
+      expect((await getAdminAccess(handle.db, meera.id)).all).toBe(false);
     });
 
     it('refuses two concurrent removals that would leave no administrator', async () => {

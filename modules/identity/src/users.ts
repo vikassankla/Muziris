@@ -1,5 +1,5 @@
 import type { Database } from '@muziris/db';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { sessions, users } from './db/schema.js';
 import { checkPasswordPolicy, hashPassword, type PasswordProblem } from './password.js';
@@ -93,6 +93,22 @@ export async function findUserById(
 ): Promise<AuthenticatedUser | undefined> {
   const [row] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return row ? toAuthenticatedUser(row) : undefined;
+}
+
+/** Which of the given users exist in the realm and are active. */
+export async function activeUserIds(
+  db: Database,
+  realm: Realm,
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(eq(users.realm, realm), eq(users.status, 'active'), inArray(users.id, [...userIds])),
+    );
+  return new Set(rows.map((r) => r.id));
 }
 
 /**
