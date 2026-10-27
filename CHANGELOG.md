@@ -26,3 +26,19 @@ All notable changes are listed here. The project follows semantic versioning fro
   checks against cross-site request forgery, per-IP and per-email sign-in limits.
 - `admin:create` command to create an admin without exposing the password.
 - `TRUSTED_PROXY_HOPS` setting for the client IP behind a load balancer.
+- `@muziris/access`: admin roles holding permissions from a typed catalogue, assigned to admin
+  users, with a built-in `administrator` role that grants every permission. Nobody can grant or
+  remove permissions they do not hold, built-in roles cannot be changed, and the last
+  administrator cannot be removed. Buyer roles grant storefront permissions at an access level
+  (own records, my customer, my customer and subsidiaries), and `buyerScope` turns that level
+  into a SQL predicate so storefront queries are scoped in the query itself (ADR 0006).
+- API: `requirePermission` middleware for admin routes, answering 403 `permission_denied`.
+  `GET /admin/v1/access/me`, `GET /admin/v1/access/permissions`, `GET` and `POST
+/admin/v1/access/roles`, `PUT /admin/v1/access/roles/{roleId}/permissions`, `DELETE
+/admin/v1/access/roles/{roleId}`, and `PUT` and `DELETE
+/admin/v1/access/admin-users/{userId}/roles/{roleId}`. Refusals use the codes
+  `privilege_escalation`, `built_in_role`, `last_administrator`, `role_code_taken`,
+  `role_not_found` and `user_not_found`.
+- `admin:create` now gives the new admin the `administrator` role; `--existing` gives it to an
+  admin created earlier.
+- `@muziris/identity`: `findUserById`.

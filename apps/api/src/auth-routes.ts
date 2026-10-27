@@ -60,7 +60,7 @@ function readSessionCookie(c: Context, realm: Realm): string | undefined {
  * state-changing request that carries cookies must come from an allowed origin. Requests with
  * no Origin are only accepted when Sec-Fetch-Site says they came from the same origin.
  */
-function trustedOriginGuard(trustedOrigins: ReadonlySet<string>): MiddlewareHandler {
+export function trustedOriginGuard(trustedOrigins: ReadonlySet<string>): MiddlewareHandler {
   return async (c, next) => {
     if (UNSAFE_METHODS.has(c.req.method)) {
       const origin = c.req.header('origin');

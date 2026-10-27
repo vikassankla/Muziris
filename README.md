@@ -8,14 +8,15 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 
 ## What is in this repository
 
-| Path               | What it is                                                                |
-| ------------------ | ------------------------------------------------------------------------- |
-| `apps/api`         | The HTTP API (Hono on Node.js): health checks today, the APIs later       |
-| `modules/platform` | Organization, websites, and settings that resolve from customer to global |
-| `modules/identity` | Admin and buyer accounts, password hashing, sessions, rate limiting       |
-| `packages/db`      | PostgreSQL connection and the ordered migration runner                    |
-| `packages/money`   | Exact money and decimal maths, currency rules, lakh and crore formatting  |
-| `docs/`            | Glossary and architecture decision records                                |
+| Path               | What it is                                                                 |
+| ------------------ | -------------------------------------------------------------------------- |
+| `apps/api`         | The HTTP API (Hono on Node.js): health checks today, the APIs later        |
+| `modules/platform` | Organization, websites, and settings that resolve from customer to global  |
+| `modules/identity` | Admin and buyer accounts, password hashing, sessions, rate limiting        |
+| `modules/access`   | Admin roles and permissions, buyer roles with access levels, query scoping |
+| `packages/db`      | PostgreSQL connection and the ordered migration runner                     |
+| `packages/money`   | Exact money and decimal maths, currency rules, lakh and crore formatting   |
+| `docs/`            | Glossary and architecture decision records                                 |
 
 ## Run it locally
 
@@ -30,7 +31,8 @@ pnpm --filter @muziris/api admin:create --email you@example.com --name "Your Nam
 pnpm --filter @muziris/api dev
 ```
 
-`admin:create` asks for the password without showing it. Check the API is up with
+`admin:create` asks for the password without showing it and gives the new admin the built-in
+`administrator` role. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
 
 Sign-in endpoints: `POST /admin/v1/auth/sign-in` and `POST /storefront/v1/auth/sign-in` with

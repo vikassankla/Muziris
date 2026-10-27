@@ -31,6 +31,7 @@ export {
   disableUser,
   EmailTakenError,
   findUserByEmail,
+  findUserById,
   newUserSchema,
   PasswordPolicyError,
   type NewUser,

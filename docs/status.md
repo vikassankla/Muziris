@@ -21,22 +21,26 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
+| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels and `buyerScope` query predicates  | `modules/access`      |
 
-Decisions are recorded in `docs/adr/0001` to `0005`.
+Decisions are recorded in `docs/adr/0001` to `0006`. ADR 0006 (access control module) is
+proposed, pending review on `feature/access-control`.
 
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
 
-1. Access control: admin roles and permissions; buyer roles with access levels (own records,
-   my customer, my customer and subsidiaries), enforced in queries, not after them.
+1. Access control: built on `feature/access-control`, awaiting review by Vikas and a second
+   human reviewer (CLAUDE.md rule 4) before merge.
 2. Workflow engine: declarative steps, transitions, guards and actions, state in PostgreSQL,
    full transition log.
 3. Customers: hierarchy (parent and subsidiaries), customer groups, buyer users linked to
    identity users, invitations, addresses with India and US rules (PIN code and GST state
-   code, ZIP code), GSTIN validation.
+   code, ZIP code), GSTIN validation. Export a descendant-customers subquery for
+   `buyerScope` (ADR 0006), and decide the default buyer role for invited buyer users.
 4. Catalog: simple products, product units with precision, categories, attributes (JSONB).
-5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen.
+5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
+   `GET /admin/v1/access/me` to hide what the admin may not do.
 
 **Week 3 (11 to 17 Nov):** price lists with customer and group fallback and the combined
 price build; visibility; PostgreSQL search; GraphQL storefront API; storefront browsing.
@@ -56,6 +60,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
+- Admin routes for buyer roles (create, edit, assign) are not built; the module functions exist.
 
 ## Running the tests locally
 

@@ -1,12 +1,30 @@
 /**
- * Creates an admin user. The password is read from the terminal without echo, or from stdin
- * when piped, so it never appears in shell history or the process list.
+ * Creates an admin user with the built-in administrator role. The password is read from the
+ * terminal without echo, or from stdin when piped, so it never appears in shell history or the
+ * process list.
  *
  *   pnpm --filter @muziris/api admin:create --email asha@acme.example --name "Asha Rao"
+ *
+ * With --existing, gives an admin who already exists the administrator role instead, for
+ * installs whose admins were created before access control.
+ *
+ *   pnpm --filter @muziris/api admin:create --email asha@acme.example --existing
  */
 import { parseArgs } from 'node:util';
+import {
+  ADMINISTRATOR_ROLE_CODE,
+  assignAdminRole,
+  ensureBuiltInAdminRoles,
+  findAdminRoleByCode,
+  SYSTEM_ADMIN_ACCESS,
+} from '@muziris/access';
 import { createDatabase } from '@muziris/db';
-import { createUser, EmailTakenError, PasswordPolicyError } from '@muziris/identity';
+import {
+  createUser,
+  EmailTakenError,
+  findUserByEmail,
+  PasswordPolicyError,
+} from '@muziris/identity';
 import { loadEnv } from '../env.js';
 
 async function readPiped(): Promise<string> {
@@ -49,16 +67,25 @@ function readHidden(prompt: string): Promise<string> {
 }
 
 const { values } = parseArgs({
-  options: { email: { type: 'string' }, name: { type: 'string' } },
+  options: {
+    email: { type: 'string' },
+    name: { type: 'string' },
+    existing: { type: 'boolean', default: false },
+  },
 });
-if (!values.email || !values.name) {
-  process.stderr.write('Usage: admin:create --email <email> --name "<display name>"\n');
+if (!values.email || (!values.name && !values.existing)) {
+  process.stderr.write(
+    'Usage: admin:create --email <email> --name "<display name>"\n' +
+      '       admin:create --email <email> --existing\n',
+  );
   process.exit(2);
 }
 
 const env = loadEnv();
-let password: string;
-if (process.stdin.isTTY) {
+let password = '';
+if (values.existing) {
+  // No password needed: the admin already has one.
+} else if (process.stdin.isTTY) {
   password = await readHidden('Password: ');
   if ((await readHidden('Repeat password: ')) !== password) {
     process.stderr.write('Passwords do not match\n');
@@ -74,20 +101,34 @@ const database = createDatabase({
   applicationName: 'muziris-cli',
 });
 try {
-  const user = await createUser(database.db, {
-    realm: 'admin',
-    email: values.email,
-    displayName: values.name,
-    password,
-  });
-  process.stdout.write(`Created admin ${user.email} (${user.id})\n`);
+  // Seed the role first, so a new admin is never left without one if seeding fails.
+  await ensureBuiltInAdminRoles(database.db);
+  const administrator = await findAdminRoleByCode(database.db, ADMINISTRATOR_ROLE_CODE);
+  if (!administrator) throw new Error('The administrator role is missing after seeding');
+  if (values.existing) {
+    const user = await findUserByEmail(database.db, 'admin', values.email);
+    if (!user) throw new Error('No admin with that email');
+    await assignAdminRole(database.db, SYSTEM_ADMIN_ACCESS, user.id, administrator.id);
+    process.stdout.write(`Gave ${user.email} (${user.id}) the administrator role\n`);
+  } else {
+    const user = await createUser(database.db, {
+      realm: 'admin',
+      email: values.email,
+      displayName: values.name ?? '',
+      password,
+    });
+    await assignAdminRole(database.db, SYSTEM_ADMIN_ACCESS, user.id, administrator.id);
+    process.stdout.write(`Created admin ${user.email} (${user.id}) with the administrator role\n`);
+  }
 } catch (error) {
   if (error instanceof PasswordPolicyError) {
     process.stderr.write(
       `Password rejected: ${error.problems.join(', ')}. Use at least 12 characters and avoid common passwords.\n`,
     );
   } else if (error instanceof EmailTakenError) {
-    process.stderr.write('An admin with that email already exists\n');
+    process.stderr.write(
+      'An admin with that email already exists. Add --existing to give them the administrator role.\n',
+    );
   } else {
     process.stderr.write(`Failed: ${error instanceof Error ? error.message : String(error)}\n`);
   }

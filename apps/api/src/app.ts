@@ -4,6 +4,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
+import { accessRoutes } from './access-routes.js';
 import { authRoutes } from './auth-routes.js';
 import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
@@ -136,6 +137,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   };
   app.route('/admin/v1/auth', authRoutes('admin', authDeps));
   app.route('/storefront/v1/auth', authRoutes('buyer', authDeps));
+  app.route('/admin/v1/access', accessRoutes(authDeps));
 
   app.notFound((c) =>
     problemResponse(c, toProblem(c, new HttpProblem(404, 'not_found', 'No such resource'))),

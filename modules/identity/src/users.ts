@@ -87,6 +87,14 @@ export async function findUserByEmail(
   return row ? toAuthenticatedUser(row) : undefined;
 }
 
+export async function findUserById(
+  db: Database,
+  userId: string,
+): Promise<AuthenticatedUser | undefined> {
+  const [row] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return row ? toAuthenticatedUser(row) : undefined;
+}
+
 /**
  * Sets a new password and signs the user out everywhere, so a stolen session cannot outlive a
  * password change. Also clears any lockout.
