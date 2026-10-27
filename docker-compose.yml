@@ -1,0 +1,44 @@
+# Local development services. Not for production use.
+# Copy .env.example to .env first; credentials come from there, never from this file.
+# Every port is bound to 127.0.0.1 so nothing is reachable from your network.
+name: muziris
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-muziris}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # S3-compatible object storage (SeaweedFS). Local only: no credentials are configured.
+  storage:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    command: server -s3 -dir=/data -ip.bind=0.0.0.0
+    ports:
+      - '127.0.0.1:8333:8333'
+    volumes:
+      - storage-data:/data
+
+  # Catches every outgoing email; web inbox on http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+
+volumes:
+  postgres-data:
+  storage-data:
