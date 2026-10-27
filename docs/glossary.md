@@ -28,3 +28,10 @@ in everyday use, this file decides.
 | Order               | A placed, immutable record of what was bought, at what price and tax                                                              | A checkout                                        |
 | Payment term        | Days a customer has to pay an invoice (for example net 30)                                                                        | A payment method                                  |
 | Minor units         | Money in its smallest unit (paise, cents) stored as an integer                                                                    | Major units (rupees, dollars)                     |
+| Workflow            | A declared set of steps and transitions that a kind of record moves through, such as the order workflow                           | A business process in general                     |
+| Workflow instance   | One record's run through a workflow, with its current step                                                                        | A workflow definition                             |
+| Step                | A named place a workflow instance can be in, for example submitted or approved. A final step ends the workflow                    | A status field owned by another module            |
+| Transition          | A named move from one or more steps to a step, for example approve                                                                | A step                                            |
+| Guard               | A condition that must hold for a transition to happen                                                                             | An access-control permission                      |
+| Action              | Work done inside a transition's transaction after the step changes                                                                | A transition                                      |
+| Transition log      | The append-only history of every transition of a workflow instance                                                                | Application logs                                  |
