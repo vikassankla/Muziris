@@ -2,6 +2,7 @@ import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
 export { MIGRATIONS_FOLDER, runMigrations } from './migrate.js';
+export { prepareTestDatabase } from './testing.js';
 
 export type Database = PostgresJsDatabase;
 

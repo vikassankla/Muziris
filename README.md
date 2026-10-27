@@ -12,6 +12,7 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 | ------------------ | ------------------------------------------------------------------------- |
 | `apps/api`         | The HTTP API (Hono on Node.js): health checks today, the APIs later       |
 | `modules/platform` | Organization, websites, and settings that resolve from customer to global |
+| `modules/identity` | Admin and buyer accounts, password hashing, sessions, rate limiting       |
 | `packages/db`      | PostgreSQL connection and the ordered migration runner                    |
 | `packages/money`   | Exact money and decimal maths, currency rules, lakh and crore formatting  |
 | `docs/`            | Glossary and architecture decision records                                |
@@ -25,11 +26,16 @@ cp .env.example .env          # then replace every CHANGE_ME value
 docker compose up -d          # PostgreSQL 18, S3-compatible storage, mail catcher
 pnpm install
 pnpm db:migrate
+pnpm --filter @muziris/api admin:create --email you@example.com --name "Your Name"
 pnpm --filter @muziris/api dev
 ```
 
-Check it is up: `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at
-http://localhost:8025.
+`admin:create` asks for the password without showing it. Check the API is up with
+`curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
+
+Sign-in endpoints: `POST /admin/v1/auth/sign-in` and `POST /storefront/v1/auth/sign-in` with
+`{"email": "...", "password": "..."}`. Requests must come from an origin listed in
+`CORS_ORIGINS`.
 
 ## Checks
 
@@ -38,8 +44,10 @@ pnpm check                    # format, lint, typecheck and tests
 TEST_DATABASE_URL=postgres://user:pass@127.0.0.1:5432/muziris_test pnpm test
 ```
 
-Database tests run only when `TEST_DATABASE_URL` is set, and they empty the tables they use, so
-always point it at a database you can throw away.
+Database tests run only when `TEST_DATABASE_URL` is set. Each test file creates and uses its own
+database next to it (for example `muziris_test_identity`) and empties its tables between tests,
+so point it at a server where those databases can be thrown away. The database user needs
+permission to create databases.
 
 ## Contributing and security
 

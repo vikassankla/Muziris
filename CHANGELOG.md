@@ -18,3 +18,11 @@ All notable changes are listed here. The project follows semantic versioning fro
 - API: health endpoints (`/health/live`, `/health/ready`), RFC 9457 error responses, security
   headers, CORS allowlist, request size limit, request ids, structured logs with secrets
   redacted, and graceful shutdown.
+- `@muziris/identity`: admin and buyer accounts in separate realms, Argon2id password hashing
+  with automatic upgrades, password policy, server-side sessions with idle and absolute
+  timeouts, account lockout with backoff, and PostgreSQL-backed rate limiting.
+- API: `POST /admin/v1/auth/sign-in`, `POST /admin/v1/auth/sign-out`, `GET /admin/v1/auth/me`,
+  and the same under `/storefront/v1/auth` for buyers. `__Host-` session cookies, origin
+  checks against cross-site request forgery, per-IP and per-email sign-in limits.
+- `admin:create` command to create an admin without exposing the password.
+- `TRUSTED_PROXY_HOPS` setting for the client IP behind a load balancer.

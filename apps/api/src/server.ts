@@ -15,9 +15,11 @@ const database = createDatabase({
 
 const app = createApp({
   logger,
+  db: database.db,
   pingDatabase: database.ping,
   corsOrigins: env.CORS_ORIGINS,
   maxBodyBytes: env.MAX_BODY_BYTES,
+  trustedProxyHops: env.TRUSTED_PROXY_HOPS,
 });
 
 const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (info) => {

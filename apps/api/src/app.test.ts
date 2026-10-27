@@ -1,8 +1,19 @@
 import { Writable } from 'node:stream';
+import type { Database } from '@muziris/db';
 import { describe, expect, it } from 'vitest';
 import { createApp, type AppDependencies } from './app.js';
 import { loadEnv } from './env.js';
 import { createLogger } from './logger.js';
+
+/** These tests never reach the database; any access is a test bug and fails loudly. */
+const unusedDatabase = new Proxy(
+  {},
+  {
+    get() {
+      throw new Error('This test must not use the database');
+    },
+  },
+) as Database;
 
 function captureLogs() {
   const lines: string[] = [];
@@ -19,6 +30,7 @@ function makeApp(overrides: Partial<AppDependencies> = {}) {
   const { logger, lines } = captureLogs();
   const app = createApp({
     logger,
+    db: unusedDatabase,
     pingDatabase: () => Promise.resolve(),
     corsOrigins: ['https://shop.example.com'],
     maxBodyBytes: 1024,

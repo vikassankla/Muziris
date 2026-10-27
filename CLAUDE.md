@@ -81,6 +81,10 @@ here is wrong, change the file in its own pull request.
 
 - Vitest. Unit tests sit next to the code (`*.test.ts`); database tests are named
   `*.integration.test.ts` and skip when `TEST_DATABASE_URL` is not set.
+- Each integration test file gets its own database with
+  `prepareTestDatabase(TEST_DATABASE_URL, '<unique_suffix>')` from `@muziris/db`, because suites
+  run in parallel and empty their tables. Never point two files at the same suffix.
+- Time-dependent logic takes `now: Date` as a parameter so tests control the clock.
 - Pricing, tax, totals and access control get known-answer tables (`it.each`) covering
   boundaries and rounding.
 - Test the behaviour a caller sees, not private helpers.

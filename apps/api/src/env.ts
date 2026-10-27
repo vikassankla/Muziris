@@ -26,6 +26,11 @@ const envSchema = z.object({
     .min(1024)
     .max(50 * 1024 * 1024)
     .default(1024 * 1024),
+  /**
+   * How many reverse proxies (load balancer, CDN) sit in front of the API. Their
+   * X-Forwarded-For entries are trusted for the client IP; leave 0 when the API faces clients.
+   */
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export type Env = z.infer<typeof envSchema>;

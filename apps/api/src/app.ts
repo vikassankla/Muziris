@@ -1,19 +1,29 @@
-import { Hono } from 'hono';
+import type { Database } from '@muziris/db';
+import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
+import { authRoutes } from './auth-routes.js';
+import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
 import { HttpProblem, problemResponse, toProblem } from './problem.js';
 
 export interface AppDependencies {
   logger: Logger;
+  db: Database;
   /** Resolves when the database answers; rejects otherwise. */
   pingDatabase: () => Promise<void>;
   corsOrigins: readonly string[];
   maxBodyBytes: number;
   /** How long a readiness check may wait for the database. */
   readinessTimeoutMs?: number;
+  /** Number of reverse proxies in front of the API whose X-Forwarded-For can be trusted. */
+  trustedProxyHops?: number;
+  /** Clock, injectable for tests. */
+  now?: () => Date;
+  /** Client IP resolver, injectable for tests. */
+  clientIp?: (c: Context) => string | undefined;
 }
 
 export interface AppEnv {
@@ -116,6 +126,16 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
       return c.json({ status: 'unavailable', checks: { database: 'unavailable' } }, 503);
     }
   });
+
+  const authDeps = {
+    db: deps.db,
+    logger: deps.logger,
+    now: deps.now ?? (() => new Date()),
+    clientIp: deps.clientIp ?? ((c: Context) => resolveClientIp(c, deps.trustedProxyHops ?? 0)),
+    trustedOrigins: allowedOrigins,
+  };
+  app.route('/admin/v1/auth', authRoutes('admin', authDeps));
+  app.route('/storefront/v1/auth', authRoutes('buyer', authDeps));
 
   app.notFound((c) =>
     problemResponse(c, toProblem(c, new HttpProblem(404, 'not_found', 'No such resource'))),

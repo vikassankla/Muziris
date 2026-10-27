@@ -1,4 +1,9 @@
-import { createDatabase, runMigrations, type DatabaseHandle } from '@muziris/db';
+import {
+  createDatabase,
+  prepareTestDatabase,
+  runMigrations,
+  type DatabaseHandle,
+} from '@muziris/db';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -28,8 +33,9 @@ describe.skipIf(!url)('platform module against PostgreSQL', () => {
   let handle: DatabaseHandle;
 
   beforeAll(async () => {
-    await runMigrations(url!);
-    handle = createDatabase({ url: url!, applicationName: 'muziris-test' });
+    const testUrl = await prepareTestDatabase(url!, 'platform');
+    await runMigrations(testUrl);
+    handle = createDatabase({ url: testUrl, applicationName: 'muziris-test' });
   });
 
   beforeEach(async () => {
