@@ -1,0 +1,53 @@
+// Public interface of the access module. Other modules import only from here.
+export {
+  ADMINISTRATOR_ROLE_CODE,
+  assignAdminRole,
+  createAdminRole,
+  deleteAdminRole,
+  ensureBuiltInAdminRoles,
+  findAdminRoleByCode,
+  getAdminAccess,
+  hasAdminPermission,
+  listAdminRoles,
+  newAdminRoleSchema,
+  setAdminRolePermissions,
+  SYSTEM_ADMIN_ACCESS,
+  unassignAdminRole,
+  type AdminAccess,
+  type AdminRole,
+  type NewAdminRole,
+} from './admin-roles.js';
+export {
+  assignBuyerRole,
+  createBuyerRole,
+  deleteBuyerRole,
+  getBuyerAccess,
+  listBuyerRoles,
+  mergeBuyerGrants,
+  newBuyerRoleSchema,
+  setBuyerRoleGrants,
+  unassignBuyerRole,
+  type BuyerAccess,
+  type BuyerRole,
+  type BuyerRoleGrant,
+  type NewBuyerRole,
+} from './buyer-roles.js';
+export { AccessControlError, type AccessControlErrorCode } from './errors.js';
+export {
+  ACCESS_LEVELS,
+  ADMIN_PERMISSIONS,
+  ALL_ADMIN_PERMISSIONS,
+  BUYER_PERMISSIONS,
+  isAdminPermission,
+  isBuyerPermission,
+  widerAccessLevel,
+  type AccessLevel,
+  type AdminPermission,
+  type BuyerPermission,
+} from './permissions.js';
+export {
+  buyerScope,
+  buyerScopePredicate,
+  type BuyerScopeColumns,
+  type BuyerScopeContext,
+} from './scope.js';

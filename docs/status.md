@@ -23,22 +23,25 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
 | Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses                                            | `modules/customers`   |
+| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels and `buyerScope` query predicates  | `modules/access`      |
 
-Decisions are recorded in `docs/adr/0001` to `0005`, `0007` and `0008`.
+Decisions are recorded in `docs/adr/0001` to `0008`. ADR 0006 (access control module) is
+proposed, pending review on `feature/access-control`.
 
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
 
-1. Access control: admin roles and permissions; buyer roles with access levels (own records,
-   my customer, my customer and subsidiaries), enforced in queries, not after them.
+1. Access control: built on `feature/access-control`, awaiting review by Vikas and a second
+   human reviewer (CLAUDE.md rule 4) before merge.
 2. Workflow engine: built in `modules/workflow` (ADR 0007). The order workflow (week 4), RFQs
    and quotes declare their workflows with `defineWorkflow`.
 3. Customers: built in `modules/customers` (ADR 0008). Admin and storefront routes for
    customers, buyer users, invitations and addresses are not built yet, and invitation emails
    wait for the email work in week 4.
 4. Catalog: simple products, product units with precision, categories, attributes (JSONB).
-5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen.
+5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
+   `GET /admin/v1/access/me` to hide what the admin may not do.
 
 **Week 3 (11 to 17 Nov):** price lists with customer and group fallback and the combined
 price build; visibility; PostgreSQL search; GraphQL storefront API; storefront browsing.
@@ -58,10 +61,12 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
+- Admin routes for buyer roles (create, edit, assign) are not built; the module functions exist.
 - Time-based workflow transitions (quote expiry) need the job runner to call
   `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
+- Decide the default buyer role for invited buyer users (ADR 0006, ADR 0008).
 
 ## Running the tests locally
 

@@ -26,11 +26,13 @@ export { consumeRateLimit, pruneRateLimits, type RateLimitResult } from './rate-
 export { isWellFormedToken } from './tokens.js';
 export type { AuthenticatedUser, Realm } from './types.js';
 export {
+  activeUserIds,
   changePassword,
   createUser,
   disableUser,
   EmailTakenError,
   findUserByEmail,
+  findUserById,
   newUserSchema,
   PasswordPolicyError,
   type NewUser,
