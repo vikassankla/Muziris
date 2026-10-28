@@ -94,6 +94,21 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
+  modules/customers:
+    dependencies:
+      '@muziris/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@muziris/identity':
+        specifier: workspace:*
+        version: link:../identity
+      drizzle-orm:
+        specifier: ^0.45.4
+        version: 0.45.4(postgres@3.4.9)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
   modules/identity:
     dependencies:
       '@muziris/db':
@@ -117,6 +132,18 @@ importers:
       '@muziris/money':
         specifier: workspace:*
         version: link:../../packages/money
+      drizzle-orm:
+        specifier: ^0.45.4
+        version: 0.45.4(postgres@3.4.9)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  modules/workflow:
+    dependencies:
+      '@muziris/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(postgres@3.4.9)

@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 
 ## Goal
 
@@ -20,10 +20,12 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Database   | Connection, ordered migrations, per-test-file databases                                                                 | `packages/db`         |
 | Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
+| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses                                            | `modules/customers`   |
 | Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels and `buyerScope` query predicates  | `modules/access`      |
 
-Decisions are recorded in `docs/adr/0001` to `0006`. ADR 0006 (access control module) is
+Decisions are recorded in `docs/adr/0001` to `0008`. ADR 0006 (access control module) is
 proposed, pending review on `feature/access-control`.
 
 ## Next, in order (pilot plan)
@@ -32,12 +34,11 @@ proposed, pending review on `feature/access-control`.
 
 1. Access control: built on `feature/access-control`, awaiting review by Vikas and a second
    human reviewer (CLAUDE.md rule 4) before merge.
-2. Workflow engine: declarative steps, transitions, guards and actions, state in PostgreSQL,
-   full transition log.
-3. Customers: hierarchy (parent and subsidiaries), customer groups, buyer users linked to
-   identity users, invitations, addresses with India and US rules (PIN code and GST state
-   code, ZIP code), GSTIN validation. Export a descendant-customers subquery for
-   `buyerScope` (ADR 0006), and decide the default buyer role for invited buyer users.
+2. Workflow engine: built in `modules/workflow` (ADR 0007). The order workflow (week 4), RFQs
+   and quotes declare their workflows with `defineWorkflow`.
+3. Customers: built in `modules/customers` (ADR 0008). Admin and storefront routes for
+   customers, buyer users, invitations and addresses are not built yet, and invitation emails
+   wait for the email work in week 4.
 4. Catalog: simple products, product units with precision, categories, attributes (JSONB).
 5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
    `GET /admin/v1/access/me` to hide what the admin may not do.
@@ -61,6 +62,11 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
 - Admin routes for buyer roles (create, edit, assign) are not built; the module functions exist.
+- Time-based workflow transitions (quote expiry) need the job runner to call
+  `performTransition` with the system actor.
+- Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
+  several customers are not built (ADR 0008).
+- Decide the default buyer role for invited buyer users (ADR 0006, ADR 0008).
 
 ## Running the tests locally
 
