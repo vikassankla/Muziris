@@ -24,29 +24,20 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
 | Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses                                            | `modules/customers`   |
 | Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels and `buyerScope` query predicates  | `modules/access`      |
+| Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
 
 Decisions are recorded in `docs/adr/0001` to `0009`. ADRs 0006 (access control), 0007
-(workflow engine) and 0008 (customers) are merged with status proposed; ADR 0009 (catalog) is
-proposed on `feature/catalog`.
-
-Built, awaiting review:
-
-| Area    | What exists                                                                                  | Where                                       |
-| ------- | -------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Catalog | Simple products, product units with precision, category tree, JSONB attributes, admin routes | `modules/catalog`, branch `feature/catalog` |
+(workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed.
 
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
 
-Access control (ADR 0006), the workflow engine (ADR 0007) and customers (ADR 0008) are merged;
-see Done. Customers still has no admin or storefront routes, and invitation emails wait for the
-email work in week 4.
+Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008) and the
+catalog (ADR 0009) are merged; see Done. Customers still has no admin or storefront routes, and
+invitation emails wait for the email work in week 4.
 
-1. Catalog: built on `feature/catalog` (ADR 0009), awaiting review by Vikas. Simple products,
-   product units with precision, categories in a tree, attributes (JSONB), and admin routes
-   under `/admin/v1/catalog`.
-2. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
+1. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
    `GET /admin/v1/access/me` to hide what the admin may not do.
 
 **Week 3 (11 to 17 Nov):** price lists with customer and group fallback and the combined
