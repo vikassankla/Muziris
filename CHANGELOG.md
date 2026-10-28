@@ -26,6 +26,10 @@ All notable changes are listed here. The project follows semantic versioning fro
   checks against cross-site request forgery, per-IP and per-email sign-in limits.
 - `admin:create` command to create an admin without exposing the password.
 - `TRUSTED_PROXY_HOPS` setting for the client IP behind a load balancer.
+- `@muziris/workflow`: workflows declared in code with steps, transitions, pure guards and
+  actions that run in the transition's transaction. State and an append-only transition log
+  in PostgreSQL; each transition locks its instance, so concurrent transitions are safe.
+  Refused transitions say why (unknown transition, stale version, wrong step, failed guard).
 - `@muziris/customers`: customer hierarchy (parent and subsidiaries) with cycles refused,
   customer groups, buyer users linked to identity users, invitations with hashed single-use
   tokens and an expiry, and India and US addresses (PIN code, GST state code, GSTIN check

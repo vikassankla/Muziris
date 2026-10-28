@@ -20,11 +20,11 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Database   | Connection, ordered migrations, per-test-file databases                                                                 | `packages/db`         |
 | Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
+| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
-| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses (PR open)                                  | `modules/customers`   |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses                                            | `modules/customers`   |
 
-Decisions are recorded in `docs/adr/0001` to `0005`. ADR 0006 (access), 0007 (workflow) and
-0008 (customers) are proposed on open pull requests.
+Decisions are recorded in `docs/adr/0001` to `0005`, `0007` and `0008`.
 
 ## Next, in order (pilot plan)
 
@@ -32,12 +32,11 @@ Decisions are recorded in `docs/adr/0001` to `0005`. ADR 0006 (access), 0007 (wo
 
 1. Access control: admin roles and permissions; buyer roles with access levels (own records,
    my customer, my customer and subsidiaries), enforced in queries, not after them.
-2. Workflow engine: declarative steps, transitions, guards and actions, state in PostgreSQL,
-   full transition log.
-3. Customers: built on `feature/customers` (ADR 0008), waiting for review. Its migration is
-   numbered 0002 like those of access and workflow; regenerate it after they merge. Admin
-   and storefront routes for customers, buyer users, invitations and addresses are not built
-   yet, and invitation emails wait for the email work in week 4.
+2. Workflow engine: built in `modules/workflow` (ADR 0007). The order workflow (week 4), RFQs
+   and quotes declare their workflows with `defineWorkflow`.
+3. Customers: built in `modules/customers` (ADR 0008). Admin and storefront routes for
+   customers, buyer users, invitations and addresses are not built yet, and invitation emails
+   wait for the email work in week 4.
 4. Catalog: simple products, product units with precision, categories, attributes (JSONB).
 5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen.
 
@@ -59,6 +58,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
+- Time-based workflow transitions (quote expiry) need the job runner to call
+  `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
 
