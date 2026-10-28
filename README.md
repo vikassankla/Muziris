@@ -8,15 +8,16 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 
 ## What is in this repository
 
-| Path               | What it is                                                                |
-| ------------------ | ------------------------------------------------------------------------- |
-| `apps/api`         | The HTTP API (Hono on Node.js): health checks today, the APIs later       |
-| `modules/platform` | Organization, websites, and settings that resolve from customer to global |
-| `modules/identity` | Admin and buyer accounts, password hashing, sessions, rate limiting       |
-| `modules/workflow` | Workflows declared in code: steps, transitions, guards, actions, log      |
-| `packages/db`      | PostgreSQL connection and the ordered migration runner                    |
-| `packages/money`   | Exact money and decimal maths, currency rules, lakh and crore formatting  |
-| `docs/`            | Glossary and architecture decision records                                |
+| Path                | What it is                                                                |
+| ------------------- | ------------------------------------------------------------------------- |
+| `apps/api`          | The HTTP API (Hono on Node.js): health checks today, the APIs later       |
+| `modules/platform`  | Organization, websites, and settings that resolve from customer to global |
+| `modules/identity`  | Admin and buyer accounts, password hashing, sessions, rate limiting       |
+| `modules/workflow`  | Workflows declared in code: steps, transitions, guards, actions, log      |
+| `modules/customers` | Customer hierarchy, customer groups, buyer users, invitations, addresses  |
+| `packages/db`       | PostgreSQL connection and the ordered migration runner                    |
+| `packages/money`    | Exact money and decimal maths, currency rules, lakh and crore formatting  |
+| `docs/`             | Glossary and architecture decision records                                |
 
 ## Run it locally
 

@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 
 ## Goal
 
@@ -22,8 +22,9 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
 | Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses                                            | `modules/customers`   |
 
-Decisions are recorded in `docs/adr/0001` to `0005` and `0007`.
+Decisions are recorded in `docs/adr/0001` to `0005`, `0007` and `0008`.
 
 ## Next, in order (pilot plan)
 
@@ -33,9 +34,9 @@ Decisions are recorded in `docs/adr/0001` to `0005` and `0007`.
    my customer, my customer and subsidiaries), enforced in queries, not after them.
 2. Workflow engine: built in `modules/workflow` (ADR 0007). The order workflow (week 4), RFQs
    and quotes declare their workflows with `defineWorkflow`.
-3. Customers: hierarchy (parent and subsidiaries), customer groups, buyer users linked to
-   identity users, invitations, addresses with India and US rules (PIN code and GST state
-   code, ZIP code), GSTIN validation.
+3. Customers: built in `modules/customers` (ADR 0008). Admin and storefront routes for
+   customers, buyer users, invitations and addresses are not built yet, and invitation emails
+   wait for the email work in week 4.
 4. Catalog: simple products, product units with precision, categories, attributes (JSONB).
 5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen.
 
@@ -59,6 +60,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - `CODE_OF_CONDUCT.md` has no contact email yet.
 - Time-based workflow transitions (quote expiry) need the job runner to call
   `performTransition` with the system actor.
+- Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
+  several customers are not built (ADR 0008).
 
 ## Running the tests locally
 

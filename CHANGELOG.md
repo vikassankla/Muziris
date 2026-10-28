@@ -30,3 +30,9 @@ All notable changes are listed here. The project follows semantic versioning fro
   actions that run in the transition's transaction. State and an append-only transition log
   in PostgreSQL; each transition locks its instance, so concurrent transitions are safe.
   Refused transitions say why (unknown transition, stale version, wrong step, failed guard).
+- `@muziris/customers`: customer hierarchy (parent and subsidiaries) with cycles refused,
+  customer groups, buyer users linked to identity users, invitations with hashed single-use
+  tokens and an expiry, and India and US addresses (PIN code, GST state code, GSTIN check
+  character, ZIP and ZIP+4). Storefront reads are scoped to the buyer user's customer, or its
+  subsidiaries too, in the query itself. `descendantCustomerIds` supplies the subquery that
+  access control needs for "my customer and subsidiaries" (ADR 0008).
