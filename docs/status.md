@@ -22,19 +22,22 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
 | Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
-| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses                                            | `modules/customers`   |
-| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels and `buyerScope` query predicates  | `modules/access`      |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses; admin routes under `/admin/v1/customers`  | `modules/customers`   |
+| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes    | `modules/access`      |
 | Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
 
-Decisions are recorded in `docs/adr/0001` to `0009`. ADRs 0006 (access control), 0007
-(workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed.
+Decisions are recorded in `docs/adr/0001` to `0010`. ADRs 0006 (access control), 0007
+(workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
+(admin routes for customers and buyer roles, paged admin lists) is proposed in its pull request.
+Every admin list endpoint is paged with `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
 
 Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008) and the
-catalog (ADR 0009) are merged; see Done. Customers still has no admin or storefront routes, and
+catalog (ADR 0009) are merged; see Done. Admin routes for customers and buyer roles (ADR 0010)
+are in review. Customers has no storefront routes yet (accepting an invitation needs one), and
 invitation emails wait for the email work in week 4.
 
 1. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
@@ -58,12 +61,16 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
-- Admin routes for buyer roles (create, edit, assign) are not built; the module functions exist.
 - Time-based workflow transitions (quote expiry) need the job runner to call
   `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
-- Decide the default buyer role for invited buyer users (ADR 0006, ADR 0008).
+- Decide the default buyer role for invited buyer users (ADR 0006, ADR 0008). The admin
+  routes (ADR 0010) assign none; an admin assigns buyer roles by hand for now.
+- The admin API returns an invitation's token when it is created, because invitation emails
+  are not built. Move the token into the email in week 4 (ADR 0010).
+- The admin buyer users list returns identity user ids only; names and emails need a batch
+  lookup in identity's public interface.
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.

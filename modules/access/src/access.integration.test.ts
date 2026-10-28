@@ -389,18 +389,42 @@ describe.skipIf(!url)('access module against PostgreSQL', () => {
       await setBuyerRoleGrants(handle.db, role.id, [
         { permission: 'order.view', accessLevel: 'my_customer_and_subsidiaries' },
       ]);
-      expect(await listBuyerRoles(handle.db)).toEqual([
-        {
-          id: role.id,
-          code: 'buyer',
-          name: 'Buyer',
-          description: '',
-          isBuiltIn: false,
-          grants: [{ permission: 'order.view', accessLevel: 'my_customer_and_subsidiaries' }],
-        },
-      ]);
+      expect(await listBuyerRoles(handle.db)).toEqual({
+        nextAfter: null,
+        buyerRoles: [
+          {
+            id: role.id,
+            code: 'buyer',
+            name: 'Buyer',
+            description: '',
+            isBuiltIn: false,
+            grants: [{ permission: 'order.view', accessLevel: 'my_customer_and_subsidiaries' }],
+          },
+        ],
+      });
       await deleteBuyerRole(handle.db, role.id);
-      expect(await listBuyerRoles(handle.db)).toEqual([]);
+      expect((await listBuyerRoles(handle.db)).buyerRoles).toEqual([]);
+    });
+
+    it('pages buyer roles by code, each with its own grants', async () => {
+      const ids = new Map<string, string>();
+      for (const code of ['c_role', 'a_role', 'b_role']) {
+        const role = await createBuyerRole(handle.db, {
+          code,
+          name: code,
+          grants: [{ permission: 'order.view', accessLevel: 'own_records' }],
+        });
+        ids.set(code, role.id);
+      }
+      const first = await listBuyerRoles(handle.db, { limit: 2 });
+      expect(first.buyerRoles.map((r) => [r.code, r.grants.length])).toEqual([
+        ['a_role', 1],
+        ['b_role', 1],
+      ]);
+      expect(first.nextAfter).toBe(ids.get('b_role'));
+      const second = await listBuyerRoles(handle.db, { limit: 2, after: first.nextAfter ?? '' });
+      expect(second).toMatchObject({ buyerRoles: [{ code: 'c_role' }], nextAfter: null });
+      await expect(listBuyerRoles(handle.db, { limit: 201 })).rejects.toThrow();
     });
 
     it('refuses an unknown permission, an unknown level, or the same permission twice', async () => {

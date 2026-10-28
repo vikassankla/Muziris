@@ -15,6 +15,7 @@
     "@hono/node-server": "^2.1.5",
     "@muziris/access": "workspace:*",
     "@muziris/catalog": "workspace:*",
+    "@muziris/customers": "workspace:*",
     "@muziris/db": "workspace:*",
     "@muziris/identity": "workspace:*",
     "@muziris/platform": "workspace:*",

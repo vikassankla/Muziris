@@ -25,7 +25,9 @@ import {
   listAddressesForBuyer,
   listBuyerUsersForBuyer,
   listCustomerGroups,
+  listCustomers,
   listCustomersForBuyer,
+  listBuyerUsers,
   listPendingInvitations,
   listSubsidiaries,
   revokeInvitation,
@@ -108,7 +110,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         name: 'Distributors',
       });
       await createCustomerGroup(handle.db, { code: 'contractors', name: 'Contractors' });
-      expect((await listCustomerGroups(handle.db)).map((g) => g.code)).toEqual([
+      expect((await listCustomerGroups(handle.db)).customerGroups.map((g) => g.code)).toEqual([
         'contractors',
         'distributors',
       ]);
@@ -362,7 +364,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         acceptInvitation(handle.db, { token, password: PASSWORD, now: later }),
         'invitation_closed',
       );
-      expect(await listPendingInvitations(handle.db, acme.id, later)).toEqual([]);
+      expect((await listPendingInvitations(handle.db, acme.id, later)).invitations).toEqual([]);
     });
 
     it.each([
@@ -372,7 +374,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
     ] as const)('accepting %s', async (_label, offsetMs, refusal) => {
       const { acme, token } = await invite();
       const now = new Date(NOW.getTime() + offsetMs);
-      const pending = await listPendingInvitations(handle.db, acme.id, now);
+      const { invitations: pending } = await listPendingInvitations(handle.db, acme.id, now);
       const accepting = acceptInvitation(handle.db, { token, password: PASSWORD, now });
       if (refusal === null) {
         expect(pending).toHaveLength(1);
@@ -405,7 +407,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         now: NOW,
       });
       await expectRefused(findPendingInvitation(handle.db, first.token, NOW), 'invitation_closed');
-      const pending = await listPendingInvitations(handle.db, first.acme.id, NOW);
+      const { invitations: pending } = await listPendingInvitations(handle.db, first.acme.id, NOW);
       expect(pending.map((i) => i.id)).toEqual([second.invitation.id]);
     });
 
@@ -430,7 +432,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
       await expect(
         acceptInvitation(handle.db, { token, password: PASSWORD, now: NOW }),
       ).rejects.toBeInstanceOf(EmailTakenError);
-      expect(await listPendingInvitations(handle.db, acme.id, NOW)).toHaveLength(1);
+      expect((await listPendingInvitations(handle.db, acme.id, NOW)).invitations).toHaveLength(1);
     });
 
     it('refuses invitations to unknown customers', async () => {
@@ -479,7 +481,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         customerId: acme.id,
         isDefaultBilling: true,
       });
-      const list = await listAddresses(handle.db, acme.id);
+      const { addresses: list } = await listAddresses(handle.db, acme.id);
       expect(list.map((a) => [a.id, a.isDefaultBilling, a.isDefaultShipping])).toEqual([
         [second.id, true, false],
         [first.id, false, true],
@@ -511,6 +513,141 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
               values (${acme.id}, 'x', 'x', 'x', ${sql.raw(values)})`,
         ),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('admin lists, a page at a time', () => {
+    /** Follows nextAfter until the last page, collecting each page's ids. */
+    async function walk(
+      fetch: (after: string | undefined) => Promise<{ ids: string[]; nextAfter: string | null }>,
+    ): Promise<string[][]> {
+      const pages: string[][] = [];
+      let after: string | undefined;
+      for (;;) {
+        const page = await fetch(after);
+        pages.push(page.ids);
+        if (page.nextAfter === null) return pages;
+        after = page.nextAfter;
+      }
+    }
+
+    it('pages customers by name, with hierarchy and group filters', async () => {
+      const tree = await seedHierarchy();
+      const pages = await walk(async (after) => {
+        const page = await listCustomers(handle.db, { limit: 2, ...(after ? { after } : {}) });
+        return { ids: page.customers.map((c) => c.id), nextAfter: page.nextAfter };
+      });
+      const byId = new Map(Object.entries(tree).map(([name, c]) => [c.id, name]));
+      expect(pages.map((ids) => ids.map((id) => byId.get(id)))).toEqual([
+        ['acme', 'east'],
+        ['pune', 'plant2'],
+        ['west', 'globex'],
+      ]);
+
+      const names = async (query: Parameters<typeof listCustomers>[1]) =>
+        (await listCustomers(handle.db, query)).customers.map((c) => byId.get(c.id));
+      expect(await names({ parentId: tree.acme.id })).toEqual(['east', 'west']);
+      expect(await names({ topLevel: true })).toEqual(['acme', 'globex']);
+
+      const group = await createCustomerGroup(handle.db, { code: 'plants', name: 'Plants' });
+      await setCustomerGroup(handle.db, tree.plant2.id, group.id);
+      expect(await names({ groupId: group.id })).toEqual(['plant2']);
+      expect(await names({ after: MISSING_ID })).toEqual([]);
+    });
+
+    it.each([
+      ['a page size of 0', { limit: 0 }],
+      ['a page size over 200', { limit: 201 }],
+      ['top-level and a parent together', { topLevel: true, parentId: MISSING_ID }],
+      ['a malformed after', { after: 'acme' }],
+    ])('refuses %s', async (_label, query) => {
+      await expect(listCustomers(handle.db, query)).rejects.toThrow();
+    });
+
+    it('pages customer groups, buyer users, invitations and addresses', async () => {
+      for (const code of ['c_one', 'c_two', 'c_three']) {
+        await createCustomerGroup(handle.db, { code, name: code });
+      }
+      const groups = await walk(async (after) => {
+        const page = await listCustomerGroups(handle.db, { limit: 2, ...(after ? { after } : {}) });
+        return { ids: page.customerGroups.map((g) => g.code), nextAfter: page.nextAfter };
+      });
+      expect(groups).toEqual([['c_one', 'c_three'], ['c_two']]);
+
+      const acme = await createCustomer(handle.db, { name: 'Acme' });
+      const buyers = [];
+      for (const name of ['a', 'b', 'c']) {
+        buyers.push(
+          await createBuyerUser(handle.db, {
+            customerId: acme.id,
+            email: `${name}@acme.example`,
+            displayName: name,
+          }),
+        );
+      }
+      const buyerPages = await walk(async (after) => {
+        const page = await listBuyerUsers(handle.db, acme.id, {
+          limit: 2,
+          ...(after ? { after } : {}),
+        });
+        return { ids: page.buyerUsers.map((b) => b.userId), nextAfter: page.nextAfter };
+      });
+      expect(buyerPages.flat().sort()).toEqual(buyers.map((b) => b.userId).sort());
+      expect(buyerPages.map((p) => p.length)).toEqual([2, 1]);
+
+      const admin = await createUser(handle.db, {
+        realm: 'admin',
+        email: 'asha@org.example',
+        displayName: 'Asha',
+      });
+      const sent = [];
+      for (const [i, email] of ['x@acme.example', 'y@acme.example'].entries()) {
+        const created = await createInvitation(handle.db, {
+          customerId: acme.id,
+          email,
+          displayName: email,
+          invitedByUserId: admin.id,
+          now: new Date(NOW.getTime() + i),
+        });
+        sent.push(created.invitation.id);
+      }
+      const invitationPages = await walk(async (after) => {
+        const page = await listPendingInvitations(handle.db, acme.id, NOW, {
+          limit: 1,
+          ...(after ? { after } : {}),
+        });
+        return { ids: page.invitations.map((i) => i.id), nextAfter: page.nextAfter };
+      });
+      expect(invitationPages).toEqual([[sent[0]], [sent[1]]]);
+
+      const address = {
+        countryCode: 'US',
+        line1: '1 Market St',
+        city: 'San Francisco',
+        regionCode: 'CA',
+        postalCode: '94105',
+      } as const;
+      const plain = await addAddress(handle.db, { ...address, customerId: acme.id, label: 'A' });
+      const shipping = await addAddress(handle.db, {
+        ...address,
+        customerId: acme.id,
+        label: 'Z',
+        isDefaultShipping: true,
+      });
+      const billing = await addAddress(handle.db, {
+        ...address,
+        customerId: acme.id,
+        label: 'M',
+        isDefaultBilling: true,
+      });
+      const addressPages = await walk(async (after) => {
+        const page = await listAddresses(handle.db, acme.id, {
+          limit: 1,
+          ...(after ? { after } : {}),
+        });
+        return { ids: page.addresses.map((a) => a.id), nextAfter: page.nextAfter };
+      });
+      expect(addressPages).toEqual([[billing.id], [shipping.id], [plain.id]]);
     });
   });
 

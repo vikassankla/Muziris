@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Database } from '@muziris/db';
 import { createUser, disableUser, isWellFormedToken, newUserSchema } from '@muziris/identity';
-import { and, asc, eq, gt, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { insertBuyerUser, assertCustomerExists, type BuyerUser } from './buyer-users.js';
 import { invitations } from './db/schema.js';
 import { CustomerError } from './errors.js';
+import { pageQuerySchema, toPage, type PageQuery } from './page.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -156,12 +157,20 @@ export async function revokeInvitation(
     : new CustomerError('invitation_not_found', 'No such invitation');
 }
 
-/** Invitations of one customer that can still be accepted at `now`, oldest first. */
+export interface InvitationPage {
+  invitations: Invitation[];
+  /** Pass as `after` to fetch the next page; null on the last page. */
+  nextAfter: string | null;
+}
+
+/** Invitations of one customer that can still be accepted at `now`, oldest first, by page. */
 export async function listPendingInvitations(
   db: Database,
   customerId: string,
   now: Date,
-): Promise<Invitation[]> {
+  query: PageQuery = {},
+): Promise<InvitationPage> {
+  const q = pageQuerySchema.parse(query);
   const rows = await db
     .select()
     .from(invitations)
@@ -170,10 +179,15 @@ export async function listPendingInvitations(
         eq(invitations.customerId, z.uuid().parse(customerId)),
         isOpen,
         gt(invitations.expiresAt, now),
+        q.after === undefined
+          ? undefined
+          : sql`(${invitations.createdAt}, ${invitations.id}) > (select created_at, id from ${invitations} where id = ${q.after})`,
       ),
     )
-    .orderBy(asc(invitations.createdAt), asc(invitations.id));
-  return rows.map(toInvitation);
+    .orderBy(asc(invitations.createdAt), asc(invitations.id))
+    .limit(q.limit + 1);
+  const { items, nextAfter } = toPage(rows, q.limit, (r) => r.id);
+  return { invitations: items.map(toInvitation), nextAfter };
 }
 
 async function loadByToken(db: Database, token: string) {

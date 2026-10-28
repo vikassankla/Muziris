@@ -1,5 +1,5 @@
 import type { Database } from '@muziris/db';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { assertUserInRealm } from './admin-roles.js';
 import { buyerRolePermissions, buyerRoles, buyerUserRoles } from './db/schema.js';
@@ -66,20 +66,64 @@ async function loadRole(db: Database, roleId: string) {
   return role;
 }
 
-export async function listBuyerRoles(db: Database): Promise<BuyerRole[]> {
-  const roles = await db.select().from(buyerRoles).orderBy(asc(buyerRoles.code));
-  const rows = await db.select().from(buyerRolePermissions);
-  return roles.map((role) => ({
-    id: role.id,
-    code: role.code,
-    name: role.name,
-    description: role.description,
-    isBuiltIn: role.isBuiltIn,
-    grants: rows
-      .filter((r) => r.roleId === role.id && isBuyerPermission(r.permission))
-      .map((r) => ({ permission: r.permission as BuyerPermission, accessLevel: r.accessLevel }))
-      .sort(byPermission),
-  }));
+export const listBuyerRolesQuerySchema = z.object({
+  /** Continue after this role id, from the previous page's nextAfter. */
+  after: z.uuid().optional(),
+  limit: z.int().min(1).max(200).default(50),
+});
+
+export type ListBuyerRolesQuery = z.input<typeof listBuyerRolesQuerySchema>;
+
+export interface BuyerRolePage {
+  buyerRoles: BuyerRole[];
+  /** Pass as `after` to fetch the next page; null on the last page. */
+  nextAfter: string | null;
+}
+
+/** Buyer roles by code, with their grants, a page at a time. An unknown `after` gives none. */
+export async function listBuyerRoles(
+  db: Database,
+  query: ListBuyerRolesQuery = {},
+): Promise<BuyerRolePage> {
+  const q = listBuyerRolesQuerySchema.parse(query);
+  const rows = await db
+    .select()
+    .from(buyerRoles)
+    .where(
+      q.after === undefined
+        ? undefined
+        : sql`${buyerRoles.code} > (select code from ${buyerRoles} where id = ${q.after})`,
+    )
+    .orderBy(asc(buyerRoles.code))
+    .limit(q.limit + 1);
+  const roles = rows.slice(0, q.limit);
+  const grants =
+    roles.length === 0
+      ? []
+      : await db
+          .select()
+          .from(buyerRolePermissions)
+          .where(
+            inArray(
+              buyerRolePermissions.roleId,
+              roles.map((r) => r.id),
+            ),
+          );
+  const last = roles.at(-1);
+  return {
+    buyerRoles: roles.map((role) => ({
+      id: role.id,
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      isBuiltIn: role.isBuiltIn,
+      grants: grants
+        .filter((r) => r.roleId === role.id && isBuyerPermission(r.permission))
+        .map((r) => ({ permission: r.permission as BuyerPermission, accessLevel: r.accessLevel }))
+        .sort(byPermission),
+    })),
+    nextAfter: rows.length > q.limit && last ? last.id : null,
+  };
 }
 
 export async function createBuyerRole(db: Database, input: NewBuyerRole): Promise<BuyerRole> {

@@ -1,14 +1,25 @@
 import {
+  ACCESS_LEVELS,
   ADMIN_PERMISSIONS,
   AccessControlError,
   assignAdminRole,
+  assignBuyerRole,
+  BUYER_PERMISSIONS,
   createAdminRole,
+  createBuyerRole,
   deleteAdminRole,
+  deleteBuyerRole,
   getAdminAccess,
   hasAdminPermission,
   listAdminRoles,
+  listBuyerRoles,
+  listBuyerRolesQuerySchema,
+  newBuyerRoleSchema,
   setAdminRolePermissions,
+  setBuyerRoleGrants,
   unassignAdminRole,
+  unassignBuyerRole,
+  type BuyerRoleGrant,
   type AccessControlErrorCode,
   type AdminAccess,
   type AdminPermission,
@@ -65,7 +76,7 @@ export function requirePermission(
 
 const PROBLEMS: Record<AccessControlErrorCode, [ContentfulStatusCode, string]> = {
   role_not_found: [404, 'No such role'],
-  user_not_found: [404, 'No such admin user'],
+  user_not_found: [404, 'No such user'],
   role_code_taken: [409, 'A role with this code already exists'],
   built_in_role: [409, 'Built-in roles cannot be changed or deleted'],
   privilege_escalation: [403, 'You can only grant or remove permissions you hold yourself'],
@@ -98,7 +109,30 @@ const setPermissionsBody = z.object({
   permissions: z.array(z.string().max(100)).max(500),
 });
 
-/** Admin roles, permissions and assignments, mounted under /admin/v1/access. */
+/** Query strings carry text only; turn them into the module's query shape. */
+const listBuyerRolesQuery = z
+  .object({
+    after: z.string().max(100).optional(),
+    limit: z
+      .string()
+      .regex(/^\d{1,4}$/, 'Use a whole number')
+      .optional(),
+  })
+  .transform(({ after, limit }) =>
+    listBuyerRolesQuerySchema.parse({
+      ...(after === undefined ? {} : { after }),
+      ...(limit === undefined ? {} : { limit: Number(limit) }),
+    }),
+  );
+
+const setGrantsBody = z.object({
+  grants: newBuyerRoleSchema.shape.grants,
+});
+
+/**
+ * Admin roles, permissions and assignments, and buyer roles and their assignments to buyer
+ * users, mounted under /admin/v1/access.
+ */
 export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv> {
   const app = new Hono<AdminAccessEnv>();
   const need = (permission: AdminPermission) => requirePermission(permission, deps);
@@ -180,6 +214,84 @@ export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, targetUserId: userId, roleId },
       'access.admin_role_unassigned',
+    );
+    return c.body(null, 204);
+  });
+
+  /** The buyer permission catalogue and access levels, for the buyer role editor. */
+  app.get('/buyer-permissions', need('buyer_role.view'), (c) =>
+    c.json({
+      permissions: Object.entries(BUYER_PERMISSIONS).map(([key, description]) => ({
+        key,
+        description,
+      })),
+      accessLevels: ACCESS_LEVELS,
+    }),
+  );
+
+  app.get('/buyer-roles', need('buyer_role.view'), async (c) =>
+    c.json(await listBuyerRoles(deps.db, listBuyerRolesQuery.parse(c.req.query()))),
+  );
+
+  app.post('/buyer-roles', need('buyer_role.manage'), async (c) => {
+    const body = newBuyerRoleSchema.parse(await c.req.json().catch(() => ({})));
+    const buyerRole = await translated(() => createBuyerRole(deps.db, body));
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id, buyerRoleId: buyerRole.id },
+      'access.buyer_role_created',
+    );
+    return c.json({ buyerRole }, 201);
+  });
+
+  app.put('/buyer-roles/:roleId/grants', need('buyer_role.manage'), async (c) => {
+    const roleId = idParam.parse(c.req.param('roleId'));
+    const { grants } = setGrantsBody.parse(await c.req.json().catch(() => ({})));
+    await translated(() => setBuyerRoleGrants(deps.db, roleId, grants as BuyerRoleGrant[]));
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id, buyerRoleId: roleId },
+      'access.buyer_role_grants_set',
+    );
+    return c.body(null, 204);
+  });
+
+  app.delete('/buyer-roles/:roleId', need('buyer_role.manage'), async (c) => {
+    const roleId = idParam.parse(c.req.param('roleId'));
+    await translated(() => deleteBuyerRole(deps.db, roleId));
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id, buyerRoleId: roleId },
+      'access.buyer_role_deleted',
+    );
+    return c.body(null, 204);
+  });
+
+  app.put('/buyer-users/:userId/buyer-roles/:roleId', need('buyer_role.manage'), async (c) => {
+    const userId = idParam.parse(c.req.param('userId'));
+    const roleId = idParam.parse(c.req.param('roleId'));
+    await translated(() => assignBuyerRole(deps.db, userId, roleId));
+    deps.logger.info(
+      {
+        requestId: c.get('requestId'),
+        userId: c.get('user').id,
+        buyerUserId: userId,
+        buyerRoleId: roleId,
+      },
+      'access.buyer_role_assigned',
+    );
+    return c.body(null, 204);
+  });
+
+  app.delete('/buyer-users/:userId/buyer-roles/:roleId', need('buyer_role.manage'), async (c) => {
+    const userId = idParam.parse(c.req.param('userId'));
+    const roleId = idParam.parse(c.req.param('roleId'));
+    await translated(() => unassignBuyerRole(deps.db, userId, roleId));
+    deps.logger.info(
+      {
+        requestId: c.get('requestId'),
+        userId: c.get('user').id,
+        buyerUserId: userId,
+        buyerRoleId: roleId,
+      },
+      'access.buyer_role_unassigned',
     );
     return c.body(null, 204);
   });

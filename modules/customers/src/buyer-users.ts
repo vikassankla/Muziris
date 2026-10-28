@@ -1,9 +1,10 @@
 import type { Database } from '@muziris/db';
 import { createUser, findUserByEmail, type AuthenticatedUser } from '@muziris/identity';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { buyerUsers, customers } from './db/schema.js';
 import { CustomerError, isForeignKeyViolation, isUniqueViolation } from './errors.js';
+import { pageQuerySchema, toPage, type PageQuery } from './page.js';
 
 /** A buyer user: an identity user in the buyer realm, working for one customer. */
 export interface BuyerUser {
@@ -107,12 +108,35 @@ export async function findBuyerUser(db: Database, userId: string): Promise<Buyer
   return row ? toBuyerUser(row) : undefined;
 }
 
-/** Buyer users of one customer, for the admin. Storefront reads go through buyer-scope.ts. */
-export async function listBuyerUsers(db: Database, customerId: string): Promise<BuyerUser[]> {
+export interface BuyerUserPage {
+  buyerUsers: BuyerUser[];
+  /** Pass as `after` to fetch the next page; null on the last page. */
+  nextAfter: string | null;
+}
+
+/**
+ * Buyer users of one customer, oldest first, a page at a time, for the admin. `after` is a
+ * buyer user id. Storefront reads go through buyer-scope.ts.
+ */
+export async function listBuyerUsers(
+  db: Database,
+  customerId: string,
+  query: PageQuery = {},
+): Promise<BuyerUserPage> {
+  const q = pageQuerySchema.parse(query);
   const rows = await db
     .select()
     .from(buyerUsers)
-    .where(eq(buyerUsers.customerId, idSchema.parse(customerId)))
-    .orderBy(asc(buyerUsers.createdAt), asc(buyerUsers.userId));
-  return rows.map(toBuyerUser);
+    .where(
+      and(
+        eq(buyerUsers.customerId, idSchema.parse(customerId)),
+        q.after === undefined
+          ? undefined
+          : sql`(${buyerUsers.createdAt}, ${buyerUsers.userId}) > (select created_at, user_id from ${buyerUsers} where user_id = ${q.after})`,
+      ),
+    )
+    .orderBy(asc(buyerUsers.createdAt), asc(buyerUsers.userId))
+    .limit(q.limit + 1);
+  const { items, nextAfter } = toPage(rows, q.limit, (r) => r.userId);
+  return { buyerUsers: items.map(toBuyerUser), nextAfter };
 }

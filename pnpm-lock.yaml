@@ -59,6 +59,9 @@ importers:
       '@muziris/catalog':
         specifier: workspace:*
         version: link:../../modules/catalog
+      '@muziris/customers':
+        specifier: workspace:*
+        version: link:../../modules/customers
       '@muziris/db':
         specifier: workspace:*
         version: link:../../packages/db
