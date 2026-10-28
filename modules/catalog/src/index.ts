@@ -1,0 +1,67 @@
+// Public interface of the catalog module. Other modules import only from here.
+export {
+  MAX_ATTRIBUTE_LIST_LENGTH,
+  MAX_ATTRIBUTE_TEXT_LENGTH,
+  MAX_ATTRIBUTES,
+  productAttributesSchema,
+  type ProductAttributes,
+  type ProductAttributeValue,
+} from './attributes.js';
+export {
+  buildCategoryTree,
+  categoryChangesSchema,
+  categorySubtreeIds,
+  createCategory,
+  deleteCategory,
+  descendantCategoryIds,
+  findCategory,
+  listCategories,
+  newCategorySchema,
+  setCategoryParent,
+  updateCategory,
+  type Category,
+  type CategoryChanges,
+  type CategoryNode,
+  type NewCategory,
+} from './categories.js';
+export { CatalogError, type CatalogErrorCode } from './errors.js';
+export {
+  createProductUnit,
+  findProductUnit,
+  listProductUnits,
+  newProductUnitSchema,
+  type NewProductUnit,
+  type ProductUnit,
+} from './product-units.js';
+export {
+  createProduct,
+  findProduct,
+  findProductBySku,
+  listProducts,
+  listProductsQuerySchema,
+  MAX_PRODUCT_UNITS,
+  newProductSchema,
+  PRODUCT_STATUSES,
+  PRODUCT_TYPES,
+  productChangesSchema,
+  productUnitsSchema,
+  setProductUnits,
+  skuSchema,
+  updateProduct,
+  type ListProductsQuery,
+  type NewProduct,
+  type Product,
+  type ProductChanges,
+  type ProductPage,
+  type ProductStatus,
+  type ProductType,
+  type ProductUnitsInput,
+} from './products.js';
+export {
+  isValidUnitPrecision,
+  MAX_QUANTITY_INTEGER_DIGITS,
+  MAX_UNIT_PRECISION,
+  parseQuantity,
+  quantitySchema,
+  quantityToString,
+} from './quantity.js';
