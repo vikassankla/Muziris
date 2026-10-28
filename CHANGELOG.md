@@ -26,3 +26,9 @@ All notable changes are listed here. The project follows semantic versioning fro
   checks against cross-site request forgery, per-IP and per-email sign-in limits.
 - `admin:create` command to create an admin without exposing the password.
 - `TRUSTED_PROXY_HOPS` setting for the client IP behind a load balancer.
+- `@muziris/customers`: customer hierarchy (parent and subsidiaries) with cycles refused,
+  customer groups, buyer users linked to identity users, invitations with hashed single-use
+  tokens and an expiry, and India and US addresses (PIN code, GST state code, GSTIN check
+  character, ZIP and ZIP+4). Storefront reads are scoped to the buyer user's customer, or its
+  subsidiaries too, in the query itself. `descendantCustomerIds` supplies the subquery that
+  access control needs for "my customer and subsidiaries" (ADR 0008).

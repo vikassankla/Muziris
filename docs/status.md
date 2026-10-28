@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 
 ## Goal
 
@@ -21,8 +21,10 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
 | Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
 | API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses (PR open)                                  | `modules/customers`   |
 
-Decisions are recorded in `docs/adr/0001` to `0005`.
+Decisions are recorded in `docs/adr/0001` to `0005`. ADR 0006 (access), 0007 (workflow) and
+0008 (customers) are proposed on open pull requests.
 
 ## Next, in order (pilot plan)
 
@@ -32,9 +34,10 @@ Decisions are recorded in `docs/adr/0001` to `0005`.
    my customer, my customer and subsidiaries), enforced in queries, not after them.
 2. Workflow engine: declarative steps, transitions, guards and actions, state in PostgreSQL,
    full transition log.
-3. Customers: hierarchy (parent and subsidiaries), customer groups, buyer users linked to
-   identity users, invitations, addresses with India and US rules (PIN code and GST state
-   code, ZIP code), GSTIN validation.
+3. Customers: built on `feature/customers` (ADR 0008), waiting for review. Its migration is
+   numbered 0002 like those of access and workflow; regenerate it after they merge. Admin
+   and storefront routes for customers, buyer users, invitations and addresses are not built
+   yet, and invitation emails wait for the email work in week 4.
 4. Catalog: simple products, product units with precision, categories, attributes (JSONB).
 5. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen.
 
@@ -56,6 +59,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
+- Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
+  several customers are not built (ADR 0008).
 
 ## Running the tests locally
 
