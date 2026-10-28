@@ -25,23 +25,26 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses; admin routes under `/admin/v1/customers`  | `modules/customers`   |
 | Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes    | `modules/access`      |
 | Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
+| Admin app  | Admin shell in review: sign-in and sign-out, session guard, permission-aware navigation, read-only first screens        | `apps/admin`          |
 
 Decisions are recorded in `docs/adr/0001` to `0010`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
-(admin routes for customers and buyer roles, paged admin lists) is proposed in its pull request.
+(admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 Every admin list endpoint is paged with `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
 
-Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008) and the
-catalog (ADR 0009) are merged; see Done. Admin routes for customers and buyer roles (ADR 0010)
-are in review. Customers has no storefront routes yet (accepting an invitation needs one), and
-invitation emails wait for the email work in week 4.
+Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008), the catalog
+(ADR 0009) and the admin routes for customers and buyer roles (ADR 0010) are merged; see Done.
+The admin app shell (item 1 below) is in review. Customers has no storefront routes yet
+(accepting an invitation needs one), and invitation emails wait for the email work in week 4.
 
 1. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
-   `GET /admin/v1/access/me` to hide what the admin may not do.
+   `GET /admin/v1/access/me` to hide what the admin may not do. **In review**
+   (`feature/admin-shell`). Its screens are read-only; forms for creating and editing come
+   with the features that need them.
 
 **Week 3 (11 to 17 Nov):** price lists with customer and group fallback and the combined
 price build; visibility; PostgreSQL search; GraphQL storefront API; storefront browsing.
@@ -74,6 +77,13 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
+- Admin app: no single-buyer-role read exists, so the buyer role detail view pages through
+  `GET /admin/v1/access/buyer-roles` to find the role. Add `GET .../buyer-roles/{roleId}` when
+  convenient. The customer detail view walks up the hierarchy one `GET` per level (at most 20).
+- Admin app: no forms yet (create and edit customers, buyer roles, products, categories, admin
+  roles, role assignments). The API supports them.
+- Admin app in production: serve `apps/admin/dist` from the API's origin behind one reverse
+  proxy; there is no deployment recipe yet.
 
 ## Running the tests locally
 

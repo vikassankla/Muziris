@@ -89,6 +89,17 @@ All notable changes are listed here. The project follows semantic versioning fro
   the previous page's `nextAfter`.
 - `@muziris/customers`: `listCustomers`, paged and filtered, and `pageQuerySchema`.
   `@muziris/access`: `listBuyerRolesQuerySchema`.
+- `apps/admin` (`@muziris/admin`): the admin app shell, built with React, Vite, TanStack Router
+  and shadcn/ui (Tailwind). A sign-in screen over `POST /admin/v1/auth/sign-in` that shows one
+  message for `invalid_credentials` and the retry time for `too_many_attempts`; sign-out; a
+  guard that asks `GET /admin/v1/auth/me` on every navigation and sends any 401 to sign-in;
+  navigation that hides what `GET /admin/v1/access/me` does not allow, with a "No access" view
+  for a 403 `permission_denied`; RFC 9457 errors shown by `title` and branched on `code`, with
+  a fixed message for any 5xx. Read-only screens: customers (paged) with a customer's place in
+  the hierarchy and its subsidiaries, buyer roles (paged) with their grants, products (paged),
+  the category tree and admin roles. The session lives only in the API's `__Host-` cookie;
+  nothing goes in browser storage. The Vite dev server proxies `/admin/v1` to the API.
+- `.claude/launch.json` entries for the admin dev server and the API.
 
 ### Changed
 
