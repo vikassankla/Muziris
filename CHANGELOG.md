@@ -66,3 +66,34 @@ All notable changes are listed here. The project follows semantic versioning fro
   Reads need `product.view` and changes `product.manage`. Refusals use the codes `sku_taken`,
   `product_not_found`, `product_unit_not_found`, `product_unit_code_taken`,
   `category_not_found`, `category_code_taken`, `category_cycle` and `category_not_empty`.
+- API: admin routes for customers (ADR 0010). `GET` (paged by name; filtered by `parentId`,
+  `topLevel` or `groupId`) and `POST /admin/v1/customers`; `GET
+/admin/v1/customers/{customerId}`; `GET /admin/v1/customers/{customerId}/subsidiaries`; `PUT
+/admin/v1/customers/{customerId}/parent` and `PUT /admin/v1/customers/{customerId}/group`;
+  `GET` and `POST /admin/v1/customers/groups`; `GET` and `POST
+/admin/v1/customers/{customerId}/buyer-users` and `POST
+/admin/v1/customers/{customerId}/buyer-users/link`; `GET` (pending only) and `POST
+/admin/v1/customers/{customerId}/invitations` and `POST
+/admin/v1/customers/invitations/{invitationId}/revoke`; `GET` and `POST
+/admin/v1/customers/{customerId}/addresses`. Reads need `customer.view` and changes
+  `customer.manage`. Refusals use the codes `customer_not_found`, `customer_group_not_found`,
+  `customer_group_code_taken`, `hierarchy_cycle`, `not_a_buyer`, `buyer_user_exists`,
+  `email_taken`, `password_policy`, `invitation_not_found`, `invitation_closed` and
+  `default_address_conflict`.
+- API: admin routes for buyer roles. `GET /admin/v1/access/buyer-permissions`; `GET` (paged by
+  code) and `POST /admin/v1/access/buyer-roles`; `PUT
+/admin/v1/access/buyer-roles/{roleId}/grants`; `DELETE /admin/v1/access/buyer-roles/{roleId}`;
+  `PUT` and `DELETE /admin/v1/access/buyer-users/{userId}/buyer-roles/{roleId}`. Reads need
+  `buyer_role.view` and changes `buyer_role.manage`.
+- Every admin list endpoint is paged: `limit` from 1 to 200 (50 by default), and `after` set to
+  the previous page's `nextAfter`.
+- `@muziris/customers`: `listCustomers`, paged and filtered, and `pageQuerySchema`.
+  `@muziris/access`: `listBuyerRolesQuerySchema`.
+
+### Changed
+
+- `@muziris/customers`: `listCustomerGroups`, `listBuyerUsers`, `listPendingInvitations` and
+  `listAddresses` return a page (`{ <items>, nextAfter }`) instead of an array.
+  `@muziris/access`: so does `listBuyerRoles`.
+- API: the `user_not_found` problem title is now "No such user", since buyer role assignment
+  uses it too.

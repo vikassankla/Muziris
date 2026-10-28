@@ -11,6 +11,7 @@ import {
 } from './address-rules.js';
 import { addresses } from './db/schema.js';
 import { CustomerError, isForeignKeyViolation, isUniqueViolation } from './errors.js';
+import { pageQuerySchema, toPage, type PageQuery } from './page.js';
 
 export type Address = typeof addresses.$inferSelect;
 
@@ -147,11 +148,37 @@ export const addressOrder = [
   asc(addresses.id),
 ];
 
-/** A customer's addresses, for the admin. Storefront reads go through buyer-scope.ts. */
-export async function listAddresses(db: Database, customerId: string): Promise<Address[]> {
-  return db
+export interface AddressPage {
+  addresses: Address[];
+  /** Pass as `after` to fetch the next page; null on the last page. */
+  nextAfter: string | null;
+}
+
+/**
+ * A customer's addresses in addressOrder, a page at a time, for the admin. Storefront reads go
+ * through buyer-scope.ts.
+ */
+export async function listAddresses(
+  db: Database,
+  customerId: string,
+  query: PageQuery = {},
+): Promise<AddressPage> {
+  const q = pageQuerySchema.parse(query);
+  // The same order as addressOrder, written ascending so one row comparison continues it.
+  const key = sql`(not ${addresses.isDefaultBilling}, not ${addresses.isDefaultShipping}, ${addresses.label}, ${addresses.id})`;
+  const rows = await db
     .select()
     .from(addresses)
-    .where(eq(addresses.customerId, z.uuid().parse(customerId)))
-    .orderBy(...addressOrder);
+    .where(
+      and(
+        eq(addresses.customerId, z.uuid().parse(customerId)),
+        q.after === undefined
+          ? undefined
+          : sql`${key} > (select not is_default_billing, not is_default_shipping, label, id from ${addresses} where id = ${q.after})`,
+      ),
+    )
+    .orderBy(...addressOrder)
+    .limit(q.limit + 1);
+  const { items, nextAfter } = toPage(rows, q.limit, (r) => r.id);
+  return { addresses: items, nextAfter };
 }

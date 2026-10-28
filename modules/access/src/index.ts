@@ -23,6 +23,7 @@ export {
   deleteBuyerRole,
   getBuyerAccess,
   listBuyerRoles,
+  listBuyerRolesQuerySchema,
   mergeBuyerGrants,
   newBuyerRoleSchema,
   setBuyerRoleGrants,
@@ -30,6 +31,8 @@ export {
   type BuyerAccess,
   type BuyerRole,
   type BuyerRoleGrant,
+  type BuyerRolePage,
+  type ListBuyerRolesQuery,
   type NewBuyerRole,
 } from './buyer-roles.js';
 export { AccessControlError, type AccessControlErrorCode } from './errors.js';

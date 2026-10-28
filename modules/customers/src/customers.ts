@@ -1,5 +1,5 @@
 import type { Database } from '@muziris/db';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { customerGroups, customers } from './db/schema.js';
 import {
@@ -9,6 +9,7 @@ import {
   violatedConstraint,
 } from './errors.js';
 import { descendantCustomerIds } from './hierarchy.js';
+import { pageQuerySchema, toPage, type PageQuery } from './page.js';
 
 // Admin-side functions. They are not scoped to a buyer: the admin API checks the admin's
 // permission before calling them. Storefront reads go through buyer-scope.ts.
@@ -50,8 +51,30 @@ export async function createCustomerGroup(
   }
 }
 
-export async function listCustomerGroups(db: Database): Promise<CustomerGroup[]> {
-  return db.select().from(customerGroups).orderBy(asc(customerGroups.code));
+export interface CustomerGroupPage {
+  customerGroups: CustomerGroup[];
+  /** Pass as `after` to fetch the next page; null on the last page. */
+  nextAfter: string | null;
+}
+
+/** Customer groups by code, a page at a time. */
+export async function listCustomerGroups(
+  db: Database,
+  query: PageQuery = {},
+): Promise<CustomerGroupPage> {
+  const q = pageQuerySchema.parse(query);
+  const rows = await db
+    .select()
+    .from(customerGroups)
+    .where(
+      q.after === undefined
+        ? undefined
+        : sql`${customerGroups.code} > (select code from ${customerGroups} where id = ${q.after})`,
+    )
+    .orderBy(asc(customerGroups.code))
+    .limit(q.limit + 1);
+  const { items, nextAfter } = toPage(rows, q.limit, (g) => g.id);
+  return { customerGroups: items, nextAfter };
 }
 
 /** A missing parent or group surfaces as a foreign key violation; name it for the caller. */
@@ -84,6 +107,53 @@ export async function findCustomer(
     .where(eq(customers.id, idSchema.parse(customerId)))
     .limit(1);
   return row;
+}
+
+export const listCustomersQuerySchema = pageQuerySchema
+  .extend({
+    /** Only the direct subsidiaries of this customer. */
+    parentId: z.uuid().optional(),
+    /** Only customers with no parent. */
+    topLevel: z.boolean().default(false),
+    /** Only customers in this customer group. */
+    groupId: z.uuid().optional(),
+  })
+  .refine((q) => !(q.topLevel && q.parentId !== undefined), {
+    message: 'Ask for top-level customers or for the subsidiaries of one customer, not both',
+    path: ['topLevel'],
+  });
+
+export type ListCustomersQuery = z.input<typeof listCustomersQuerySchema>;
+
+export interface CustomerPage {
+  customers: Customer[];
+  /** Pass as `after` to fetch the next page; null on the last page. */
+  nextAfter: string | null;
+}
+
+/** Customers by name, a page at a time, for the admin. Storefront reads use buyer-scope.ts. */
+export async function listCustomers(
+  db: Database,
+  query: ListCustomersQuery = {},
+): Promise<CustomerPage> {
+  const q = listCustomersQuerySchema.parse(query);
+  const conditions: SQL[] = [];
+  if (q.parentId !== undefined) conditions.push(eq(customers.parentId, q.parentId));
+  if (q.topLevel) conditions.push(isNull(customers.parentId));
+  if (q.groupId !== undefined) conditions.push(eq(customers.groupId, q.groupId));
+  if (q.after !== undefined) {
+    conditions.push(
+      sql`(${customers.name}, ${customers.id}) > (select name, id from ${customers} where id = ${q.after})`,
+    );
+  }
+  const rows = await db
+    .select()
+    .from(customers)
+    .where(and(...conditions))
+    .orderBy(asc(customers.name), asc(customers.id))
+    .limit(q.limit + 1);
+  const { items, nextAfter } = toPage(rows, q.limit, (c) => c.id);
+  return { customers: items, nextAfter };
 }
 
 /** Direct subsidiaries of a customer, by name. */
