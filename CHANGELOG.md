@@ -52,3 +52,17 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `admin:create` now gives the new admin the `administrator` role; `--existing` gives it to an
   admin created earlier.
 - `@muziris/identity`: `findUserById`.
+- `@muziris/catalog`: simple products (SKU unique in any letter case, name, enabled or disabled
+  status, one category, attributes as a JSONB object validated with zod), product units with
+  their decimal precision, the product units each product is sold in with one primary, and a
+  category tree with cycles refused. `parseQuantity` and `quantitySchema` read quantities as
+  exact decimals at a unit's precision, refusing extra decimals unless a rounding mode is
+  given (ADR 0009).
+- API: `GET` and `POST /admin/v1/catalog/product-units`; `GET` (as a tree) and `POST
+/admin/v1/catalog/categories`, `PATCH` and `DELETE /admin/v1/catalog/categories/{categoryId}`,
+  `PUT /admin/v1/catalog/categories/{categoryId}/parent`; `GET` (paged by SKU, filtered by
+  category and status) and `POST /admin/v1/catalog/products`, `GET` and `PATCH
+/admin/v1/catalog/products/{productId}`, `PUT /admin/v1/catalog/products/{productId}/units`.
+  Reads need `product.view` and changes `product.manage`. Refusals use the codes `sku_taken`,
+  `product_not_found`, `product_unit_not_found`, `product_unit_code_taken`,
+  `category_not_found`, `category_code_taken`, `category_cycle` and `category_not_empty`.
