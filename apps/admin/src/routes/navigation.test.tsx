@@ -104,6 +104,9 @@ describe('permission-aware navigation', () => {
   it('lists products with paging', async () => {
     const requests = mockApi({
       ...signedIn(['product.view']),
+      'GET /catalog/categories': () => json({ categories: [] }),
+      'GET /catalog/product-units': () =>
+        json({ productUnits: [{ code: 'each', name: 'Each', precision: 0 }] }),
       'GET /catalog/products': () =>
         json({
           products: [
@@ -129,6 +132,7 @@ describe('permission-aware navigation', () => {
     expect(screen.getByRole('link', { name: 'Next page' }).getAttribute('href')).toBe(
       '/products?after=BRG-6204',
     );
+    expect(screen.getByRole('link', { name: 'First page' }).getAttribute('href')).toBe('/products');
     const list = requests.find((r) => r.path === '/catalog/products');
     expect(list?.query.get('after')).toBe('BRG-6000');
     expect(list?.query.get('limit')).toBe('25');
