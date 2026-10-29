@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Home · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="home" collapsed="{{collapsed}}" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><span aria-current="page">Home</span></nav>
+      <div class="ph">
+        <div>
+          <h1>Good morning, Priya</h1>
+          <p>What needs attention on Muziris India today. Figures in ₹, times in IST. Updated 28 Oct 2026, 09:12 IST.</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2"></path></svg>Last 30 days</button>
+          <button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New quote</button>
+        </div>
+      </div>
+
+      <section aria-label="Shortcuts" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px">
+        <sc-for list="{{shortcuts}}" as="s" hint-placeholder-count="5">
+          <a class="card" href="#" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-decoration: none">
+            <span class="av" style="border-radius: 8px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{s.icon}}"></path></svg></span>
+            <span class="col" style="gap: 0"><span class="strong">{{s.label}}</span><span class="xs muted">{{s.meta}}</span></span>
+          </a>
+        </sc-for>
+      </section>
+
+      <section aria-label="Key figures" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+          <div class="card card-b" style="display: flex; flex-direction: column; gap: 6px">
+            <div class="row small muted"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="{{k.icon}}"></path></svg>{{k.label}}</div>
+            <div class="stat num">{{k.value}}</div>
+            <div class="small num">{{k.sub}}</div>
+            <a class="small link" href="#">{{k.cta}}</a>
+          </div>
+        </sc-for>
+      </section>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px">
+        <section class="card">
+          <div class="card-h"><h2>Orders per day · October 2026</h2><span class="grow"></span><span class="small muted num">Total ₹4,26,18,940.00 · 1,126 orders</span></div>
+          <div class="card-b">
+            <figure style="margin: 0" role="img" aria-label="Bar chart of daily order value in October 2026, peaking at ₹28.4 lakh on 22 October">
+              <div style="display: flex; gap: 10px; height: 200px">
+                <div class="xs muted num" style="display: flex; flex-direction: column; justify-content: space-between; text-align: right; padding-bottom: 18px"><span>₹30 L</span><span>₹20 L</span><span>₹10 L</span><span>0</span></div>
+                <div style="flex: 1; display: flex; flex-direction: column">
+                  <div style="flex: 1; display: flex; align-items: flex-end; gap: 4px; border-bottom: 1px solid var(--border); background: linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 33.33%">
+                    <sc-for list="{{bars}}" as="b" hint-placeholder-count="28">
+                      <div title="{{b.tip}}" style="flex: 1; height: {{b.h}}; background: {{b.c}}; border-radius: 3px 3px 0 0"></div>
+                    </sc-for>
+                  </div>
+                  <div class="xs muted num" style="display: flex; justify-content: space-between; padding-top: 4px"><span>1 Oct</span><span>8 Oct</span><span>15 Oct</span><span>22 Oct</span><span>28 Oct</span></div>
+                </div>
+              </div>
+              <figcaption class="row xs muted" style="margin-top: 10px; gap: 14px"><span class="row" style="gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--chart-1)"></span>Order value</span><span class="row" style="gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--chart-5)"></span>Weekend</span></figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><h2>Quotes about to expire</h2><span class="badge warn">9 in 7 days</span><span class="grow"></span><a class="small link" href="#">All quotes</a></div>
+          <table class="tbl compact">
+            <thead><tr><th scope="col">Quote</th><th scope="col">Customer</th><th scope="col">Expires</th><th scope="col" class="r">Total</th></tr></thead>
+            <tbody>
+              <sc-for list="{{quotes}}" as="q" hint-placeholder-count="5">
+                <tr><td><a class="rl mono" href="#">{{q.no}}</a></td><td>{{q.customer}}</td><td><span class="badge {{q.tone}}">{{q.expires}}</span></td><td class="r num">{{q.total}}</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <section class="card">
+        <div class="card-h"><h2>RFQs waiting for a quote</h2><span class="badge info">17 open</span><span class="grow"></span><a class="btn outline sm" href="#">Open RFQs</a></div>
+        <div style="overflow-x: auto">
+        <table class="tbl">
+          <thead><tr><th scope="col">RFQ</th><th scope="col">Customer</th><th scope="col">Buyer user</th><th scope="col" class="r">Lines</th><th scope="col">Requested date</th><th scope="col">Received</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+          <tbody>
+            <sc-for list="{{rfqs}}" as="r" hint-placeholder-count="5">
+              <tr>
+                <td><a class="rl mono" href="#">{{r.no}}</a></td>
+                <td>{{r.customer}}</td>
+                <td>{{r.buyer}}</td>
+                <td class="r num">{{r.lines}}</td>
+                <td class="num">{{r.need}}</td>
+                <td><span class="badge {{r.tone}}">{{r.age}}</span></td>
+                <td class="r"><a class="btn outline sm" href="#">Build quote</a></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px">
+        <section class="card">
+          <div class="card-h"><h2>New buyer users and invitations</h2><span class="grow"></span><span class="small muted">Last 7 days</span></div>
+          <ul style="list-style: none; margin: 0; padding: 4px 16px">
+            <sc-for list="{{buyers}}" as="u" hint-placeholder-count="4">
+              <li class="row" style="padding: 10px 0; border-bottom: 1px solid var(--border)"><span class="av">{{u.ini}}</span><span class="col grow" style="gap: 0"><span class="strong">{{u.name}}</span><span class="xs muted">{{u.customer}}</span></span><span class="badge {{u.tone}}">{{u.status}}</span></li>
+            </sc-for>
+          </ul>
+        </section>
+        <section class="card">
+          <div class="card-h"><h2>Products without a price</h2><span class="badge bad">63</span><span class="grow"></span><a class="small link" href="#">Show all</a></div>
+          <ul style="list-style: none; margin: 0; padding: 4px 16px">
+            <sc-for list="{{noprice}}" as="p" hint-placeholder-count="4">
+              <li class="row" style="padding: 10px 0; border-bottom: 1px solid var(--border)"><span class="mono muted" style="width: 130px">{{p.sku}}</span><span class="grow">{{p.name}}</span><a class="btn ghost sm" href="#">Add price</a></li>
+            </sc-for>
+          </ul>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"collapsed":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const I = {
+      cust: 'M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2',
+      prod: 'M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
+      price: 'M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01',
+      order: 'M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4',
+      rfq: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+      quote: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8',
+      user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+      alert: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'
+    };
+    const vals = [12,18,22,15,6,4,19,21,24,17,20,7,5,23,26,22,19,24,8,6,25,28.4,23,21,26,9,6,14];
+    const bars = vals.map((v, i) => {
+      const wk = (i % 7 === 4 || i % 7 === 5);
+      return { h: (v / 30 * 100).toFixed(1) + '%', c: wk ? 'var(--chart-5)' : 'var(--chart-1)', tip: (i + 1) + ' Oct: ₹' + v + ' L' };
+    });
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      collapsed: !!this.props.collapsed,
+      shortcuts: [
+        { label: 'Customers', meta: '1,284 customers', icon: I.cust },
+        { label: 'Orders', meta: '38 placed today', icon: I.order },
+        { label: 'RFQs', meta: '17 waiting', icon: I.rfq },
+        { label: 'Products', meta: '8,412 products', icon: I.prod },
+        { label: 'Price lists', meta: '24 active', icon: I.price }
+      ],
+      kpis: [
+        { label: 'Orders today', value: '38', sub: '₹14,82,310.00', cta: 'View orders', icon: I.order },
+        { label: 'Orders this month', value: '1,126', sub: '₹4,26,18,940.00', cta: 'View report', icon: I.order },
+        { label: 'RFQs waiting for a quote', value: '17', sub: '5 older than 48 hours', cta: 'Open RFQs', icon: I.rfq },
+        { label: 'Quotes about to expire', value: '9', sub: '₹38,40,200.00 in 7 days', cta: 'Review quotes', icon: I.quote },
+        { label: 'New buyer users', value: '24', sub: '11 pending invitations', cta: 'See invitations', icon: I.user },
+        { label: 'Products without a price', value: '63', sub: 'Not orderable by buyers', cta: 'Fix prices', icon: I.alert }
+      ],
+      bars,
+      quotes: [
+        { no: 'Q-2026-0418', customer: 'Acme Engineering Pvt Ltd', expires: 'Today, 18:00 IST', tone: 'bad', total: '₹6,48,200.00' },
+        { no: 'Q-2026-0411', customer: 'Deccan Pumps & Valves Ltd', expires: 'Tomorrow', tone: 'warn', total: '₹12,10,450.00' },
+        { no: 'Q-2026-0407', customer: 'Kaveri Auto Components', expires: '31 Oct 2026', tone: 'warn', total: '₹3,92,000.00' },
+        { no: 'Q-2026-0399', customer: 'Acme Engineering (Chakan Plant)', expires: '2 Nov 2026', tone: 'neutral', total: '₹8,75,600.00' },
+        { no: 'Q-2026-0395', customer: 'Sahyadri Fabricators LLP', expires: '4 Nov 2026', tone: 'neutral', total: '₹1,14,900.00' }
+      ],
+      rfqs: [
+        { no: 'RFQ-2026-1187', customer: 'Acme Engineering Pvt Ltd', buyer: 'Rohan Kulkarni', lines: 14, need: '10 Nov 2026', age: '3 days', tone: 'bad' },
+        { no: 'RFQ-2026-1192', customer: 'Kaveri Auto Components', buyer: 'Meera Iyer', lines: 6, need: '15 Nov 2026', age: '2 days', tone: 'warn' },
+        { no: 'RFQ-2026-1195', customer: 'Bharat Heavy Castings', buyer: 'Sanjay Patil', lines: 22, need: '30 Nov 2026', age: '26 hours', tone: 'info' },
+        { no: 'RFQ-2026-1199', customer: 'Acme Engineering (Hosur Works)', buyer: 'Divya Raman', lines: 3, need: '5 Nov 2026', age: '5 hours', tone: 'info' },
+        { no: 'RFQ-2026-1201', customer: 'Coromandel Process Equipment', buyer: 'Arjun Menon', lines: 9, need: '20 Nov 2026', age: '40 min', tone: 'info' }
+      ],
+      buyers: [
+        { ini: 'NS', name: 'Neha Shah', customer: 'Acme Engineering (Chakan Plant)', status: 'Active', tone: 'ok' },
+        { ini: 'VK', name: 'Vikram Khanna', customer: 'Deccan Pumps & Valves Ltd', status: 'Invited', tone: 'info' },
+        { ini: 'AR', name: 'Anita Rao', customer: 'Kaveri Auto Components', status: 'Invited', tone: 'info' },
+        { ini: 'TS', name: 'Thomas Sebastian', customer: 'Coromandel Process Equipment', status: 'Expired', tone: 'neutral' }
+      ],
+      noprice: [
+        { sku: 'BRG-6205-2RS', name: 'Deep groove ball bearing 6205-2RS, 25 × 52 × 15 mm' },
+        { sku: 'GLV-NIT-9-L', name: 'Nitrile coated safety gloves, size 9 (L), cut level B' },
+        { sku: 'FST-HX-M12x50', name: 'Hex bolt M12 × 50, grade 8.8, zinc plated' },
+        { sku: 'CT-EM-10-4F', name: 'Carbide end mill 10 mm, 4 flute, TiAlN' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

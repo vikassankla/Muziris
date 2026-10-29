@@ -1,32 +1,214 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
-/* shadcn/ui theme tokens (neutral). */
-@theme {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.205 0 0);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.97 0 0);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.97 0 0);
-  --color-accent-foreground: oklch(0.205 0 0);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.708 0 0);
+/* Dark mode is a class on <html>, set from prefers-color-scheme or the user menu. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens from the Claude Design boards (docs/design/admin/muziris.css, Tokens board).
+ * Names follow shadcn/ui: light on :root, dark on .dark, mapped to Tailwind with @theme inline.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f5f5a;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f1;
+  --secondary-foreground: #0f172a;
+  --muted: #f4f6f6;
+  --muted-foreground: #556070;
+  --accent: #e6f1ef;
+  --accent-foreground: #0d3b38;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  /* Text colour for destructive messages on soft backgrounds; lighter in dark mode. */
+  --destructive-text: #b42318;
+  --success: #166534;
+  --success-soft: #e7f5ec;
+  --warning: #8a4b00;
+  --warning-soft: #fdf1dc;
+  --info: #1e4fd8;
+  --info-soft: #e8eefc;
+  --danger-soft: #fdecea;
+  --border: #e1e6e9;
+  --input: #c9d1d6;
+  --ring: #0f766e;
+  --radius: 0.5rem;
+  --sidebar: #f7f9f9;
+  --sidebar-foreground: #1e293b;
+  --sidebar-accent: #e6f1ef;
+  --sidebar-accent-foreground: #0d3b38;
+  --sidebar-border: #e1e6e9;
+  --sidebar-primary: #0f5f5a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #0f766e;
+  --chart-1: #0f766e;
+  --chart-2: #2f5bd3;
+  --chart-3: #c26a06;
+  --chart-4: #7247c9;
+  --chart-5: #64748b;
+  --overlay: rgb(15 23 42 / 0.45);
+  --shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.08);
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0b1214;
+  --foreground: #e6ebea;
+  --card: #10191b;
+  --card-foreground: #e6ebea;
+  --popover: #131d20;
+  --popover-foreground: #e6ebea;
+  --primary: #5eead4;
+  --primary-foreground: #04302c;
+  --secondary: #192528;
+  --secondary-foreground: #e6ebea;
+  --muted: #152023;
+  --muted-foreground: #9aa8a8;
+  --accent: #1a2c2d;
+  --accent-foreground: #ccf3ec;
+  --destructive: #c53030;
+  --destructive-foreground: #ffffff;
+  --destructive-text: #ff8f8f;
+  --success: #6ee79a;
+  --success-soft: #11291b;
+  --warning: #fbbf4c;
+  --warning-soft: #2b2108;
+  --info: #9cbcff;
+  --info-soft: #141f3a;
+  --danger-soft: #331414;
+  --border: #233034;
+  --input: #2f3d41;
+  --ring: #5eead4;
+  --sidebar: #0e1719;
+  --sidebar-foreground: #d5dddc;
+  --sidebar-accent: #1a2c2d;
+  --sidebar-accent-foreground: #ccf3ec;
+  --sidebar-border: #1e2a2d;
+  --sidebar-primary: #5eead4;
+  --sidebar-primary-foreground: #04302c;
+  --sidebar-ring: #5eead4;
+  --chart-1: #5eead4;
+  --chart-2: #8aa8ff;
+  --chart-3: #f5a524;
+  --chart-4: #b59cff;
+  --chart-5: #94a3b8;
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-text: var(--destructive-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-overlay: var(--shadow);
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  /* Type scale (Tokens board). Weights are set where each size is used. */
+  --text-page-title: 22px;
+  --text-page-title--line-height: 28px;
+  --text-dialog-title: 17px;
+  --text-dialog-title--line-height: 24px;
+  --text-card-title: 14.5px;
+  --text-card-title--line-height: 20px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-control: 13.5px;
+  --text-control--line-height: 20px;
+  --text-meta: 12.5px;
+  --text-meta--line-height: 18px;
+  --text-stat: 26px;
+  --text-stat--line-height: 32px;
+
+  /* Sizes (Tokens board). */
+  --spacing-control: 36px;
+  --spacing-control-sm: 30px;
+  --spacing-row: 44px;
+  --spacing-row-compact: 38px;
+  --spacing-sidebar: 240px;
+  --spacing-sidebar-collapsed: 60px;
+  --spacing-topbar: 56px;
 }
 
 @layer base {
   * {
-    border-color: var(--color-border);
+    border-color: var(--border);
   }
+  html,
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    font-feature-settings:
+      'cv11' 1,
+      'ss01' 1;
+    -webkit-font-smoothing: antialiased;
   }
+  /* Focus ring: 2 px --ring, 2 px offset, on every control. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
 }

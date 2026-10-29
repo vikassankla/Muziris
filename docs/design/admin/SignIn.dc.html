@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Sign in · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%; background: var(--muted); padding: 48px 32px">
+  <div style="max-width: 1360px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; align-items: start">
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Default</div>
+      <div class="card" style="padding: 32px 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow)">
+        <div class="row" style="gap: 10px"><span class="sb-mark" aria-hidden="true">M</span><span class="strong" style="font-size: 16px">Muziris</span><span class="tag">Admin</span></div>
+        <div><h1 style="margin: 0; font-size: 20px; font-weight: 650">Sign in</h1><p class="muted small" style="margin: 4px 0 0">For staff of Muziris Industrial Supply. Buyers sign in on the storefront.</p></div>
+        <form class="col" style="gap: 14px">
+          <div class="field"><label class="label" for="e1">Email</label><input class="input focus" id="e1" type="email" autocomplete="username" value="priya.raman@muziris.in"></div>
+          <div class="field"><label class="label" for="p1">Password</label><input class="input" id="p1" type="password" autocomplete="current-password" value="••••••••••••"></div>
+          <button class="btn full" type="submit">Sign in</button>
+        </form>
+        <p class="xs muted" style="margin: 0">Forgot your password or need an account? Ask an administrator.</p>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Failed sign-in (any reason)</div>
+      <div class="card" style="padding: 32px 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow)">
+        <div class="row" style="gap: 10px"><span class="sb-mark" aria-hidden="true">M</span><span class="strong" style="font-size: 16px">Muziris</span><span class="tag">Admin</span></div>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 650">Sign in</h1>
+        <div class="alert bad" role="alert"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 8v4M12 16h.01"></path></svg><span>Email or password is incorrect, or the account is temporarily locked. Try again in a few minutes.</span></div>
+        <form class="col" style="gap: 14px">
+          <div class="field"><label class="label" for="e2">Email</label><input class="input" id="e2" type="email" value="priya.raman@muziris.in"></div>
+          <div class="field"><label class="label" for="p2">Password</label><input class="input focus" id="p2" type="password" value="" placeholder=""></div>
+          <button class="btn full" type="submit">Sign in</button>
+        </form>
+        <p class="xs muted" style="margin: 0">The password field is cleared and focused. The message never says which part was wrong.</p>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Too many attempts</div>
+      <div class="card" style="padding: 32px 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow)">
+        <div class="row" style="gap: 10px"><span class="sb-mark" aria-hidden="true">M</span><span class="strong" style="font-size: 16px">Muziris</span><span class="tag">Admin</span></div>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 650">Sign in</h1>
+        <div class="alert warn" role="alert"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2"></path></svg><span>Too many sign-in attempts. Try again in 14 minutes.</span></div>
+        <form class="col" style="gap: 14px">
+          <div class="field"><label class="label" for="e3">Email</label><input class="input" id="e3" type="email" value="priya.raman@muziris.in" disabled></div>
+          <div class="field"><label class="label" for="p3">Password</label><input class="input" id="p3" type="password" disabled></div>
+          <button class="btn full" type="submit" disabled>Sign in</button>
+        </form>
+        <p class="xs muted" style="margin: 0">Fields and button are disabled until the wait is over; the minutes count down.</p>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Two-factor code (planned)</div>
+      <div class="card" style="padding: 32px 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow)">
+        <div class="row" style="gap: 10px"><span class="sb-mark" aria-hidden="true">M</span><span class="strong" style="font-size: 16px">Muziris</span><span class="tag">Admin</span></div>
+        <div><h1 style="margin: 0; font-size: 20px; font-weight: 650">Enter your code</h1><p class="muted small" style="margin: 4px 0 0">Open your authenticator app and enter the 6-digit code for Muziris.</p></div>
+        <form class="col" style="gap: 14px">
+          <div class="field"><label class="label" for="otp">Authentication code</label><input class="input focus mono" id="otp" inputmode="numeric" autocomplete="one-time-code" value="482 9" style="font-size: 18px; letter-spacing: .3em; height: 44px; text-align: center"></div>
+          <button class="btn full" type="submit">Verify</button>
+          <a class="small link" href="#" style="align-self: center">Use a recovery code instead</a>
+        </form>
+        <a class="xs muted" href="#">Back to sign in</a>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Session ended</div>
+      <div class="card" style="padding: 32px 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow)">
+        <div class="row" style="gap: 10px"><span class="sb-mark" aria-hidden="true">M</span><span class="strong" style="font-size: 16px">Muziris</span><span class="tag">Admin</span></div>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 650">Sign in</h1>
+        <div class="alert info" role="status"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg><span>Your session ended. Sign in again.</span></div>
+        <form class="col" style="gap: 14px">
+          <div class="field"><label class="label" for="e5">Email</label><input class="input" id="e5" type="email" value="priya.raman@muziris.in"></div>
+          <div class="field"><label class="label" for="p5">Password</label><input class="input focus" id="p5" type="password"></div>
+          <button class="btn full" type="submit">Sign in</button>
+        </form>
+        <p class="xs muted" style="margin: 0">After 30 minutes idle or 12 hours in total. You return to the page you were on.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.dark ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

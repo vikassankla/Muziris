@@ -1,5 +1,5 @@
 import { createRoute, Link } from '@tanstack/react-router';
-import { PageHeader, ReadOnlyNote } from '../components/page-header.js';
+import { PageHeader } from '../components/page-header.js';
 import { Pager } from '../components/pager.js';
 import {
   Table,
@@ -71,9 +71,7 @@ function CustomersPage() {
   const { after } = customersRoute.useSearch();
   return (
     <div>
-      <PageHeader title="Customers">
-        Every customer by name. <ReadOnlyNote />
-      </PageHeader>
+      <PageHeader title="Customers">Every customer by name.</PageHeader>
       {page.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No customers yet.</p>
       ) : (
@@ -113,9 +111,7 @@ function CustomerDetailPage() {
   const { after } = customerDetailRoute.useSearch();
   return (
     <div>
-      <PageHeader title={customer.name}>
-        Created {formatDate(customer.createdAt)}. <ReadOnlyNote />
-      </PageHeader>
+      <PageHeader title={customer.name}>Created {formatDate(customer.createdAt)}.</PageHeader>
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-semibold">Hierarchy</h2>

@@ -4,3 +4,7 @@ coverage
 .turbo
 **/migrations/meta
 LICENSE
+# Claude Design boards, kept as delivered
+docs/design/admin/*.dc.html
+docs/design/admin/*.css
+docs/design/admin/canvas.json

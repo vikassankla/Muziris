@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Shared states · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%; background: var(--muted); padding: 40px 32px">
+<div style="max-width: 1376px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 24px">
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Loading · Skeleton rows</span>
+    <div class="card" style="background: var(--background); padding: 20px; display: flex; flex-direction: column; gap: 14px; min-height: 360px" aria-busy="true" aria-label="Loading customers">
+      <div class="skel" style="width: 140px; height: 20px"></div>
+      <div class="skel" style="width: 260px"></div>
+      <div class="tbl-wrap">
+        <table class="tbl"><thead><tr><th>Name</th><th>Customer group</th><th class="r">Buyer users</th></tr></thead>
+          <tbody>
+            <sc-for list="{{skel}}" as="s" hint-placeholder-count="6"><tr><td><div class="skel" style="width: {{s.a}}"></div></td><td><div class="skel" style="width: {{s.b}}"></div></td><td><div class="skel" style="width: 28px; margin-left: auto"></div></td></tr></sc-for>
+          </tbody>
+        </table>
+      </div>
+      <span class="sr" role="status">Loading customers</span>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Empty · First action</span>
+    <div class="card" style="background: var(--background); min-height: 360px; display: grid; place-items: center; padding: 32px; text-align: center">
+      <div class="col" style="align-items: center; gap: 10px; max-width: 340px">
+        <span class="av lg" style="border-radius: 12px; width: 48px; height: 48px"><svg class="i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2"></path></svg></span>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 650">No customers yet</h2>
+        <p class="small muted" style="margin: 0">Add the companies that buy from you. You can invite their buyer users once a customer exists.</p>
+        <div class="row" style="margin-top: 6px"><button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New customer</button><button class="btn outline" type="button">Import from CSV</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">No search results</span>
+    <div class="card" style="background: var(--background); min-height: 360px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <div class="toolbar"><div class="search" style="width: 240px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="nr">Search products</label><input class="input sm" id="nr" value="bearnig 6205"></div><button class="chip set" type="button">Status<span class="sep"></span><span class="strong">Disabled</span></button></div>
+      <div style="flex: 1; display: grid; place-items: center; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius)">
+        <div class="col" style="align-items: center; gap: 8px; max-width: 320px">
+          <svg class="i lg muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg>
+          <h2 style="margin: 0; font-size: 15px; font-weight: 650">No products match “bearnig 6205”</h2>
+          <p class="small muted" style="margin: 0">Check the spelling, search by SKU, or remove the Status filter.</p>
+          <div class="row"><button class="btn outline sm" type="button">Clear search</button><button class="btn ghost sm" type="button">Clear filters</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">No access · 403 permission_denied</span>
+    <div class="card" style="background: var(--background); min-height: 360px; display: grid; place-items: center; padding: 32px; text-align: center">
+      <div class="col" style="align-items: center; gap: 10px; max-width: 340px">
+        <span class="av lg" style="border-radius: 12px; width: 48px; height: 48px; background: var(--muted); color: var(--muted-foreground)"><svg class="i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 650">You don’t have permission to view this.</h2>
+        <p class="small muted" style="margin: 0">Ask an administrator.</p>
+        <a class="btn outline" href="#" style="margin-top: 6px">Go to Home</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Error · Server title + Try again</span>
+    <div class="card" style="background: var(--background); min-height: 360px; display: grid; place-items: center; padding: 32px; text-align: center">
+      <div class="col" style="align-items: center; gap: 10px; max-width: 360px" role="alert">
+        <span class="av lg" style="border-radius: 12px; width: 48px; height: 48px; background: var(--danger-soft); color: var(--destructive)"><svg class="i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></span>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 650">Price lists could not be loaded</h2>
+        <p class="small muted" style="margin: 0">Something went wrong on our side. Your data is safe.</p>
+        <button class="btn" type="button" style="margin-top: 6px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"></path></svg>Try again</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Toasts · bottom right, 5 s, pause on hover</span>
+    <div class="card" style="background: var(--background); min-height: 360px; padding: 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 10px">
+      <div class="toast" role="status"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--success); margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M8 12l3 3 5-6"></path></svg><div class="col grow" style="gap: 2px"><span class="strong">Customer saved</span><span class="small muted">Acme Engineering Pvt Ltd</span></div><button class="btn ghost icon sm" type="button" aria-label="Dismiss"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div>
+      <div class="toast" role="status"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--info); margin-top: 2px"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg><div class="col grow" style="gap: 2px"><span class="strong">Invitation sent</span><span class="small muted">prakash.n@acme-eng.in · expires 4 Nov 2026</span></div><button class="btn ghost sm" type="button">Undo</button></div>
+      <div class="toast" role="alert" style="border-color: color-mix(in srgb, var(--destructive) 45%, var(--border))"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--destructive); margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M15 9l-6 6M9 9l6 6"></path></svg><div class="col grow" style="gap: 2px"><span class="strong">Price list not saved</span><span class="small muted">A price for BRG-6205-2RS, Each, 100+ already exists.</span></div><button class="btn outline sm" type="button">Try again</button></div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Confirm dialog · destructive</span>
+    <div class="card overlay" style="min-height: 360px; display: grid; place-items: center; padding: 24px">
+      <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="cd-h" aria-describedby="cd-d" style="width: 420px; max-width: 100%; padding: 22px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="cd-h">Delete customer group “SME workshops”?</h2>
+        <p id="cd-d" class="small muted" style="margin: 0">611 customers will no longer belong to a customer group and will fall back to the website price list. This cannot be undone.</p>
+        <div class="row" style="justify-content: flex-end; margin-top: 8px"><button class="btn outline" type="button">Cancel</button><button class="btn danger" type="button">Delete customer group</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Unsaved changes on leave</span>
+    <div class="card overlay" style="min-height: 360px; display: grid; place-items: center; padding: 24px">
+      <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="us-h" style="width: 420px; max-width: 100%; padding: 22px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="us-h">Leave without saving?</h2>
+        <p class="small muted" style="margin: 0">You changed 2 fields on BRG-6205-2RS. If you leave now, those changes are lost.</p>
+        <div class="row" style="justify-content: flex-end; margin-top: 8px"><button class="btn ghost" type="button">Discard and leave</button><button class="btn" type="button">Keep editing</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Session about to end · idle 28 min</span>
+    <div class="card overlay" style="min-height: 360px; display: grid; place-items: center; padding: 24px">
+      <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="se-h" style="width: 420px; max-width: 100%; padding: 22px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="se-h">Are you still there?</h2>
+        <p class="small muted" style="margin: 0">For security, your session ends in <b class="num" style="color: var(--foreground)">1:52</b>. Unsaved changes will be lost.</p>
+        <div class="row" style="justify-content: flex-end; margin-top: 8px"><button class="btn outline" type="button">Sign out</button><button class="btn" type="button">Stay signed in</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col" style="gap: 8px">
+    <span class="tag" style="align-self: flex-start">Admin user menu · Dropdown Menu</span>
+    <div class="card" style="background: var(--background); min-height: 300px; padding: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
+      <button class="btn ghost" type="button" aria-haspopup="menu" aria-expanded="true" style="height: 40px; padding: 0 6px 0 4px; gap: 10px; background: var(--muted)"><span class="av">PR</span><span class="col" style="gap: 0; text-align: left; line-height: 1.2"><span class="small strong">Priya Raman</span><span class="xs muted" style="font-weight: 400">Sales manager</span></span><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg></button>
+      <div class="menu" role="menu" aria-label="Priya Raman" style="width: 240px">
+        <div class="menu-label" style="text-transform: none; font-weight: 400">priya.raman@muziris.in</div>
+        <div class="menu-sep" role="separator"></div>
+        <button class="menu-item on" role="menuitem" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path></svg>Profile</button>
+        <button class="menu-item" role="menuitem" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"></path></svg><span class="grow">Theme</span><span class="xs muted">System</span></button>
+        <button class="menu-item" role="menuitem" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h10"></path></svg><span class="grow">Keyboard shortcuts</span><span class="kbd">?</span></button>
+        <div class="menu-sep" role="separator"></div>
+        <button class="menu-item" role="menuitem" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>Sign out</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      skel: [['70%', '50%'], ['55%', '62%'], ['80%', '40%'], ['62%', '55%'], ['48%', '66%'], ['74%', '45%']].map(([a, b]) => ({ a, b }))
+    };
+  }
+}
+</script>
+</body>
+</html>

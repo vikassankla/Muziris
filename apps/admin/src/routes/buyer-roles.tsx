@@ -1,5 +1,5 @@
 import { createRoute, Link, notFound } from '@tanstack/react-router';
-import { PageHeader, ReadOnlyNote } from '../components/page-header.js';
+import { PageHeader } from '../components/page-header.js';
 import { Pager } from '../components/pager.js';
 import { Badge } from '../components/ui/badge.js';
 import {
@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/table.js';
-import { findBuyerRole, listBuyerRoles } from '../lib/endpoints.js';
+import { allBuyerRoles, listBuyerRoles } from '../lib/endpoints.js';
 import { afterSearch } from '../lib/redirect.js';
 import { authedRoute } from './authed.js';
 
@@ -36,7 +36,7 @@ function BuyerRolesPage() {
   return (
     <div>
       <PageHeader title="Buyer roles">
-        Storefront permissions with an access level, by code. <ReadOnlyNote />
+        Storefront permissions with an access level, by code.
       </PageHeader>
       {page.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No buyer roles yet.</p>
@@ -60,7 +60,7 @@ function BuyerRolesPage() {
                   >
                     {role.name}
                   </Link>{' '}
-                  {role.isBuiltIn ? <Badge variant="secondary">Built-in</Badge> : null}
+                  {role.isBuiltIn ? <Badge variant="outline">Built-in</Badge> : null}
                 </TableCell>
                 <TableCell className="font-mono text-xs">{role.code}</TableCell>
                 <TableCell>{role.grants.length}</TableCell>
@@ -78,7 +78,7 @@ export const buyerRoleDetailRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/buyer-roles/$roleId',
   loader: async ({ params, abortController }) => {
-    const role = await findBuyerRole(params.roleId, abortController.signal);
+    const role = (await allBuyerRoles(abortController.signal)).find((r) => r.id === params.roleId);
     if (!role) throw notFound();
     return role;
   },
@@ -99,7 +99,7 @@ function BuyerRoleDetailPage() {
     <div>
       <PageHeader title={role.name}>
         <span className="font-mono text-xs">{role.code}</span>
-        {role.isBuiltIn ? ' · Built-in' : ''}. <ReadOnlyNote />
+        {role.isBuiltIn ? ' · Built-in' : ''}.
       </PageHeader>
       {role.description ? <p className="mb-6 text-sm">{role.description}</p> : null}
       <h2 className="mb-2 text-lg font-semibold">Grants</h2>

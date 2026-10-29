@@ -103,6 +103,9 @@ describe('permission-aware navigation', () => {
               categoryId: null,
               primaryUnitCode: 'each',
               units: [{ code: 'each', name: 'Each', precision: 0 }],
+              attributes: {},
+              createdAt: '2026-10-01T00:00:00.000Z',
+              updatedAt: '2026-10-01T00:00:00.000Z',
             },
           ],
           nextAfter: 'BRG-6204',
@@ -115,6 +118,6 @@ describe('permission-aware navigation', () => {
     );
     const list = requests.find((r) => r.path === '/catalog/products');
     expect(list?.query.get('after')).toBe('BRG-6000');
-    expect(list?.query.get('limit')).toBe('50');
+    expect(list?.query.get('limit')).toBe('25');
   });
 });

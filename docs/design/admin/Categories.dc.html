@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Categories · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="categories" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">Categories</span></nav>
+      <div class="ph">
+        <div><h1>Categories</h1><p>Drag to reorder or to move a category under another parent. With the keyboard: Alt + arrow keys.</p></div>
+        <div class="ph-actions"><button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New category</button></div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section class="card" style="flex: 1 1 420px; min-width: 0">
+          <div class="card-h">
+            <div class="search grow"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="cq">Filter categories</label><input class="input sm" id="cq" placeholder="Filter categories"></div>
+            <button class="btn ghost sm" type="button">Expand all</button>
+          </div>
+          <ul role="tree" aria-label="Categories" style="list-style: none; margin: 0; padding: 8px">
+            <sc-for list="{{nodes}}" as="n" hint-placeholder-count="14">
+              <sc-if value="{{n.drop}}" hint-placeholder-val="{{ false }}"><li aria-hidden="true" style="height: 2px; margin: 0 8px 0 {{n.pad}}; background: var(--primary); border-radius: 2px; position: relative"><span style="position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--primary); background: var(--card)"></span></li></sc-if>
+              <li role="treeitem" aria-level="{{n.level}}" aria-expanded="{{n.expanded}}" aria-selected="{{n.selected}}" class="row" style="height: 36px; padding: 0 8px 0 {{n.pad}}; border-radius: 6px; background: {{n.bg}}; opacity: {{n.op}}; outline: {{n.outline}}; outline-offset: -2px">
+                <svg class="i sm muted" viewBox="0 0 24 24" aria-hidden="true" style="cursor: grab"><path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" style="stroke-width: 3"></path></svg>
+                <span class="muted" aria-hidden="true" style="width: 14px; text-align: center; font-size: 11px">{{n.caret}}</span>
+                <span class="{{n.nameCls}}">{{n.name}}</span>
+                <span class="mono xs muted">{{n.code}}</span>
+                <span class="grow"></span>
+                <span class="xs muted num">{{n.count}}</span>
+              </li>
+            </sc-for>
+          </ul>
+        </section>
+
+        <section class="card" style="flex: 1 1 360px; min-width: 0" aria-labelledby="ce-h">
+          <div class="card-h"><h2 id="ce-h">Ball bearings</h2><span class="grow"></span><span class="xs muted">Bearings › Ball bearings</span></div>
+          <form class="card-b col" style="gap: 16px">
+            <div class="field"><label class="label" for="c-name">Name</label><input class="input" id="c-name" value="Ball bearings"></div>
+            <div class="field"><label class="label" for="c-code">Code</label><input class="input mono" id="c-code" value="ball-bearings"><span class="hint">Used in imports and the API.</span></div>
+            <div class="field"><label class="label" for="c-parent">Parent category</label><button class="select" id="c-parent" type="button">Bearings<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            <dl class="dl" style="grid-template-columns: 140px 1fr"><dt>Products</dt><dd class="num">48 products directly, 0 in subcategories</dd><dt>Subcategories</dt><dd>None</dd></dl>
+          </form>
+          <div class="card-f" style="justify-content: space-between"><button class="btn ghost" type="button" style="color: var(--destructive)">Delete category…</button><span class="row"><button class="btn outline" type="button">Cancel</button><button class="btn" type="button">Save</button></span></div>
+          <div class="card-b" style="border-top: 1px solid var(--border)">
+            <div class="alert warn"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><div class="col" style="gap: 2px"><span class="t">48 products use this category.</span><span class="small">Deleting it moves them to "Bearings". The confirm dialog names the category and the product count.</span></div></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const raw = [
+      [1, 'Bearings', 'bearings', '342', 'open'],
+      [2, 'Ball bearings', 'ball-bearings', '48', 'leaf', 'selected'],
+      [2, 'Roller bearings', 'roller-bearings', '61', 'leaf'],
+      [2, 'Mounted units', 'mounted-units', '37', 'leaf'],
+      [2, 'Lubrication', 'bearing-lubrication', '12', 'leaf', 'dragging'],
+      [1, 'Fasteners', 'fasteners', '2,118', 'open'],
+      [2, 'Bolts and screws', 'bolts-screws', '1,204', 'closed'],
+      [2, 'Nuts', 'nuts', '388', 'leaf', 'dropBefore'],
+      [2, 'Washers', 'washers', '262', 'leaf'],
+      [2, 'Anchors', 'anchors', '264', 'leaf'],
+      [1, 'Safety and PPE', 'safety-ppe', '918', 'open'],
+      [2, 'Hand protection', 'hand-protection', '214', 'closed'],
+      [2, 'Eye and face protection', 'eye-face', '96', 'leaf'],
+      [1, 'Cutting tools', 'cutting-tools', '1,436', 'closed'],
+      [1, 'Power transmission', 'power-transmission', '702', 'closed']
+    ];
+    const nodes = raw.map(([level, name, code, count, kind, flag]) => ({
+      level, name, code, count,
+      pad: (8 + (level - 1) * 24) + 'px',
+      caret: kind === 'open' ? '▾' : kind === 'closed' ? '▸' : '',
+      expanded: kind === 'leaf' ? null : (kind === 'open' ? 'true' : 'false'),
+      selected: flag === 'selected' ? 'true' : 'false',
+      bg: flag === 'selected' ? 'var(--accent)' : 'transparent',
+      nameCls: flag === 'selected' ? 'strong' : (level === 1 ? 'strong' : ''),
+      op: flag === 'dragging' ? '0.45' : '1',
+      outline: flag === 'dragging' ? '1px dashed var(--input)' : 'none',
+      drop: flag === 'dropBefore'
+    }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, nodes };
+  }
+}
+</script>
+</body>
+</html>

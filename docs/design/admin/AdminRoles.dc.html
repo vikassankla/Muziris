@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin roles · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="adminroles" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Admin roles</a><span aria-hidden="true">/</span><span aria-current="page">Sales manager</span></nav>
+      <div class="ph">
+        <div><div class="row" style="gap: 10px"><h1>Sales manager</h1><span class="tag mono">sales-manager</span></div><p>Runs customers, quotes and orders. 4 admin users have this role.</p></div>
+        <div class="ph-actions"><button class="btn outline" type="button">Duplicate</button><button class="btn ghost" type="button" style="color: var(--destructive)">Delete role…</button><button class="btn" type="button">Save permissions</button></div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section class="card" style="flex: 1 1 280px; min-width: 260px" aria-labelledby="rl-h">
+          <div class="card-h"><h2 id="rl-h">Admin roles</h2><span class="grow"></span><button class="btn outline sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New</button></div>
+          <ul style="list-style: none; margin: 0; padding: 6px">
+            <sc-for list="{{roles}}" as="r" hint-placeholder-count="6">
+              <li><a href="#" aria-current="{{r.cur}}" class="row" style="padding: 8px 10px; border-radius: 6px; text-decoration: none; background: {{r.bg}}">
+                <span class="col grow" style="gap: 0"><span class="row" style="gap: 6px"><span class="strong">{{r.name}}</span><sc-if value="{{r.builtin}}" hint-placeholder-val="{{ false }}"><span class="badge outline plain" style="height: 18px; font-size: 11px"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true" style="width: 11px; height: 11px"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>Built-in</span></sc-if></span><span class="xs muted mono">{{r.code}}</span></span>
+                <span class="xs muted num">{{r.perms}}</span>
+              </a></li>
+            </sc-for>
+          </ul>
+          <div class="card-b" style="border-top: 1px solid var(--border)">
+            <div class="alert" style="background: var(--muted)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg><span class="small"><b>Administrator</b> is locked. It grants every permission and cannot be edited or deleted.</span></div>
+          </div>
+        </section>
+
+        <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section class="card" aria-labelledby="pm-h">
+            <div class="card-h"><h2 id="pm-h">Permissions</h2><span class="small muted">18 of 25 granted</span><span class="grow"></span><span class="row xs muted" style="gap: 6px"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>= you don't hold this permission</span></div>
+            <div style="overflow-x: auto">
+            <table class="tbl" style="min-width: 640px">
+              <thead><tr><th scope="col" style="width: 160px">Area</th><th scope="col">What it allows</th><th scope="col" style="width: 80px; text-align: center">View</th><th scope="col" style="width: 80px; text-align: center">Manage</th><th scope="col" style="width: 80px; text-align: center">Assign</th></tr></thead>
+              <tbody>
+                <sc-for list="{{matrix}}" as="m" hint-placeholder-count="9">
+                  <tr>
+                    <th scope="row" style="background: none; color: var(--foreground); font-size: 13.5px; font-weight: 600; height: 52px">{{m.area}}</th>
+                    <td style="white-space: normal" class="small muted">{{m.desc}}</td>
+                    <sc-for list="{{m.cells}}" as="c" hint-placeholder-count="3">
+                      <td style="text-align: center; position: relative">
+                        <sc-if value="{{c.exists}}" hint-placeholder-val="{{ true }}">
+                          <span class="row" style="justify-content: center; gap: 4px"><input class="cb" type="checkbox" checked="{{c.on}}" disabled="{{c.locked}}" aria-label="{{c.aria}}" aria-describedby="{{c.desc}}"><sc-if value="{{c.locked}}" hint-placeholder-val="{{ false }}"><svg class="i sm muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></sc-if></span>
+                        </sc-if>
+                        <sc-if value="{{c.na}}" hint-placeholder-val="{{ false }}"><span class="muted" aria-label="Not applicable">–</span></sc-if>
+                        <sc-if value="{{c.tip}}" hint-placeholder-val="{{ false }}"><span role="tooltip" id="tip-settings" style="position: absolute; right: 8px; top: 40px; z-index: 2; width: 220px; padding: 8px 10px; border-radius: 6px; background: var(--foreground); color: var(--background); font-size: 12.5px; text-align: left; white-space: normal; box-shadow: var(--shadow)">You can only grant permissions you hold yourself.</span></sc-if>
+                      </td>
+                    </sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="au-h">
+            <div class="card-h"><h2 id="au-h">Admin users</h2><span class="tab-planned">Planned list</span><span class="grow"></span><button class="btn outline sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Create admin user</button></div>
+            <div style="overflow-x: auto">
+            <table class="tbl">
+              <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Admin roles</th><th scope="col">Status</th><th scope="col">Last sign-in</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+              <tbody>
+                <tr><td><span class="row"><span class="av">AP</span><span class="strong">Arun Pillai</span></span></td><td class="muted">arun.pillai@muziris.in</td><td><span class="badge outline plain">Administrator</span></td><td><span class="badge ok">Active</span></td><td class="num muted">28 Oct 2026, 08:02 IST</td><td class="r"><span class="row" style="justify-content: flex-end; gap: 6px"><span class="xs muted">At least one admin user must keep the administrator role</span><button class="btn outline sm" type="button" disabled>Remove role</button></span></td></tr>
+                <tr><td><span class="row"><span class="av">PR</span><span class="strong">Priya Raman</span></span></td><td class="muted">priya.raman@muziris.in</td><td><span class="row" style="gap: 4px"><span class="badge outline plain">Sales manager</span><span class="badge outline plain">Catalog manager</span></span></td><td><span class="badge ok">Active</span></td><td class="num muted">28 Oct 2026, 09:10 IST</td><td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for Priya Raman"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td></tr>
+                <tr><td><span class="row"><span class="av">MV</span><span class="strong">Maya Varghese</span></span></td><td class="muted">maya.v@muziris.in</td><td><span class="badge outline plain">Catalog manager</span></td><td><span class="badge ok">Active</span></td><td class="num muted">27 Oct 2026, 19:44 IST</td><td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for Maya Varghese"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td></tr>
+                <tr><td><span class="row"><span class="av">JM</span><span class="strong">Jordan Miller</span></span></td><td class="muted">jordan.miller@muziris.com</td><td><span class="badge outline plain">Sales manager</span></td><td><span class="badge neutral">Disabled</span></td><td class="num muted">3 Oct 2026, 16:20 CT</td><td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for Jordan Miller"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td></tr>
+              </tbody>
+            </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const roles = [
+      ['Administrator', 'administrator', 'All', true, false],
+      ['Sales manager', 'sales-manager', '18', false, true],
+      ['Sales representative', 'sales-rep', '9', false, false],
+      ['Catalog manager', 'catalog-manager', '8', false, false],
+      ['Finance', 'finance', '7', false, false],
+      ['Support (read-only)', 'support-readonly', '9', false, false]
+    ].map(([name, code, perms, builtin, cur]) => ({ name, code, perms, builtin, cur: cur ? 'page' : 'false', bg: cur ? 'var(--accent)' : 'transparent' }));
+    // [area, description, view, manage, assign]; null = not applicable, 'L' = locked (not held)
+    const rows = [
+      ['Admin roles', 'See admin roles; create, edit and delete them; give roles to admin users.', true, false, false],
+      ['Admin users', 'See admin users; create, disable and edit them.', true, false, null],
+      ['Buyer roles', 'See buyer roles and change what each lets a buyer do on the storefront.', true, true, null],
+      ['Websites', 'See websites and change currency, locale, time zone and unit system.', true, false, null],
+      ['Settings', 'See settings and feature toggles; set and clear overrides at any scope.', true, 'L', null],
+      ['Customers', 'See customers, buyer users, invitations and addresses; create and change them.', true, true, null],
+      ['Products', 'See products, categories and product units; create and change them.', true, false, null],
+      ['Price lists', 'See price lists and prices; import, edit and assign them.', true, true, null],
+      ['Orders', 'See orders; change status and cancel them.', true, true, null]
+    ];
+    const lvls = ['View', 'Manage', 'Assign'];
+    const matrix = rows.map(([area, desc, ...vals]) => ({
+      area, desc,
+      cells: vals.map((v, i) => ({
+        exists: v !== null, na: v === null, on: v === true, locked: v === 'L',
+        tip: v === 'L', desc: v === 'L' ? 'tip-settings' : null,
+        aria: lvls[i] + ' ' + area
+      }))
+    }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, roles, matrix };
+  }
+}
+</script>
+</body>
+</html>

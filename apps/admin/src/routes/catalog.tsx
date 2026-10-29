@@ -1,5 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
-import { PageHeader, ReadOnlyNote } from '../components/page-header.js';
+import { PageHeader } from '../components/page-header.js';
 import { Pager } from '../components/pager.js';
 import { Badge } from '../components/ui/badge.js';
 import {
@@ -19,7 +19,8 @@ export const productsRoute = createRoute({
   path: '/products',
   validateSearch: afterSearch,
   loaderDeps: ({ search }) => ({ after: search.after }),
-  loader: ({ deps, abortController }) => listProducts(deps.after, abortController.signal),
+  loader: ({ deps, abortController }) =>
+    listProducts({ after: deps.after }, abortController.signal),
   component: ProductsPage,
 });
 
@@ -28,9 +29,7 @@ function ProductsPage() {
   const { after } = productsRoute.useSearch();
   return (
     <div>
-      <PageHeader title="Products">
-        Every product by SKU. <ReadOnlyNote />
-      </PageHeader>
+      <PageHeader title="Products">Every product by SKU.</PageHeader>
       {page.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No products yet.</p>
       ) : (
@@ -91,9 +90,7 @@ function CategoriesPage() {
   const categories = categoriesRoute.useLoaderData();
   return (
     <div>
-      <PageHeader title="Categories">
-        The category tree in display order. <ReadOnlyNote />
-      </PageHeader>
+      <PageHeader title="Categories">The category tree in display order.</PageHeader>
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">No categories yet.</p>
       ) : (

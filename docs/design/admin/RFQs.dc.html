@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>RFQs · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="rfqs" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Sales</a><span aria-hidden="true">/</span><span aria-current="page">RFQs</span></nav>
+      <div class="ph">
+        <div><h1>RFQs</h1><p>Requests for a quote from buyer users. Answer each with a quote before the requested date.</p></div>
+        <div class="ph-actions"><button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Export</button></div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px" aria-label="RFQ list">
+          <div class="toolbar">
+            <div class="search" style="flex: 1 1 200px; max-width: 260px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="rq">Search RFQs</label><input class="input sm" id="rq" placeholder="RFQ number or customer"></div>
+            <button class="chip set" type="button">Status<span class="sep"></span><span class="strong">Waiting for a quote</span></button>
+            <button class="chip" type="button">Customer</button>
+            <button class="chip" type="button">Assigned to</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th scope="col">RFQ</th><th scope="col">Customer</th><th scope="col" class="r">Lines</th><th scope="col" aria-sort="ascending"><button type="button">Requested date<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg></button></th><th scope="col">Status</th></tr></thead>
+              <tbody>
+                <sc-for list="{{rfqs}}" as="r" hint-placeholder-count="9">
+                  <tr class="{{r.cls}}" aria-selected="{{r.sel}}">
+                    <td><span class="col" style="gap: 0"><a class="rl mono" href="#">{{r.no}}</a><span class="xs muted">{{r.age}}</span></span></td>
+                    <td><span class="col" style="gap: 0"><span>{{r.cust}}</span><span class="xs muted">{{r.buyer}}</span></span></td>
+                    <td class="r num">{{r.lines}}</td>
+                    <td class="num">{{r.need}}</td>
+                    <td><span class="badge {{r.tone}}">{{r.status}}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="pager"><span>Showing <b class="num" style="color: var(--foreground)">1 to 9</b> of <b class="num" style="color: var(--foreground)">17</b></span><span style="flex: 1"></span><nav class="row" aria-label="Pagination" style="gap: 4px"><button class="btn outline icon sm" type="button" aria-label="Previous page" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button><span class="small" style="padding: 0 6px">Page 1 of 2</span><button class="btn outline icon sm" type="button" aria-label="Next page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></nav></div>
+        </section>
+
+        <section class="card" style="flex: 1 1 560px; min-width: 0" aria-labelledby="rd-h">
+          <div class="card-h" style="align-items: flex-start; flex-wrap: wrap">
+            <div class="col grow" style="gap: 2px">
+              <div class="row" style="gap: 8px; flex-wrap: wrap"><h2 id="rd-h" class="mono" style="font-size: 16px">RFQ-2026-1187</h2><span class="badge bad">Waiting for a quote · 3 days</span></div>
+              <span class="small muted"><a class="link" href="#">Acme Engineering Pvt Ltd</a> · Rohan Kulkarni (Purchaser) · received 25 Oct 2026, 11:20 IST</span>
+            </div>
+            <div class="row"><button class="btn ghost sm" type="button" style="color: var(--destructive)">Decline…</button><a class="btn sm" href="QuoteEditor.dc.html">Build quote</a></div>
+          </div>
+          <div class="card-b col" style="gap: 16px">
+            <dl class="dl" style="grid-template-columns: 150px 1fr">
+              <dt>Requested date</dt><dd class="num">10 Nov 2026 <span class="muted small">(13 days from today)</span></dd>
+              <dt>Ship to</dt><dd>Chakan stores, Khed, Pune, Maharashtra (27)</dd>
+              <dt>Assigned to</dt><dd class="row"><span class="av" style="width: 22px; height: 22px; font-size: 10px">PR</span>Priya Raman <button class="btn ghost sm" type="button">Change</button></dd>
+              <dt>Price list today</dt><dd>Acme contract FY 2026-27 <span class="muted small">(customer)</span></dd>
+            </dl>
+            <div class="alert" style="background: var(--muted)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span class="small"><b>Buyer’s note:</b> Annual shutdown on 12 Nov. Need bearings and gloves before then. Open to an alternative brand for the end mills if lead time is shorter.</span></div>
+          </div>
+          <table class="tbl" style="border-top: 1px solid var(--border)">
+            <thead><tr><th scope="col">What the buyer asked for</th><th scope="col" class="r">Quantity</th><th scope="col" class="r">Current price</th><th scope="col" class="r">Target price</th></tr></thead>
+            <tbody>
+              <sc-for list="{{lines}}" as="l" hint-placeholder-count="6">
+                <tr>
+                  <td style="white-space: normal"><span class="col" style="gap: 2px"><span>{{l.name}}</span><sc-if value="{{l.sku}}" hint-placeholder-val="{{ true }}"><span class="xs muted mono">{{l.sku}}</span></sc-if><sc-if value="{{l.unmatched}}" hint-placeholder-val="{{ false }}"><span class="row" style="gap: 6px"><span class="badge warn">Not in catalog</span><button class="btn ghost sm" type="button">Match a product</button></span></sc-if></span></td>
+                  <td class="r num">{{l.qty}}</td>
+                  <td class="r num muted">{{l.cur}}</td>
+                  <td class="r num">{{l.target}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div class="card-b row small muted" style="border-top: 1px solid var(--border); gap: 6px"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 11.1 12.2 20.3a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.4 17.5a2 2 0 0 1-2.8-2.8l8.5-8.5"></path></svg>Attachment: <a class="link" href="#">AEPL-shutdown-spares-2026.xlsx</a> (48 KB)</div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TONE = { 'Waiting for a quote': 'info', 'Quote sent': 'ok', Declined: 'neutral' };
+    const rfqs = [
+      ['RFQ-2026-1187', 'Acme Engineering Pvt Ltd', 'Rohan Kulkarni', 6, '10 Nov 2026', 'Waiting for a quote', '3 days ago', true],
+      ['RFQ-2026-1199', 'Acme Engineering (Hosur Works)', 'Divya Raman', 3, '5 Nov 2026', 'Waiting for a quote', '5 hours ago'],
+      ['RFQ-2026-1192', 'Kaveri Auto Components', 'Meera Iyer', 6, '15 Nov 2026', 'Waiting for a quote', '2 days ago'],
+      ['RFQ-2026-1201', 'Coromandel Process Equipment', 'Arjun Menon', 9, '20 Nov 2026', 'Waiting for a quote', '40 min ago'],
+      ['RFQ-2026-1195', 'Bharat Heavy Castings', 'Sanjay Patil', 22, '30 Nov 2026', 'Waiting for a quote', '26 hours ago'],
+      ['RFQ-2026-1180', 'Deccan Pumps & Valves Ltd', 'Vikram Khanna', 4, '1 Nov 2026', 'Quote sent', '5 days ago'],
+      ['RFQ-2026-1176', 'Malabar Marine Spares', 'Joseph Mathew', 11, '8 Nov 2026', 'Quote sent', '6 days ago'],
+      ['RFQ-2026-1171', 'Sahyadri Forgings Pvt Ltd', 'Ganesh Jadhav', 2, '28 Oct 2026', 'Declined', '9 days ago'],
+      ['RFQ-2026-1168', 'Kaveri Auto Components', 'Anita Rao', 7, '4 Nov 2026', 'Quote sent', '10 days ago']
+    ].map(([no, cust, buyer, lines, need, status, age, sel]) => ({
+      no, cust, buyer, lines, need, status, age, tone: TONE[status], sel: sel ? 'true' : 'false', cls: sel ? 'sel' : ''
+    }));
+    const lines = [
+      ['Deep groove ball bearing 6205-2RS', 'BRG-6205-2RS', '2,000 Each', '₹142.50', '₹128.00'],
+      ['Spherical roller bearing 22212-E', 'BRG-22212-E', '40 Each', '₹6,840.00', '—'],
+      ['Nitrile coated safety gloves, size 9 (L)', 'GLV-NIT-9-L', '600 Pair', '₹86.00', '₹78.00'],
+      ['Carbide end mill 10 mm, 4 flute, TiAlN', 'CT-EM-10-4F', '60 Each', '₹2,180.00', '₹1,950.00'],
+      ['Bearing grease LGMT 2', 'BRG-GRS-LGMT2-1', '25.000 kg', '₹1,120.00', '—'],
+      ['Stainless hex bolt M16 × 80, A4-80', '', '500 Each', '—', '₹62.00']
+    ].map(([name, sku, qty, cur, target]) => ({ name, sku, qty, cur, target, unmatched: !sku }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, rfqs, lines };
+  }
+}
+</script>
+</body>
+</html>

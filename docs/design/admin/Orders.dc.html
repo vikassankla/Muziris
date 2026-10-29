@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Orders · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="orders" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Sales</a><span aria-hidden="true">/</span><span aria-current="page">Orders</span></nav>
+      <div class="ph">
+        <div><h1>Orders</h1><p>Orders placed by buyer users on every website. Times are shown in each website’s time zone.</p></div>
+        <div class="ph-actions"><button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Export</button></div>
+      </div>
+      <div class="toolbar">
+        <div class="search" style="width: 280px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="oq">Search orders by number, customer or buyer user</label><input class="input sm" id="oq" placeholder="Order number, customer, buyer user"></div>
+        <button class="chip set" type="button">Status<span class="sep"></span><span class="strong">Not closed</span></button>
+        <button class="chip set" type="button">Website<span class="sep"></span><span class="strong">All websites</span></button>
+        <button class="chip" type="button">Customer</button>
+        <button class="chip set" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v16H3zM3 10h18M8 3v4M16 3v4"></path></svg>Placed<span class="sep"></span><span class="strong">1 Oct to 28 Oct 2026</span></button>
+        <button class="chip" type="button">Payment status</button>
+        <span style="flex: 1"></span>
+        <button class="btn outline sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM9 3v18M15 3v18"></path></svg>Columns</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th class="w" scope="col"><input class="cb" type="checkbox" aria-label="Select all on this page"></th>
+            <th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Buyer user</th>
+            <th scope="col" aria-sort="descending"><button type="button">Placed at<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></th>
+            <th scope="col">Status</th><th scope="col" class="r"><button type="button">Total</button></th><th scope="col">Payment</th><th scope="col"><span class="sr">Actions</span></th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{orders}}" as="o" hint-placeholder-count="12">
+              <tr>
+                <td class="w"><input class="cb" type="checkbox" aria-label="Select {{o.no}}"></td>
+                <td><span class="col" style="gap: 0"><a class="rl mono" href="#">{{o.no}}</a><span class="xs muted">{{o.site}}</span></span></td>
+                <td>{{o.cust}}</td>
+                <td class="muted">{{o.buyer}}</td>
+                <td class="num">{{o.at}}</td>
+                <td><span class="badge {{o.tone}}">{{o.status}}</span></td>
+                <td class="r num strong">{{o.total}}</td>
+                <td><span class="row small" style="gap: 6px"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true" style="color: {{o.payColor}}"><path d="{{o.payIcon}}"></path></svg>{{o.pay}}</span></td>
+                <td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for {{o.no}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span>Showing <b class="num" style="color: var(--foreground)">1 to 25</b> of <b class="num" style="color: var(--foreground)">1,284</b></span>
+        <span style="flex: 1"></span>
+        <label class="row" for="ops">Rows per page <button class="select sm" id="ops" type="button" style="width: 72px">25<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></label>
+        <nav class="row" aria-label="Pagination" style="gap: 4px"><button class="btn outline icon sm" type="button" aria-label="Previous page" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button><button class="btn sm" type="button" aria-current="page" style="min-width: 30px">1</button><button class="btn outline sm" type="button" style="min-width: 30px">2</button><button class="btn outline sm" type="button" style="min-width: 30px">3</button><span class="muted">…</span><button class="btn outline sm" type="button" style="min-width: 30px">52</button><button class="btn outline icon sm" type="button" aria-label="Next page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></nav>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const PAY = {
+      Paid: ['M20 6 9 17l-5-5', 'var(--success)'],
+      'Due in 45 days': ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2', 'var(--muted-foreground)'],
+      'Due in 30 days': ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2', 'var(--muted-foreground)'],
+      Overdue: ['M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', 'var(--destructive)'],
+      'Awaiting payment': ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M8 12h8', 'var(--warning)']
+    };
+    const TONE = { 'Pending approval': 'warn', Processing: 'info', 'Partly shipped': 'info', Shipped: 'ok', 'On hold': 'bad' };
+    const orders = [
+      ['SO-IN-2026-004831', 'Muziris India', 'Kaveri Auto Components', 'Meera Iyer', '28 Oct 2026, 09:04 IST', 'Pending approval', '₹1,18,240.00', 'Due in 30 days'],
+      ['SO-US-2026-001977', 'Muziris US', 'Gulf Coast Industrial Supply', 'Dana Whitfield', 'Oct 27, 2026, 9:41 PM CT', 'Processing', '$18,426.50', 'Due in 30 days'],
+      ['SO-IN-2026-004812', 'Muziris India', 'Acme Engineering Pvt Ltd', 'Rohan Kulkarni', '27 Oct 2026, 14:05 IST', 'Processing', '₹2,36,480.00', 'Due in 45 days'],
+      ['SO-IN-2026-004809', 'Muziris India', 'Coromandel Process Equipment', 'Arjun Menon', '27 Oct 2026, 11:52 IST', 'Partly shipped', '₹64,915.20', 'Paid'],
+      ['SO-US-2026-001971', 'Muziris US', 'Great Lakes MRO Partners', 'Kevin O’Brien', 'Oct 27, 2026, 8:15 AM CT', 'Shipped', '$4,212.00', 'Paid'],
+      ['SO-IN-2026-004798', 'Muziris India', 'Deccan Pumps & Valves Ltd', 'Vikram Khanna', '26 Oct 2026, 17:30 IST', 'On hold', '₹12,40,000.00', 'Overdue'],
+      ['SO-IN-2026-004790', 'Muziris India', 'Acme Engineering (Hosur Works)', 'Divya Raman', '25 Oct 2026, 10:41 IST', 'Shipped', '₹48,212.40', 'Due in 45 days'],
+      ['SO-US-2026-001962', 'Muziris US', 'Lone Star Bearing & Transmission', 'Maria Delgado', 'Oct 24, 2026, 3:02 PM CT', 'Processing', '$1,234,567.50', 'Awaiting payment'],
+      ['SO-IN-2026-004781', 'Muziris India', 'Sahyadri Forgings Pvt Ltd', 'Ganesh Jadhav', '24 Oct 2026, 12:18 IST', 'Processing', '₹12,34,567.50', 'Due in 30 days'],
+      ['SO-IN-2026-004775', 'Muziris India', 'Malabar Marine Spares', 'Joseph Mathew', '23 Oct 2026, 16:44 IST', 'Partly shipped', '₹3,08,790.00', 'Paid']
+    ].map(([no, site, cust, buyer, at, status, total, pay]) => ({
+      no, site, cust, buyer, at, status, total, pay, tone: TONE[status], payIcon: PAY[pay][0], payColor: PAY[pay][1]
+    }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, orders };
+  }
+}
+</script>
+</body>
+</html>

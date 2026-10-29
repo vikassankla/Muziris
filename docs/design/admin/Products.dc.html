@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Products · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="products" collapsed="{{collapsed}}" dark="{{isDark}}" hint-size="60px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page" style="padding: 20px 24px 40px">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">Products</span></nav>
+      <div class="ph">
+        <div><h1>Products</h1><p>Everything you sell, with its product units and attributes.</p></div>
+        <div class="ph-actions">
+          <button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14"></path></svg>Import</button>
+          <button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New product</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="search" style="flex: 1 1 220px; max-width: 300px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="pq">Search products by SKU or name</label><input class="input sm" id="pq" value="bearing"></div>
+        <button class="chip set" type="button">Category<span class="sep"></span><span class="strong">Bearings</span></button>
+        <button class="chip set" type="button">Status<span class="sep"></span><span class="strong">Enabled</span></button>
+        <button class="chip" type="button">Type</button>
+        <span style="flex: 1"></span>
+        <button class="btn outline sm icon" type="button" aria-label="Columns"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM9 3v18M15 3v18"></path></svg></button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th class="w" scope="col"><input class="cb" type="checkbox" aria-label="Select all on this page"></th>
+            <th scope="col" aria-sort="ascending"><button type="button">SKU<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg></button></th>
+            <th scope="col">Name</th><th scope="col">Category</th><th scope="col">Status</th><th scope="col">Primary unit</th><th scope="col">Type</th><th scope="col"><span class="sr">Actions</span></th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="p" hint-placeholder-count="12">
+              <tr>
+                <td class="w"><input class="cb" type="checkbox" aria-label="Select {{p.sku}}"></td>
+                <td><a class="rl mono" href="#">{{p.sku}}</a></td>
+                <td style="white-space: normal; min-width: 220px">{{p.name}}</td>
+                <td class="muted">{{p.cat}}</td>
+                <td><span class="badge {{p.tone}}">{{p.status}}</span></td>
+                <td>{{p.unit}}</td>
+                <td><span class="tag">{{p.type}}</span></td>
+                <td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for {{p.sku}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span>Showing <b class="num" style="color: var(--foreground)">1 to 25</b> of <b class="num" style="color: var(--foreground)">342</b></span>
+        <span style="flex: 1"></span>
+        <label class="row" for="pps">Rows per page <button class="select sm" id="pps" type="button" style="width: 72px">25<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></label>
+        <nav class="row" aria-label="Pagination" style="gap: 4px">
+          <button class="btn outline icon sm" type="button" aria-label="Previous page" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <span class="small" style="padding: 0 6px">Page 1 of 14</span>
+          <button class="btn outline icon sm" type="button" aria-label="Next page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+        </nav>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"collapsed":{"editor":"boolean","default":true},"$preview":{"width":1024,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      collapsed: this.props.collapsed ?? true,
+      rows: [
+        ['BRG-6004-ZZ', 'Deep groove ball bearing 6004-ZZ, 20 × 42 × 12 mm', 'Bearings › Ball bearings', 'Enabled', 'Each'],
+        ['BRG-6205-2RS', 'Deep groove ball bearing 6205-2RS, 25 × 52 × 15 mm', 'Bearings › Ball bearings', 'Enabled', 'Each'],
+        ['BRG-6205-2RS-B10', 'Deep groove ball bearing 6205-2RS, box of 10', 'Bearings › Ball bearings', 'Enabled', 'Box (10)'],
+        ['BRG-6308-C3', 'Deep groove ball bearing 6308, C3 clearance', 'Bearings › Ball bearings', 'Enabled', 'Each'],
+        ['BRG-22212-E', 'Spherical roller bearing 22212-E, 60 × 110 × 28 mm', 'Bearings › Roller bearings', 'Enabled', 'Each'],
+        ['BRG-30206', 'Tapered roller bearing 30206, 30 × 62 × 17.25 mm', 'Bearings › Roller bearings', 'Enabled', 'Each'],
+        ['BRG-NU210-ECP', 'Cylindrical roller bearing NU 210 ECP', 'Bearings › Roller bearings', 'Enabled', 'Each'],
+        ['BRG-UCP205', 'Pillow block bearing unit UCP205, 25 mm bore', 'Bearings › Mounted units', 'Enabled', 'Each'],
+        ['BRG-UCF208', 'Square flange bearing unit UCF208, 40 mm bore', 'Bearings › Mounted units', 'Enabled', 'Each'],
+        ['BRG-GRS-LGMT2-1', 'Bearing grease LGMT 2, general purpose', 'Bearings › Lubrication', 'Enabled', 'kg'],
+        ['BRG-6001-2RS', 'Deep groove ball bearing 6001-2RS, 12 × 28 × 8 mm', 'Bearings › Ball bearings', 'Enabled', 'Each'],
+        ['BRG-51105', 'Thrust ball bearing 51105, 25 × 42 × 11 mm', 'Bearings › Ball bearings', 'Enabled', 'Each']
+      ].map(([sku, name, cat, status, unit]) => ({ sku, name, cat, status, unit, type: 'Simple', tone: status === 'Enabled' ? 'ok' : 'neutral' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

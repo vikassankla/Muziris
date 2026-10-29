@@ -1,33 +1,50 @@
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react';
 import { cn } from '../../lib/cn.js';
 
-export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
-  return (
-    <div className="relative w-full overflow-auto">
-      <table className={cn('w-full caption-bottom text-sm', className)} {...props} />
-    </div>
+/** A table in its bordered card; rows are 44 px, or 38 px when compact. */
+export function Table({
+  className,
+  compact = false,
+  bare = false,
+  ...props
+}: HTMLAttributes<HTMLTableElement> & { compact?: boolean; bare?: boolean }) {
+  const table = (
+    <table
+      data-compact={compact || undefined}
+      className={cn('group/table w-full border-collapse text-control', className)}
+      {...props}
+    />
   );
+  if (bare) return <div className="overflow-x-auto">{table}</div>;
+  return <div className="overflow-x-auto rounded-lg border bg-card">{table}</div>;
 }
 
-export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn('[&_tr]:border-b', className)} {...props} />;
+export function TableHeader(props: HTMLAttributes<HTMLTableSectionElement>) {
+  return <thead {...props} />;
 }
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn('[&_tr:last-child]:border-0', className)} {...props} />;
+  return <tbody className={cn('[&_tr:last-child>td]:border-b-0', className)} {...props} />;
 }
 
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={cn('border-b transition-colors hover:bg-muted/50', className)} {...props} />
+    <tr
+      className={cn(
+        '[tbody>&]:hover:bg-[color-mix(in_srgb,var(--muted)_70%,transparent)] data-[selected=true]:bg-[color-mix(in_srgb,var(--accent)_70%,transparent)]',
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
 export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
+      scope="col"
       className={cn(
-        'h-10 px-2 text-left align-middle font-medium text-muted-foreground',
+        'h-row-compact border-b bg-muted px-3 text-left text-meta font-[550] whitespace-nowrap text-muted-foreground',
         className,
       )}
       {...props}
@@ -36,5 +53,13 @@ export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCel
 }
 
 export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('p-2 align-middle', className)} {...props} />;
+  return (
+    <td
+      className={cn(
+        'h-row border-b px-3 whitespace-nowrap group-data-[compact]/table:h-row-compact',
+        className,
+      )}
+      {...props}
+    />
+  );
 }

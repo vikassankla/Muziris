@@ -1,14 +1,22 @@
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { cn } from '../../lib/cn.js';
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+const base =
+  'w-full min-w-0 rounded-md border border-input bg-background px-2.5 text-control text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_25%,transparent)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:shadow-[0_0_0_3px_color-mix(in_srgb,var(--destructive)_15%,transparent)]';
+
+export function Input({
+  className,
+  inputSize = 'default',
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { inputSize?: 'default' | 'sm' }) {
   return (
     <input
-      className={cn(
-        'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-        className,
-      )}
+      className={cn(base, inputSize === 'sm' ? 'h-control-sm text-[13px]' : 'h-control', className)}
       {...props}
     />
   );
+}
+
+export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={cn(base, 'min-h-20 py-2', className)} {...props} />;
 }

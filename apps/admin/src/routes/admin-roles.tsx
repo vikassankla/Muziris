@@ -1,5 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
-import { PageHeader, ReadOnlyNote } from '../components/page-header.js';
+import { PageHeader } from '../components/page-header.js';
 import { Badge } from '../components/ui/badge.js';
 import {
   Table,
@@ -24,7 +24,7 @@ function AdminRolesPage() {
   return (
     <div>
       <PageHeader title="Admin roles">
-        Roles that admin users hold, with their permissions. <ReadOnlyNote />
+        Roles that admin users hold, with their permissions.
       </PageHeader>
       <Table>
         <TableHeader>
@@ -43,7 +43,7 @@ function AdminRolesPage() {
                   <div className="text-xs text-muted-foreground">{role.description}</div>
                 ) : null}
                 {role.isBuiltIn ? (
-                  <Badge variant="secondary" className="mt-1">
+                  <Badge variant="outline" className="mt-1">
                     Built-in
                   </Badge>
                 ) : null}

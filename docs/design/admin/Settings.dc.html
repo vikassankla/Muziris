@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Settings · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="settings" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Settings</a><span aria-hidden="true">/</span><span aria-current="page">Checkout</span></nav>
+      <div class="ph">
+        <div><h1>Settings</h1><p>Each setting shows its effective value and where it comes from. The most specific scope wins: customer, customer group, website, organization, global.</p></div>
+      </div>
+
+      <section class="card card-b" aria-label="Scope" style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+        <div class="field" style="flex: 1 1 200px"><label class="label" for="s-w">Website</label><button class="select" id="s-w" type="button">Muziris India<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+        <span class="muted" aria-hidden="true" style="padding-bottom: 8px">›</span>
+        <div class="field" style="flex: 1 1 200px"><label class="label" for="s-g">Customer group</label><button class="select" id="s-g" type="button">Key accounts (West)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+        <span class="muted" aria-hidden="true" style="padding-bottom: 8px">›</span>
+        <div class="field" style="flex: 1 1 240px"><label class="label" for="s-c">Customer</label><button class="select" id="s-c" type="button" role="combobox" aria-expanded="false">Acme Engineering Pvt Ltd<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+        <button class="btn ghost" type="button">Reset to website</button>
+        <span class="small muted" style="flex-basis: 100%">Showing the values Acme Engineering Pvt Ltd gets. Overrides you set here apply to the scope you choose on each setting.</span>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <nav class="card" aria-label="Setting areas" style="flex: 1 1 200px; min-width: 200px; padding: 6px">
+          <sc-for list="{{areas}}" as="a" hint-placeholder-count="5">
+            <a href="#" class="{{a.cls}}" aria-current="{{a.cur}}" style="display: flex; justify-content: space-between">{{a.label}}<span class="sb-count num">{{a.n}}</span></a>
+          </sc-for>
+        </nav>
+
+        <div style="flex: 999 1 720px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section class="card" aria-labelledby="co-h">
+            <div class="card-h"><h2 id="co-h">Checkout</h2><span class="grow"></span><label class="row small"><input class="cb" type="checkbox">Only overridden</label></div>
+            <ul style="list-style: none; margin: 0; padding: 0">
+              <sc-for list="{{settings}}" as="s" hint-placeholder-count="5">
+                <li style="padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start">
+                  <div class="col" style="flex: 1 1 300px; gap: 2px"><span class="strong">{{s.name}}</span><span class="small muted">{{s.desc}}</span>
+                    <span class="row xs muted num" style="gap: 6px; flex-wrap: wrap; margin-top: 4px"><sc-for list="{{s.chain}}" as="c" hint-placeholder-count="3"><span class="{{c.cls}}">{{c.text}}</span></sc-for></span>
+                  </div>
+                  <div class="col" style="flex: 0 0 180px; gap: 4px; align-items: flex-start"><span class="num strong">{{s.value}}</span><span class="badge {{s.tone}} plain">From {{s.source}}</span></div>
+                  <div class="row" style="flex: 0 0 auto; gap: 6px; margin-left: auto">
+                    <sc-if value="{{s.canClear}}" hint-placeholder-val="{{ false }}"><button class="btn ghost sm" type="button">Clear override</button></sc-if>
+                    <button class="btn outline sm" type="button">Override…</button>
+                  </div>
+                  <sc-if value="{{s.editing}}" hint-placeholder-val="{{ false }}">
+                    <form style="flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 12px; margin-top: 4px; border-radius: var(--radius); background: var(--muted)">
+                      <div class="field" style="flex: 1 1 200px"><label class="label" for="ov-v">New value (₹)</label><input class="input focus num" id="ov-v" value="3,00,000.00"></div>
+                      <div class="field" style="flex: 1 1 260px"><label class="label" for="ov-s">Set at</label><button class="select" id="ov-s" type="button">Customer · Acme Engineering Pvt Ltd<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+                      <label class="row small" style="flex: 1 1 220px; padding-bottom: 8px"><input class="cb" type="checkbox" checked>Also apply to its 3 subsidiaries</label>
+                      <div class="row"><button class="btn outline sm" type="button">Cancel</button><button class="btn sm" type="submit">Save override</button></div>
+                    </form>
+                  </sc-if>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+
+          <section class="card" aria-labelledby="ft-h">
+            <div class="card-h"><h2 id="ft-h">Feature toggles</h2><span class="small muted">Turn storefront features on or off at any scope</span></div>
+            <ul style="list-style: none; margin: 0; padding: 0">
+              <sc-for list="{{toggles}}" as="t" hint-placeholder-count="5">
+                <li class="row" style="padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 14px; flex-wrap: wrap">
+                  <button class="{{t.cls}}" type="button" role="switch" aria-checked="{{t.aria}}" aria-labelledby="{{t.id}}"></button>
+                  <span class="col grow" style="gap: 1px; min-width: 220px"><span class="strong" id="{{t.id}}">{{t.name}}</span><span class="small muted">{{t.desc}}</span></span>
+                  <span class="small strong" style="width: 32px">{{t.state}}</span>
+                  <span class="badge {{t.tone}} plain" style="min-width: 150px">From {{t.source}}</span>
+                  <sc-if value="{{t.canClear}}" hint-placeholder-val="{{ false }}"><button class="btn ghost sm" type="button">Clear override</button></sc-if>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TONE = { Customer: 'info', 'Customer group': 'warn', Website: 'ok', Organization: 'neutral', Global: 'outline' };
+    const chainOf = (parts) => parts.map(([scope, val, used], i) => ({
+      text: (i ? '→ ' : '') + scope + ': ' + val + (used ? ' (used)' : ''),
+      cls: used ? 'strong' : (val === 'not set' ? 'muted' : '')
+    }));
+    const settings = [
+      ['Minimum order value', 'Orders below this amount cannot be placed.', '₹5,000.00', 'Customer group', [['Global', '₹0.00'], ['Website', '₹2,500.00'], ['Customer group', '₹5,000.00', true], ['Customer', 'not set']], false],
+      ['Require a PO number', 'Buyers must enter their purchase order number at checkout.', 'Yes', 'Customer', [['Global', 'No'], ['Customer', 'Yes', true]], false],
+      ['Order approval above', 'Orders above this total wait for a buyer user with the Approver role.', '₹2,00,000.00', 'Customer', [['Global', 'Off'], ['Website', '₹5,00,000.00'], ['Customer', '₹2,00,000.00', true]], true],
+      ['Allow partial shipments', 'Ship available lines first and the rest when in stock.', 'Yes', 'Global', [['Global', 'Yes', true], ['Website', 'not set'], ['Customer', 'not set']], false],
+      ['Default quote validity', 'Days a new quote stays valid unless changed on the quote.', '14 days', 'Organization', [['Global', '30 days'], ['Organization', '14 days', true]], false]
+    ].map(([name, desc, value, source, chain, editing]) => ({
+      name, desc, value, source, tone: TONE[source], chain: chainOf(chain), editing,
+      canClear: source === 'Customer'
+    }));
+    const toggles = [
+      ['Quick order', 'Buyers add products by SKU and quantity in one form.', true, 'Global'],
+      ['RFQs', 'Buyers can request a quote from the storefront.', true, 'Website'],
+      ['Shopping list sharing', 'Buyer users share shopping lists with colleagues at their customer.', false, 'Customer group'],
+      ['Credit card payments', 'Pay by card through Razorpay at checkout.', false, 'Customer'],
+      ['Reorder from order history', 'One click to put a past order’s lines back into checkout.', true, 'Global']
+    ].map(([name, desc, on, source], i) => ({
+      name, desc, source, id: 'ft' + i, state: on ? 'On' : 'Off', aria: on ? 'true' : 'false',
+      cls: 'switch' + (on ? ' on' : ''), tone: TONE[source], canClear: source === 'Customer'
+    }));
+    const areas = [['Checkout', '12', true], ['Payments', '8'], ['Catalog', '15'], ['Emails', '21'], ['Feature toggles', '9']]
+      .map(([label, n, on]) => ({ label, n, cls: 'sb-item' + (on ? ' on' : ''), cur: on ? 'page' : 'false' }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, settings, toggles, areas };
+  }
+}
+</script>
+</body>
+</html>
