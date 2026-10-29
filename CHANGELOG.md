@@ -112,6 +112,31 @@ All notable changes are listed here. The project follows semantic versioning fro
   does not hold) and buyer roles (access-level matrix). Money, quantities and dates follow
   the website's locale (lakh grouping for en-IN).
 - `.claude/launch.json` entries for the admin dev server and the API.
+- `@muziris/pricing` (ADR 0011): price lists in one currency with optional active dates, prices
+  as tiers by product, product unit and minimum quantity (amounts in minor units, quantities as
+  exact decimals at the unit's precision, extra decimals refused), and assignments of price
+  lists to a customer, a customer group or a website, with priorities. The fallback chain is
+  customer, then customer group, then website, and the first price list with a tier for the
+  quantity wins. `rebuildCombinedPrices` builds every combined price list with set-based SQL in
+  one transaction, split at every active date, so starts and ends need no rebuild.
+  `findPrice` and the buyer-scoped `findPriceForBuyer` read only the combined price list, and
+  refuse (`needs_rebuild`) a customer with its own price lists whose group changed since the
+  build. `previewPrice` explains each step of the chain and rounds the line amount once, half
+  up. Writes count changes, so `getBuildState` shows changes waiting for a build.
+- API: admin routes under `/admin/v1/pricing`. `GET` (paged by name, with status and counts) and
+  `POST /price-lists`, `GET`, `PATCH` and `DELETE /price-lists/{priceListId}`; `GET` (paged)
+  and `POST /price-lists/{priceListId}/prices`, `PATCH` and `DELETE /prices/{priceId}`; `GET`
+  (paged, in chain order) and `POST /assignments`, `PATCH` and `DELETE
+/assignments/{assignmentId}`; `GET` and `POST /build`; `GET /preview`. Reads need
+  `price_list.view` and changes and the build `price_list.manage`. Amounts are decimal strings.
+  Refusals use the codes `price_list_not_found`, `active_dates_out_of_order`,
+  `price_not_found`, `price_tier_taken`, `invalid_amount`, `invalid_quantity`,
+  `product_not_found`, `product_unit_not_sold`, `assignment_not_found`, `assignment_taken`,
+  `assignment_priority_taken`, `currency_mismatch`, `website_not_found`, `customer_not_found`
+  and `customer_group_not_found`.
+- `pricing:build` command to rebuild the combined price lists from a shell.
+- `@muziris/customers`: `findCustomerGroup` and `customerGroupMembership` (an SQL select of
+  every customer's group). `@muziris/platform`: `findWebsite`.
 
 ### Changed
 

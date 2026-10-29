@@ -44,3 +44,12 @@ export function reachableCustomerIds(buyerUserId: string, reach: CustomerReach):
       return walkDown(own);
   }
 }
+
+/**
+ * An SQL select of every customer's id and customer group id (null for none), as the columns
+ * `customer_id` and `group_id`, without surrounding parentheses. Pricing uses it to build and
+ * look up combined price lists without reading customer tables.
+ */
+export function customerGroupMembership(): SQL {
+  return sql`select id as customer_id, group_id from ${customers}`;
+}

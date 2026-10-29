@@ -41,6 +41,7 @@ export {
   createCustomer,
   createCustomerGroup,
   findCustomer,
+  findCustomerGroup,
   listCustomerGroups,
   listCustomers,
   listCustomersQuerySchema,
@@ -59,7 +60,12 @@ export {
 } from './customers.js';
 export { CustomerError, type CustomerErrorCode } from './errors.js';
 export { PAGE_LIMIT_DEFAULT, PAGE_LIMIT_MAX, pageQuerySchema, type PageQuery } from './page.js';
-export { descendantCustomerIds, reachableCustomerIds, type CustomerReach } from './hierarchy.js';
+export {
+  customerGroupMembership,
+  descendantCustomerIds,
+  reachableCustomerIds,
+  type CustomerReach,
+} from './hierarchy.js';
 export {
   acceptInvitation,
   createInvitation,

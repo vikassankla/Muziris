@@ -8,6 +8,7 @@ import { accessRoutes } from './access-routes.js';
 import { authRoutes } from './auth-routes.js';
 import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
+import { pricingRoutes } from './pricing-routes.js';
 import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
 import { HttpProblem, problemResponse, toProblem } from './problem.js';
@@ -142,6 +143,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(authDeps));
+  app.route('/admin/v1/pricing', pricingRoutes(authDeps));
 
   app.notFound((c) =>
     problemResponse(c, toProblem(c, new HttpProblem(404, 'not_found', 'No such resource'))),

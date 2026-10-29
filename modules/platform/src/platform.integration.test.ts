@@ -12,6 +12,7 @@ import {
   createOrganization,
   createWebsite,
   defineSetting,
+  findWebsite,
   findWebsiteByCode,
   getSetting,
   listWebsites,
@@ -66,6 +67,9 @@ describe.skipIf(!url)('platform module against PostgreSQL', () => {
     const { org, site } = await seedWebsite();
     expect(site.unitSystem).toBe('metric');
     expect(await findWebsiteByCode(handle.db, 'acme-in')).toMatchObject({ id: site.id });
+    expect(await findWebsite(handle.db, site.id)).toMatchObject({ code: 'acme-in' });
+    expect(await findWebsite(handle.db, '00000000-0000-4000-8000-000000000000')).toBeUndefined();
+    expect(await findWebsite(handle.db, 'not-a-uuid')).toBeUndefined();
     expect((await listWebsites(handle.db, org.id)).map((w) => w.code)).toEqual(['acme-in']);
   });
 

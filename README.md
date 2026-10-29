@@ -18,6 +18,7 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 | `modules/workflow`  | Workflows declared in code: steps, transitions, guards, actions, log       |
 | `modules/customers` | Customer hierarchy, customer groups, buyer users, invitations, addresses   |
 | `modules/catalog`   | Simple products, product units with precision, category tree, attributes   |
+| `modules/pricing`   | Price lists, assignments, the fallback chain and the combined price build  |
 | `packages/db`       | PostgreSQL connection and the ordered migration runner                     |
 | `packages/money`    | Exact money and decimal maths, currency rules, lakh and crore formatting   |
 | `docs/`             | Glossary, architecture decision records, admin design boards               |

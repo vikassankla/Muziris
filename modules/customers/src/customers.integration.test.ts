@@ -15,8 +15,10 @@ import {
   createCustomerGroup,
   createInvitation,
   CustomerError,
+  customerGroupMembership,
   descendantCustomerIds,
   findBuyerUser,
+  findCustomerGroup,
   findCustomerForBuyer,
   findPendingInvitation,
   INVITATION_DEFAULT_TTL_MS,
@@ -118,6 +120,28 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
       const acme = await createCustomer(handle.db, { name: 'Acme', groupId: distributors.id });
       expect(acme.groupId).toBe(distributors.id);
       expect((await setCustomerGroup(handle.db, acme.id, null)).groupId).toBeNull();
+      expect(await findCustomerGroup(handle.db, distributors.id)).toMatchObject({
+        code: 'distributors',
+      });
+      expect(await findCustomerGroup(handle.db, MISSING_ID)).toBeUndefined();
+    });
+
+    it('selects every customer with its group for other modules', async () => {
+      const distributors = await createCustomerGroup(handle.db, {
+        code: 'distributors',
+        name: 'Distributors',
+      });
+      const acme = await createCustomer(handle.db, { name: 'Acme', groupId: distributors.id });
+      const solo = await createCustomer(handle.db, { name: 'Solo' });
+      const rows = await handle.db.execute(
+        sql`select customer_id, group_id from (${customerGroupMembership()}) m order by customer_id`,
+      );
+      expect([...rows]).toEqual(
+        [
+          { customer_id: acme.id, group_id: distributors.id },
+          { customer_id: solo.id, group_id: null },
+        ].sort((a, b) => a.customer_id.localeCompare(b.customer_id)),
+      );
     });
 
     it('refuses a taken code and unknown groups or customers', async () => {

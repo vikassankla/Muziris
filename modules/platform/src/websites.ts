@@ -69,6 +69,13 @@ export async function listWebsites(db: Database, organizationId: string): Promis
     .orderBy(asc(websites.code));
 }
 
+export async function findWebsite(db: Database, websiteId: string): Promise<Website | undefined> {
+  const parsed = z.uuid().safeParse(websiteId);
+  if (!parsed.success) return undefined;
+  const [row] = await db.select().from(websites).where(eq(websites.id, parsed.data)).limit(1);
+  return row;
+}
+
 export async function findWebsiteByCode(db: Database, code: string): Promise<Website | undefined> {
   const [row] = await db.select().from(websites).where(eq(websites.code, code)).limit(1);
   return row;
