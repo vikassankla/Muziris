@@ -27,10 +27,10 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
 | Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`          |
 
-Decisions are recorded in `docs/adr/0001` to `0011`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0012`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
-ADR 0011 (pricing) is in review with status proposed. Every admin list endpoint is paged with
+ADR 0011 (pricing) and ADR 0012 (visibility) are in review with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -50,7 +50,13 @@ emails wait for the email work in week 4.
    rule 4). Module `modules/pricing`, admin routes under `/admin/v1/pricing`, the
    `pricing:build` command, and `findPriceForBuyer` for the storefront API to call. The admin
    screens (PriceLists, PriceListDetail) are designed but not built.
-2. Visibility.
+2. Visibility (ADR 0012). **In review** (`feature/visibility`, cut from `feature/price-lists`
+   because PR 13 was not merged yet); visibility is access scoping and needs a second human
+   reviewer (CLAUDE.md rule 4). Module `modules/visibility`, admin routes under
+   `/admin/v1/visibility`, the `visibility:build` command, new admin permissions
+   `visibility.view` and `visibility.manage`, and `visibleProductIdsForBuyer` and
+   `visibleCategoryIdsForBuyer` for search and the storefront to put in their queries. No
+   admin screens yet.
 3. PostgreSQL search.
 4. GraphQL storefront API.
 5. Storefront browsing.
@@ -68,13 +74,22 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`, and to run
-  the combined price build after price list edits (ADR 0011). Until then an admin runs it
+  the combined price build after price list edits (ADR 0011) and the visibility build after
+  rule and catalog edits (ADR 0012). Until then an admin runs it
   with `POST /admin/v1/pricing/build` or `pnpm --filter @muziris/api pricing:build`.
 - Pricing (ADR 0011): the build is a full rebuild and makes price list writes wait while it
   runs; build only changed chains once catalogs grow. Changing the customer group of a
   customer with its own price lists stops its prices (`needs_rebuild`) until the next build.
   Not built: subsidiaries inheriting a parent's price lists, price formulas, CSV import and
   export, price activity history.
+- Visibility (ADR 0012): the build is a full rebuild. Catalog changes are not counted as
+  waiting changes: a new or newly enabled product, or a moved category, stays invisible until
+  the next build (a disabled product disappears at once). Run `POST /admin/v1/visibility/build`
+  or `pnpm --filter @muziris/api visibility:build` after catalog work until the job runner
+  enqueues builds. Customers with their own rules each hold a full copy of their visible
+  products; store differences from the website's result before the cloud MVP. The visible
+  products list returns ids only. Not built: subsidiaries inheriting a parent's rules,
+  scheduled rules, hiding products without a price.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
 - Time-based workflow transitions (quote expiry) need the job runner to call
   `performTransition` with the system actor.
