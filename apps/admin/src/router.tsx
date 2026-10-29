@@ -4,12 +4,14 @@ import { PendingPage } from './components/states.js';
 import { adminRolesRoute } from './routes/admin-roles.js';
 import { authedRoute } from './routes/authed.js';
 import { buyerRoleDetailRoute, buyerRolesRoute } from './routes/buyer-roles.js';
-import { categoriesRoute, productsRoute } from './routes/catalog.js';
+import { categoriesRoute } from './routes/categories.js';
 import { customerDetailRoute } from './routes/customer-detail.js';
 import { customerGroupsRoute } from './routes/customer-groups.js';
 import { customersRoute } from './routes/customers.js';
 import { homeRoute } from './routes/home.js';
+import { productDetailRoute } from './routes/product-detail.js';
 import { productUnitsRoute } from './routes/product-units.js';
+import { productsRoute } from './routes/products.js';
 import { rootRoute } from './routes/root.js';
 import { signInRoute } from './routes/sign-in.js';
 
@@ -21,6 +23,7 @@ const routeTree = rootRoute.addChildren([
     customerDetailRoute,
     customerGroupsRoute,
     productsRoute,
+    productDetailRoute,
     categoriesRoute,
     productUnitsRoute,
     adminRolesRoute,
