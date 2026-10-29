@@ -147,9 +147,15 @@ importers:
       '@muziris/identity':
         specifier: workspace:*
         version: link:../../modules/identity
+      '@muziris/money':
+        specifier: workspace:*
+        version: link:../../packages/money
       '@muziris/platform':
         specifier: workspace:*
         version: link:../../modules/platform
+      '@muziris/pricing':
+        specifier: workspace:*
+        version: link:../../modules/pricing
       hono:
         specifier: ^4.13.14
         version: 4.13.14

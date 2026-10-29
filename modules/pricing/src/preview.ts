@@ -19,6 +19,7 @@ import { PricingError } from './errors.js';
 import { findPrice, type PriceLookup } from './lookup.js';
 import { toPriceList } from './price-lists.js';
 import { parseUnitQuantity, productUnitOf } from './prices.js';
+import { storedQuantity } from './quantity.js';
 import { resolvePrice, type ChainEntry, type ChainStep } from './resolve.js';
 
 /**
@@ -108,7 +109,7 @@ async function loadChain(
       tiers: tiers
         .filter((p) => p.priceListId === list.id)
         .map((p) => ({
-          minQuantity: parseDecimal(p.minQuantity),
+          minQuantity: parseDecimal(storedQuantity(p.minQuantity)),
           amount: money(p.amountMinor, list.currency),
         })),
     };
