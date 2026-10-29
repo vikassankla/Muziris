@@ -24,8 +24,8 @@ describe('parseAmount', () => {
     ['1e3', 'INR', 'an exponent'],
     ['4,86', 'USD', 'a decimal comma'],
     ['', 'USD', 'nothing'],
-  ] as const)('refuses %s %s (%s) without rounding', (input, currency) => {
-    expect(() => parseAmount(input, currency)).toThrow(PricingError);
+  ] as const)('refuses %s %s (%s) without rounding', (input, currency, reason) => {
+    expect(() => parseAmount(input, currency), reason).toThrow(PricingError);
   });
 });
 
