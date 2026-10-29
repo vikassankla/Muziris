@@ -158,6 +158,25 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `@muziris/access`: admin permissions `visibility.view` and `visibility.manage`.
 - `@muziris/catalog`: `productCategoryAndStatus` and `categoryParents`, SQL selects of every
   product's category and status and of the category tree.
+- `@muziris/search` (ADR 0013): product search on PostgreSQL. An index (`search_product`)
+  built from catalog's public SQL with a weighted document (SKU, name, category names,
+  attribute values), read through both the `english` and `simple` configurations, and
+  `pg_trgm` trigram indexes. Results rank exact SKU, then SKU prefix, then text matches, then
+  close matches (typos and partial SKUs), and are paged with `limit` (at most 50) and `offset`
+  within the first 1,000. Queries also match the other spelling of common Indian and US
+  English pairs (aluminium and aluminum, spanner and wrench). `searchProductsForBuyer` puts
+  visibility's `visibleProductIdsForBuyer` in the statement's `where` clause, and returns a
+  category id only if the buyer may see the category. `searchProducts` is the admin search,
+  with the status read live. `rebuildSearchIndex` is a set-based build; `indexProducts` and
+  `indexProductsInCategory` reindex after catalog writes; `getBuildState` counts products
+  waiting for the index.
+- API: `GET /admin/v1/search/products?q=` (`product.view`), `GET /admin/v1/search/build`
+  (`product.view`) and `POST /admin/v1/search/build` (`product.manage`). The catalog routes
+  reindex a product, or a category's products, after each write.
+- `search:build` command to rebuild the search index from a shell.
+- `@muziris/catalog`: `productSearchSource` and `categoryNames`, SQL selects of what search
+  indexes.
+- Migrations create the `pg_trgm` extension, if it is not there yet, and the search tables.
 
 ### Changed
 

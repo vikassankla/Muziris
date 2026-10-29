@@ -27,10 +27,10 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
 | Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`          |
 
-Decisions are recorded in `docs/adr/0001` to `0012`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0013`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
-ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. Every admin list endpoint is paged with
+ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is in review with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -56,7 +56,12 @@ emails wait for the email work in week 4.
    `visibility.view` and `visibility.manage`, and `visibleProductIdsForBuyer` and
    `visibleCategoryIdsForBuyer` for search and the storefront to put in their queries. No
    admin screens yet.
-3. PostgreSQL search.
+3. PostgreSQL search (ADR 0013). **In review** on `feature/search`, with a pull request to
+   `main`; it scopes buyer data, so it needs a second human review under CLAUDE.md rule 4
+   before it merges. Module `modules/search`, admin routes under `/admin/v1/search`
+   (`product.view`, and `product.manage` for the build), the `search:build` command, and
+   `searchProductsForBuyer` for the storefront API to call. The catalog routes reindex after
+   each write. Migrations `0008` (creates `pg_trgm`) and `0009`. No admin screen yet.
 4. GraphQL storefront API.
 5. Storefront browsing.
 
@@ -89,6 +94,15 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   products; store differences from the website's result before the cloud MVP. The visible
   products list returns ids only. Not built: subsidiaries inheriting a parent's rules,
   scheduled rules, hiding products without a price.
+- Search (ADR 0013): the catalog routes reindex after writes because catalog has no hook;
+  move that into the job runner when it lands. Products changed outside the admin API, and
+  category renames made outside it, need `POST /admin/v1/search/build` or
+  `pnpm --filter @muziris/api search:build`. A buyer can find a visible product by the name of
+  a category above it that is hidden from them (the result does not show that category).
+  Results page by `offset` within the first 1,000. Not built: vector search, synonyms beyond
+  the Indian and US spelling pairs, facets and attribute filters (they need attribute
+  definitions), localized names, the admin search screen, and the OpenSearch adapter. One
+  buyer search over 10,000 products is held under 250 ms by a test (about 40 ms locally).
 - `CODE_OF_CONDUCT.md` has no contact email yet.
 - Time-based workflow transitions (quote expiry) need the job runner to call
   `performTransition` with the system actor.

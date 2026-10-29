@@ -20,6 +20,7 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 | `modules/catalog`    | Simple products, product units with precision, category tree, attributes   |
 | `modules/pricing`    | Price lists, assignments, the fallback chain and the combined price build  |
 | `modules/visibility` | Product and category visibility rules, the visibility build, buyer scoping |
+| `modules/search`     | Product search: full-text and trigram index, ranking, buyer-scoped search  |
 | `packages/db`        | PostgreSQL connection and the ordered migration runner                     |
 | `packages/money`     | Exact money and decimal maths, currency rules, lakh and crore formatting   |
 | `docs/`              | Glossary, architecture decision records, admin design boards               |
