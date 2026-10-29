@@ -50,7 +50,7 @@ pnpm --filter @muziris/admin dev    # http://localhost:5173
 Sign in with the admin you made with `admin:create`. The Vite dev server proxies `/admin/v1` to
 the API, so the app and the API share one origin and the `__Host-` session cookie stays
 first-party. `http://localhost:5173` must be in `CORS_ORIGINS`, because the API checks the
-Origin of every sign-in and change. The app keeps no tokens and nothing in browser storage. In
+Origin of every sign-in and change. The app keeps no tokens; browser storage holds only the theme and sidebar preferences. In
 the Claude desktop app, `.claude/launch.json` has `admin` and `api` entries for the same
 commands. In production, serve the built app (`pnpm --filter @muziris/admin build`, output in
 `apps/admin/dist`) from the same origin as the API, behind one reverse proxy.

@@ -88,8 +88,9 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   activity history; no product counts per category or unit.
 - Admin app: the website switcher is a placeholder (India or United States) that only sets
   how money, quantities and dates show, until the websites API exists.
-- Admin app: theme and sidebar state live in memory, so they reset on reload, because the app
-  keeps nothing in browser storage. Decide whether UI preferences may use it.
+- Admin app: browser storage holds only UI preferences, the theme and whether the sidebar is
+  collapsed (`apps/admin/src/lib/prefs.ts`). Nothing about the session, the admin user or the
+  business goes there; tests check that no other key appears. Decided 2026-10-29.
 - Admin app in production: serve `apps/admin/dist` from the API's origin behind one reverse
   proxy; there is no deployment recipe yet.
 

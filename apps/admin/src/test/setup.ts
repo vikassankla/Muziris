@@ -3,6 +3,9 @@ import { afterEach } from 'vitest';
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
+  sessionStorage.clear();
+  document.documentElement.classList.remove('dark');
 });
 
 // jsdom does not implement scrolling; the router scrolls to the top after each navigation.

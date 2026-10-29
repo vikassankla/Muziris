@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { PREF_KEYS, readPref, writePref } from './prefs.js';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
@@ -22,10 +23,17 @@ function systemPrefersDark(): boolean {
 
 /**
  * Light or dark, following prefers-color-scheme unless the admin picks one in the user menu.
- * The choice lives in memory for this tab: the app keeps nothing in browser storage.
+ * The choice is remembered in localStorage (see prefs.ts), so it survives reloads and new tabs.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [choice, setChoice] = useState<ThemeChoice>('system');
+  const [choice, setStoredChoice] = useState<ThemeChoice>(() => {
+    const stored = readPref(PREF_KEYS.theme);
+    return stored === 'light' || stored === 'dark' ? stored : 'system';
+  });
+  const setChoice = (next: ThemeChoice) => {
+    setStoredChoice(next);
+    writePref(PREF_KEYS.theme, next);
+  };
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
 
   useEffect(() => {

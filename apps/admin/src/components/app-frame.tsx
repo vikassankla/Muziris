@@ -14,6 +14,7 @@ import {
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '../lib/cn.js';
+import { PREF_KEYS, readPref, writePref } from '../lib/prefs.js';
 import { visibleNav, visibleSections, type NavItem } from '../lib/nav.js';
 import { can, type AdminPermission, type Session } from '../lib/session.js';
 import { useTheme, type ThemeChoice } from '../lib/theme.js';
@@ -520,9 +521,18 @@ export function useShortcuts(handlers: {
   }, []);
 }
 
-/** Holds open-state for the frame's dialogs. */
+/** Holds the frame's state: the sidebar (remembered) and the open dialogs (not). */
 export function useFrameState() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setStoredCollapsed] = useState(
+    () => readPref(PREF_KEYS.sidebarCollapsed) === 'true',
+  );
+  const setCollapsed = (update: (collapsed: boolean) => boolean) => {
+    setStoredCollapsed((current) => {
+      const next = update(current);
+      writePref(PREF_KEYS.sidebarCollapsed, String(next));
+      return next;
+    });
+  };
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   return { collapsed, setCollapsed, paletteOpen, setPaletteOpen, shortcutsOpen, setShortcutsOpen };

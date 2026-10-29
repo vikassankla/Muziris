@@ -98,7 +98,7 @@ All notable changes are listed here. The project follows semantic versioning fro
   a fixed message for any 5xx. Read-only screens: customers (paged) with a customer's place in
   the hierarchy and its subsidiaries, buyer roles (paged) with their grants, products (paged),
   the category tree and admin roles. The session lives only in the API's `__Host-` cookie;
-  nothing goes in browser storage. The Vite dev server proxies `/admin/v1` to the API.
+  browser storage holds only the theme and the sidebar's collapsed state. The Vite dev server proxies `/admin/v1` to the API.
 - Admin app design pass, following the Claude Design boards kept in `docs/design/admin`: the
   boards' light and dark tokens under shadcn names, self-hosted Inter and JetBrains Mono, a
   grouped sidebar (Ctrl+B), a top bar with a placeholder website switcher, a Ctrl+K command

@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { safeRedirect } from '../lib/redirect.js';
 import { formatRetryAfter } from '../lib/retry.js';
-import { ADMIN, json, mockApi, problem, renderApp, signedIn } from '../test/mock-api.js';
+import {
+  ADMIN,
+  expectOnlyPreferencesStored,
+  json,
+  mockApi,
+  problem,
+  renderApp,
+  signedIn,
+  storedText,
+} from '../test/mock-api.js';
 import { INVALID_CREDENTIALS_MESSAGE } from './sign-in.js';
 
 async function submit(email = 'asha@example.com', password = 'correct horse battery') {
@@ -128,7 +137,7 @@ describe('sign-in', () => {
     expect(requests.some((r) => r.method === 'POST' && r.path === '/auth/sign-out')).toBe(true);
   });
 
-  it('keeps nothing in browser storage', async () => {
+  it('keeps nothing about the session in browser storage', async () => {
     mockApi({
       ...signedIn(['customer.view']),
       'POST /auth/sign-in': () => json({ user: ADMIN, expiresAt: '2026-10-28T12:00:00.000Z' }),
@@ -138,8 +147,8 @@ describe('sign-in', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/');
     });
-    expect(localStorage.length).toBe(0);
-    expect(sessionStorage.length).toBe(0);
+    expectOnlyPreferencesStored();
+    expect(storedText()).not.toMatch(/asha|correct horse|session/i);
   });
 });
 

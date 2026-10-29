@@ -1,6 +1,7 @@
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render } from '@testing-library/react';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
+import { PREF_KEYS } from '../lib/prefs.js';
 import { createAppRouter } from '../router.js';
 
 export interface MockRequest {
@@ -82,4 +83,20 @@ export function renderApp(path: string) {
   const router = createAppRouter({ history: createMemoryHistory({ initialEntries: [path] }) });
   const view = render(<RouterProvider router={router} />);
   return { router, ...view };
+}
+
+/** Browser storage may hold the UI preferences in prefs.ts and nothing else. */
+export function expectOnlyPreferencesStored() {
+  const allowed: string[] = Object.values(PREF_KEYS);
+  const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+  expect(keys.filter((key) => key === null || !allowed.includes(key))).toEqual([]);
+  expect(sessionStorage.length).toBe(0);
+}
+
+/** Every key and value in localStorage as one string, to check that no secret is in it. */
+export function storedText(): string {
+  return Array.from({ length: localStorage.length }, (_, i) => {
+    const key = localStorage.key(i) ?? '';
+    return `${key}=${localStorage.getItem(key) ?? ''}`;
+  }).join('\n');
 }

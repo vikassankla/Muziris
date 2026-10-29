@@ -1,7 +1,16 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
-import { json, mockApi, problem, renderApp, signedIn } from '../test/mock-api.js';
+import { describe, expect, it, vi } from 'vitest';
+import { PREF_KEYS } from '../lib/prefs.js';
+import {
+  expectOnlyPreferencesStored,
+  json,
+  mockApi,
+  problem,
+  renderApp,
+  signedIn,
+  storedText,
+} from '../test/mock-api.js';
 
 const CUSTOMER_ID = '0b8f5a52-0000-4000-8000-000000000010';
 const CUSTOMER = {
@@ -157,7 +166,8 @@ describe('invitations', () => {
     expect(within(done).getByLabelText<HTMLInputElement>('Invitation token').value).toBe(
       'tok_example_123',
     );
-    expect(localStorage.length).toBe(0);
+    expectOnlyPreferencesStored();
+    expect(storedText()).not.toContain('tok_example_123');
   });
 });
 
@@ -286,9 +296,9 @@ describe('app frame', () => {
     expect(screen.getByRole('link', { name: 'Customers' })).toBeTruthy();
   });
 
-  it('switches to dark mode, and keeps the choice out of browser storage', async () => {
+  it('switches to dark mode and remembers it for the next visit', async () => {
     mockApi(signedIn([]));
-    renderApp('/');
+    const first = renderApp('/');
     const user = userEvent.setup();
     await screen.findByRole('heading', { name: /^Good/ });
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
@@ -297,8 +307,45 @@ describe('app frame', () => {
     await waitFor(() => {
       expect(document.documentElement.classList.contains('dark')).toBe(true);
     });
-    expect(localStorage.length).toBe(0);
+    expect(localStorage.getItem(PREF_KEYS.theme)).toBe('dark');
+    expectOnlyPreferencesStored();
+
+    // A reload starts dark.
+    first.unmount();
     document.documentElement.classList.remove('dark');
+    renderApp('/');
+    await screen.findByRole('heading', { name: /^Good/ });
+    await waitFor(() => {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
+  });
+
+  it('remembers a collapsed sidebar', async () => {
+    mockApi(signedIn(['customer.view']));
+    const first = renderApp('/');
+    await screen.findByRole('button', { name: 'Collapse sidebar' });
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
+    await screen.findByRole('button', { name: 'Expand sidebar' });
+    expect(localStorage.getItem(PREF_KEYS.sidebarCollapsed)).toBe('true');
+
+    first.unmount();
+    renderApp('/');
+    expect(await screen.findByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
+  });
+
+  it('falls back to the defaults when browser storage is blocked', async () => {
+    const blocked = () => {
+      throw new DOMException('Blocked', 'SecurityError');
+    };
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+    mockApi(signedIn(['customer.view']));
+    renderApp('/');
+    await screen.findByRole('button', { name: 'Collapse sidebar' });
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
+    // The change still applies to this tab.
+    expect(await screen.findByRole('button', { name: 'Expand sidebar' })).toBeTruthy();
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
   it('offers the theme in the user menu', async () => {
