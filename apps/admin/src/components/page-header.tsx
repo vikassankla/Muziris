@@ -51,11 +51,8 @@ export function PageHeader({
   actions,
   leading,
   badges,
-  children,
 }: {
   title: ReactNode;
-  /** The same as description. */
-  children?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   leading?: ReactNode;
@@ -69,8 +66,8 @@ export function PageHeader({
           <h1 className="m-0 text-page-title font-[650] tracking-[-0.015em]">{title}</h1>
           {badges}
         </div>
-        {(description ?? children) ? (
-          <p className="m-0 mt-1 max-w-[70ch] text-muted-foreground">{description ?? children}</p>
+        {description ? (
+          <p className="m-0 mt-1 max-w-[70ch] text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div> : null}

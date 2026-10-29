@@ -33,13 +33,13 @@ import {
   updateCategory,
   type CategoryNode,
 } from '../lib/endpoints.js';
+import { codeFromName } from '../lib/codes.js';
 import { CODE_HINT, CODE_PATTERN, fieldErrors } from '../lib/form.js';
 import { listSearch, withNew, type ListSearch } from '../lib/search.js';
 import { can } from '../lib/session.js';
 import { useSession } from '../lib/session-context.js';
 import { useSubmit } from '../lib/use-submit.js';
 import { authedRoute } from './authed.js';
-import { codeFromName } from './customer-groups.js';
 
 interface CategoriesSearch extends ListSearch {
   selected?: string;

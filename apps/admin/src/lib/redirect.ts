@@ -8,9 +8,3 @@ export function safeRedirect(value: unknown): string | undefined {
   if (value.startsWith('/sign-in')) return undefined;
   return value;
 }
-
-/** Reads an optional `after` cursor from the search string. */
-export function afterSearch(search: Record<string, unknown>): { after?: string } {
-  const after = search['after'];
-  return typeof after === 'string' && after.length > 0 && after.length <= 100 ? { after } : {};
-}

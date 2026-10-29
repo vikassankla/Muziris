@@ -1,7 +1,7 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import { RouteError } from './components/problem-view.js';
 import { PendingPage } from './components/states.js';
-import { adminRolesRoute } from './routes/admin-roles.js';
+import { adminRoleDetailRoute, adminRolesRoute } from './routes/admin-roles.js';
 import { authedRoute } from './routes/authed.js';
 import { buyerRoleDetailRoute, buyerRolesRoute } from './routes/buyer-roles.js';
 import { categoriesRoute } from './routes/categories.js';
@@ -27,6 +27,7 @@ const routeTree = rootRoute.addChildren([
     categoriesRoute,
     productUnitsRoute,
     adminRolesRoute,
+    adminRoleDetailRoute,
     buyerRolesRoute,
     buyerRoleDetailRoute,
   ]),

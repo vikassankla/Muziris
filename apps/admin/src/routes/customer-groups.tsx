@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '../components/ui/table.js';
 import { createCustomerGroup, listCustomerGroups, PAGE_SIZE } from '../lib/endpoints.js';
+import { codeFromName } from '../lib/codes.js';
 import { CODE_HINT, CODE_PATTERN, fieldErrors } from '../lib/form.js';
 import { listSearch, withNew, type ListSearch } from '../lib/search.js';
 import { can } from '../lib/session.js';
@@ -44,17 +45,6 @@ export const customerGroupsRoute = createRoute({
     listCustomerGroups(deps.after, abortController.signal, deps.limit ?? PAGE_SIZE),
   component: CustomerGroupsPage,
 });
-
-/** A code from a name: "Key accounts (West)" gives "key_accounts_west". */
-export function codeFromName(name: string): string {
-  const code = name
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .replace(/^[^a-z]+/, '');
-  return code.slice(0, 63);
-}
 
 /** New customer group, in a sheet (CustomerGroups board). The code follows the name until edited. */
 export function NewCustomerGroupSheet({
