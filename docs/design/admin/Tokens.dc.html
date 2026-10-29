@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Tokens and component map</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz" style="min-height: 100%; padding: 40px 32px">
+<div style="max-width: 1376px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px">
+  <header class="ph"><div><h1>Tokens and component map</h1><p>shadcn/ui CSS variables for <span class="mono">app.css</span> (light on <span class="mono">:root</span>, dark on <span class="mono">.dark</span>), plus the shadcn components each screen uses.</p></div></header>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 20px">
+    <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+      <section class="mz {{th.cls}} card" style="padding: 0; overflow: hidden">
+        <div class="card-h"><h2>{{th.title}}</h2><span class="grow"></span><span class="mono xs muted">{{th.sel}}</span></div>
+        <div class="card-b" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px">
+          <sc-for list="{{th.tokens}}" as="t" hint-placeholder-count="24">
+            <div class="row" style="gap: 10px; min-width: 0">
+              <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 6px; flex: none; background: {{t.v}}; border: 1px solid var(--border)"></span>
+              <span class="col" style="gap: 0; min-width: 0"><span class="mono" style="font-size: 12px">--{{t.k}}</span><span class="mono xs muted">{{t.hex}}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px">
+    <section class="card">
+      <div class="card-h"><h2>Type scale · Inter, tabular numbers in tables</h2></div>
+      <div class="card-b col" style="gap: 12px">
+        <sc-for list="{{type}}" as="t" hint-placeholder-count="7">
+          <div class="row" style="gap: 16px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 10px">
+            <span class="mono xs muted" style="width: 150px; flex: none">{{t.spec}}</span>
+            <span style="font-size: {{t.size}}; font-weight: {{t.w}}; letter-spacing: {{t.ls}}">{{t.sample}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>Spacing, radius, sizes</h2></div>
+      <div class="card-b col" style="gap: 16px">
+        <div class="col" style="gap: 6px">
+          <span class="label">Spacing (Tailwind 4 px base)</span>
+          <div class="row" style="gap: 14px; align-items: flex-end; flex-wrap: wrap">
+            <sc-for list="{{space}}" as="s" hint-placeholder-count="8"><span class="col" style="align-items: center; gap: 4px"><span style="width: {{s.px}}; height: {{s.px}}; background: var(--primary); border-radius: 2px"></span><span class="mono xs muted">{{s.label}}</span></span></sc-for>
+          </div>
+        </div>
+        <div class="col" style="gap: 6px">
+          <span class="label">Radius · --radius: 0.5rem</span>
+          <div class="row" style="gap: 14px; flex-wrap: wrap">
+            <sc-for list="{{radius}}" as="r" hint-placeholder-count="4"><span class="col" style="align-items: center; gap: 4px"><span style="width: 56px; height: 40px; border: 2px solid var(--primary); border-radius: {{r.v}}"></span><span class="mono xs muted">{{r.label}}</span></span></sc-for>
+          </div>
+        </div>
+        <dl class="dl" style="grid-template-columns: 200px 1fr; font-size: 13px">
+          <dt>Control height</dt><dd>36 px default, 30 px small (tables, toolbars)</dd>
+          <dt>Table row</dt><dd>44 px default, 38 px compact</dd>
+          <dt>Sidebar</dt><dd>240 px, 60 px collapsed (Ctrl B); top bar 56 px</dd>
+          <dt>Page padding</dt><dd>32 px at 1280 and up, 24 px at 1024</dd>
+          <dt>Focus ring</dt><dd>2 px --ring, 2 px offset, on every control</dd>
+        </dl>
+      </div>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px">
+    <section class="card">
+      <div class="card-h"><h2>Numbers, money, dates</h2></div>
+      <table class="tbl compact">
+        <thead><tr><th scope="col">Value</th><th scope="col">Muziris India (en-IN)</th><th scope="col">Muziris US (en-US)</th></tr></thead>
+        <tbody>
+          <tr><td class="muted">Money</td><td class="num">₹12,34,567.50</td><td class="num">$1,234,567.50</td></tr>
+          <tr><td class="muted">Large total</td><td class="num">₹4,26,18,940.00</td><td class="num">$426,189.40</td></tr>
+          <tr><td class="muted">Quantity, precision 3</td><td class="num">2.000 kg</td><td class="num">2.000 kg</td></tr>
+          <tr><td class="muted">Quantity, precision 0</td><td class="num">1,250 Each</td><td class="num">1,250 Each</td></tr>
+          <tr><td class="muted">Date and time</td><td class="num">27 Oct 2026, 14:05 IST</td><td class="num">Oct 27, 2026, 2:05 PM CT</td></tr>
+          <tr><td class="muted">Date only</td><td class="num">27 Oct 2026</td><td class="num">Oct 27, 2026</td></tr>
+        </tbody>
+      </table>
+      <div class="card-b small muted" style="border-top: 1px solid var(--border)">Stored in UTC; shown in the website’s time zone. Use <span class="mono">Intl.NumberFormat(locale, {style: "currency"})</span> and the product unit’s precision for minimumFractionDigits.</div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>Status badges · text always carries the meaning</h2></div>
+      <div class="card-b col" style="gap: 12px">
+        <div class="row" style="flex-wrap: wrap; gap: 8px"><span class="badge ok">Active</span><span class="badge ok">Enabled</span><span class="badge ok">Paid</span><span class="badge info">Processing</span><span class="badge info">Pending</span><span class="badge warn">Pending approval</span><span class="badge warn">Expires tomorrow</span><span class="badge bad">On hold</span><span class="badge bad">Revoked</span><span class="badge neutral">Expired</span><span class="badge neutral">Disabled</span><span class="badge outline plain">Built-in</span></div>
+        <p class="small muted" style="margin: 0">Badge variants map to shadcn Badge: default, secondary, outline, destructive, plus success, warning and info added with the tokens above.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-h"><h2>shadcn components per screen</h2><span class="grow"></span><span class="row xs muted" style="gap: 8px"><span class="badge ok plain">Built</span>already in the app<span class="badge outline plain">Add</span>install with shadcn CLI</span></div>
+    <div style="overflow-x: auto">
+    <table class="tbl" style="font-size: 13px">
+      <thead><tr><th scope="col" style="width: 220px">Screen</th><th scope="col">Components</th></tr></thead>
+      <tbody>
+        <sc-for list="{{map}}" as="m" hint-placeholder-count="14">
+          <tr><th scope="row" style="background: none; color: var(--foreground); font-size: 13px; vertical-align: top; padding-top: 10px; height: auto">{{m.screen}}</th>
+            <td style="white-space: normal; padding-top: 8px; padding-bottom: 8px"><span class="row" style="flex-wrap: wrap; gap: 4px"><sc-for list="{{m.comps}}" as="c" hint-placeholder-count="6"><span class="{{c.cls}}">{{c.name}}</span></sc-for></span></td></tr>
+        </sc-for>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><h2>Glossary words used in every label</h2></div>
+    <div class="card-b col" style="gap: 10px">
+      <div class="row" style="flex-wrap: wrap; gap: 6px"><sc-for list="{{words}}" as="w" hint-placeholder-count="18"><span class="badge plain">{{w}}</span></sc-for></div>
+      <p class="small muted" style="margin: 0">Never: client, account, SKU item, cart, store view, or contact for a buyer user.</p>
+    </div>
+  </section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {
+      background: '#ffffff', foreground: '#0f172a', card: '#ffffff', 'card-foreground': '#0f172a', popover: '#ffffff', 'popover-foreground': '#0f172a',
+      primary: '#0f5f5a', 'primary-foreground': '#ffffff', secondary: '#eef2f1', 'secondary-foreground': '#0f172a', muted: '#f4f6f6', 'muted-foreground': '#556070',
+      accent: '#e6f1ef', 'accent-foreground': '#0d3b38', destructive: '#b42318', 'destructive-foreground': '#ffffff', border: '#e1e6e9', input: '#c9d1d6', ring: '#0f766e',
+      success: '#166534', warning: '#8a4b00', info: '#1e4fd8', sidebar: '#f7f9f9', 'sidebar-accent': '#e6f1ef',
+      'chart-1': '#0f766e', 'chart-2': '#2f5bd3', 'chart-3': '#c26a06', 'chart-4': '#7247c9', 'chart-5': '#64748b'
+    };
+    const D = {
+      background: '#0b1214', foreground: '#e6ebea', card: '#10191b', 'card-foreground': '#e6ebea', popover: '#131d20', 'popover-foreground': '#e6ebea',
+      primary: '#5eead4', 'primary-foreground': '#04302c', secondary: '#192528', 'secondary-foreground': '#e6ebea', muted: '#152023', 'muted-foreground': '#9aa8a8',
+      accent: '#1a2c2d', 'accent-foreground': '#ccf3ec', destructive: '#c53030', 'destructive-foreground': '#ffffff', border: '#233034', input: '#2f3d41', ring: '#5eead4',
+      success: '#6ee79a', warning: '#fbbf4c', info: '#9cbcff', sidebar: '#0e1719', 'sidebar-accent': '#1a2c2d',
+      'chart-1': '#5eead4', 'chart-2': '#8aa8ff', 'chart-3': '#f5a524', 'chart-4': '#b59cff', 'chart-5': '#94a3b8'
+    };
+    const toList = (o) => Object.keys(o).map((k) => ({ k, hex: o[k], v: 'var(--' + k + ')' }));
+    const B = (n) => ({ name: n, cls: 'badge ok plain' });
+    const A = (n) => ({ name: n, cls: 'badge outline plain' });
+    const map = [
+      ['App frame', [A('Sidebar (collapsible)'), A('Dropdown Menu'), A('Command'), A('Dialog'), A('Avatar'), A('Tooltip'), A('Breadcrumb'), B('Button'), B('Badge')]],
+      ['Sign-in', [B('Card'), B('Input'), B('Label'), B('Button'), B('Alert'), A('Input OTP')]],
+      ['Home', [B('Card'), B('Table'), B('Badge'), B('Button'), B('Page header'), A('Chart')]],
+      ['Customers list', [B('Table'), B('Input'), B('Button'), B('Badge'), B('Pager'), A('Checkbox'), A('Dropdown Menu'), A('Popover + Command (filter chips)'), A('Select'), A('Pagination')]],
+      ['Customer detail', [A('Tabs'), B('Card'), B('Table'), B('Badge'), A('Avatar'), A('Combobox'), A('Dropdown Menu'), A('Dialog'), A('Separator')]],
+      ['Address form', [A('Sheet'), B('Input'), B('Label'), A('Select'), A('Checkbox'), B('Button'), B('Alert')]],
+      ['Customer groups', [B('Table'), A('Sheet'), B('Input'), B('Label'), B('Button')]],
+      ['Products list', [B('Table'), A('Checkbox'), A('Dropdown Menu'), B('Badge'), B('Pager')]],
+      ['Product detail', [A('Tabs'), B('Card'), B('Input'), A('Combobox'), A('Switch'), A('Radio Group'), B('Table'), B('Alert')]],
+      ['Categories', [A('Tree (custom, dnd-kit)'), B('Card'), B('Input'), A('Select'), B('Alert'), A('Dialog')]],
+      ['Product units', [B('Table'), B('Alert'), A('Dialog')]],
+      ['Admin roles', [B('Card'), B('Table'), A('Checkbox'), A('Tooltip'), B('Badge'), B('Alert')]],
+      ['Buyer roles', [B('Card'), B('Table'), A('Radio Group'), B('Badge')]],
+      ['Price lists, detail, preview', [B('Table'), A('Tabs'), A('Combobox'), B('Input'), A('Select'), B('Alert'), B('Card'), B('Badge')]],
+      ['Orders, order detail', [B('Table'), A('Dropdown Menu'), A('Popover + Calendar (date range)'), B('Card'), A('Textarea'), B('Badge'), A('Dialog')]],
+      ['RFQs', [B('Table'), B('Card'), B('Badge'), B('Alert'), A('Popover + Command (filter chips)'), A('Avatar')]],
+      ['Quote editor', [B('Card'), B('Input'), A('Combobox'), A('Popover + Calendar (valid until)'), A('Select'), A('Textarea'), B('Table'), B('Badge'), A('Dialog')]],
+      ['Websites', [B('Table'), B('Card'), B('Input'), A('Select'), A('Radio Group'), A('Switch')]],
+      ['Settings and feature toggles', [B('Card'), A('Combobox (scope)'), A('Select'), A('Switch'), A('Checkbox'), B('Badge'), B('Input')]],
+      ['Shared states', [A('Skeleton'), B('Error view'), A('Sonner (Toast)'), A('Alert Dialog'), B('Button')]]
+    ].map(([screen, comps]) => ({ screen, comps }));
+    return {
+      themes: [
+        { title: 'Light', sel: ':root', cls: '', tokens: toList(L) },
+        { title: 'Dark', sel: '.dark', cls: 'dark', tokens: toList(D) }
+      ],
+      type: [
+        ['22 / 28 · 650 · −1.5%', '22px', 650, '-0.015em', 'Page title · Customers'],
+        ['17 / 24 · 650', '17px', 650, '0', 'Dialog and sheet title'],
+        ['14.5 / 20 · 620', '14.5px', 620, '0', 'Card title · Hierarchy'],
+        ['14 / 20 · 400', '14px', 400, '0', 'Body and table text'],
+        ['13.5 / 20 · 550', '13.5px', 550, '0', 'Buttons, tabs, navigation'],
+        ['12.5 / 18 · 400', '12.5px', 400, '0', 'Hints, table headers, meta'],
+        ['26 / 32 · 650 · tabular', '26px', 650, '-0.02em', '₹14,82,310.00']
+      ].map(([spec, size, w, ls, sample]) => ({ spec, size, w, ls, sample })),
+      space: [['4px', '1'], ['8px', '2'], ['12px', '3'], ['16px', '4'], ['20px', '5'], ['24px', '6'], ['32px', '8'], ['48px', '12']].map(([px, label]) => ({ px, label: label + ' · ' + px })),
+      radius: [['4px', 'sm 4'], ['6px', 'md 6'], ['8px', 'lg 8'], ['12px', 'xl 12']].map(([v, label]) => ({ v, label })),
+      map,
+      words: ['Customer', 'Customer group', 'Buyer user', 'Buyer role', 'Admin user', 'Admin role', 'Product', 'Product unit', 'Category', 'Price list', 'Website', 'Setting', 'Feature toggle', 'Shopping list', 'RFQ', 'Quote', 'Order', 'Payment term']
+    };
+  }
+}
+</script>
+</body>
+</html>

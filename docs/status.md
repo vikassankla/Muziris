@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
 
 ## Goal
 
@@ -13,35 +13,38 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 
 ## Done
 
-| Area       | What exists                                                                                                             | Where                 |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| Foundation | Monorepo, strict TypeScript, module boundary lint, CI (tests on PostgreSQL 18, audit, gitleaks, CodeQL), Docker Compose | repo root, `.github/` |
-| Money      | Exact minor-unit maths, rounding, allocation, lakh/crore formatting                                                     | `packages/money`      |
-| Database   | Connection, ordered migrations, per-test-file databases                                                                 | `packages/db`         |
-| Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
-| Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
-| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
-| API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
-| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses; admin routes under `/admin/v1/customers`  | `modules/customers`   |
-| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes    | `modules/access`      |
-| Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
+| Area       | What exists                                                                                                               | Where                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Foundation | Monorepo, strict TypeScript, module boundary lint, CI (tests on PostgreSQL 18, audit, gitleaks, CodeQL), Docker Compose   | repo root, `.github/` |
+| Money      | Exact minor-unit maths, rounding, allocation, lakh/crore formatting                                                       | `packages/money`      |
+| Database   | Connection, ordered migrations, per-test-file databases                                                                   | `packages/db`         |
+| Platform   | Organization, websites, settings and feature toggles resolved customer to global                                          | `modules/platform`    |
+| Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                      | `modules/identity`    |
+| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                              | `modules/workflow`    |
+| API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`             | `apps/api`            |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses; admin routes under `/admin/v1/customers`    | `modules/customers`   |
+| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes      | `modules/access`      |
+| Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`    | `modules/catalog`     |
+| Admin app  | In review: design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms | `apps/admin`          |
 
 Decisions are recorded in `docs/adr/0001` to `0010`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
-(admin routes for customers and buyer roles, paged admin lists) is proposed in its pull request.
+(admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 Every admin list endpoint is paged with `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
 
-Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008) and the
-catalog (ADR 0009) are merged; see Done. Admin routes for customers and buyer roles (ADR 0010)
-are in review. Customers has no storefront routes yet (accepting an invitation needs one), and
-invitation emails wait for the email work in week 4.
+Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008), the catalog
+(ADR 0009) and the admin routes for customers and buyer roles (ADR 0010) are merged; see Done.
+The admin app shell (item 1 below) is in review. Customers has no storefront routes yet
+(accepting an invitation needs one), and invitation emails wait for the email work in week 4.
 
 1. Admin app shell: React, Vite, TanStack Router, shadcn/ui, sign-in screen. Use
-   `GET /admin/v1/access/me` to hide what the admin may not do.
+   `GET /admin/v1/access/me` to hide what the admin may not do. **In review**
+   (`feature/admin-shell`, PR 12). It follows the Claude Design boards in `docs/design/admin`
+   and builds every screen whose API exists, with its create and edit forms.
 
 **Week 3 (11 to 17 Nov):** price lists with customer and group fallback and the combined
 price build; visibility; PostgreSQL search; GraphQL storefront API; storefront browsing.
@@ -74,6 +77,22 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
+- Admin app: designed in `docs/design/admin` but waiting on APIs: Orders, OrderDetail, RFQs,
+  QuoteEditor, PriceLists, PriceListDetail, Websites, Settings, the Home dashboard widgets,
+  Admin users, and the customer detail tabs for orders, quotes, price lists, settings
+  overrides and payment term. Their sidebar items stay hidden until the APIs exist.
+- Admin app: API gaps the boards assume. No search, totals or counts on admin lists (so no
+  "1 to 25 of 1,284" and no per-row subsidiary or buyer user counts); no customer rename or
+  delete; buyer users carry user ids only (no names, emails, roles or last sign-in); no list of
+  a buyer user's buyer roles; no single buyer role read (the screen loads every role); no
+  activity history; no product counts per category or unit.
+- Admin app: the website switcher is a placeholder (India or United States) that only sets
+  how money, quantities and dates show, until the websites API exists.
+- Admin app: browser storage holds only UI preferences, the theme and whether the sidebar is
+  collapsed (`apps/admin/src/lib/prefs.ts`). Nothing about the session, the admin user or the
+  business goes there; tests check that no other key appears. Decided 2026-10-29.
+- Admin app in production: serve `apps/admin/dist` from the API's origin behind one reverse
+  proxy; there is no deployment recipe yet.
 
 ## Running the tests locally
 

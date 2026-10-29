@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Order detail · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="orders" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="{{site}}" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Orders</a><span aria-hidden="true">/</span><span aria-current="page" class="mono">{{o.no}}</span></nav>
+      <div class="ph">
+        <div>
+          <div class="row" style="gap: 10px; flex-wrap: wrap"><h1 class="mono" style="font-family: inherit">Order {{o.no}}</h1><span class="badge info">Processing</span><span class="badge outline plain">{{o.payTerm}}</span></div>
+          <p><a class="link" href="#">{{o.customer}}</a> · placed by {{o.buyer}} on {{o.placed}} · {{site}}</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn ghost" type="button" style="color: var(--destructive)">Cancel order…</button>
+          <button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"></path></svg>Print</button>
+          <button class="btn" type="button" aria-haspopup="menu">Change status<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        </div>
+      </div>
+
+      <section class="card" aria-label="Order workflow">
+        <ol class="card-b" style="list-style: none; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px">
+          <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+            <li class="col" style="gap: 6px">
+              <div style="height: 4px; border-radius: 4px; background: {{s.bar}}"></div>
+              <span class="row small" style="gap: 6px"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: {{s.dotBg}}; color: {{s.dotFg}}; border: 1.5px solid {{s.bar}}">{{s.glyph}}</span><span class="{{s.cls}}">{{s.label}}</span><span class="sr">{{s.state}}</span></span>
+              <span class="xs muted num">{{s.when}}</span>
+            </li>
+          </sc-for>
+        </ol>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 999 1 680px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section class="card">
+            <div class="card-h"><h2>Lines</h2><span class="small muted">5 lines</span></div>
+            <div style="overflow-x: auto">
+            <table class="tbl">
+              <thead><tr><th scope="col">Product</th><th scope="col" class="r">Quantity</th><th scope="col" class="r">Unit price</th><th scope="col" class="r">{{taxHead}}</th><th scope="col" class="r">Line total</th></tr></thead>
+              <tbody>
+                <sc-for list="{{lines}}" as="l" hint-placeholder-count="5">
+                  <tr>
+                    <td><span class="col" style="gap: 0"><a class="rl" href="#">{{l.name}}</a><span class="xs muted"><span class="mono">{{l.sku}}</span> · {{l.code}}</span></span></td>
+                    <td class="r num">{{l.qty}}</td>
+                    <td class="r num">{{l.price}}</td>
+                    <td class="r num"><span class="col" style="gap: 0; align-items: flex-end"><span>{{l.tax}}</span><span class="xs muted">{{l.rate}}</span></span></td>
+                    <td class="r num strong">{{l.total}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border)">
+              <dl class="card-b num" style="margin: 0; display: grid; grid-template-columns: auto 160px; gap: 8px 24px; font-size: 13.5px; min-width: 380px">
+                <sc-for list="{{totals}}" as="t" hint-placeholder-count="5">
+                  <dt class="{{t.dtCls}}" style="text-align: right">{{t.label}}</dt><dd class="{{t.ddCls}}" style="margin: 0; text-align: right">{{t.value}}</dd>
+                </sc-for>
+              </dl>
+            </div>
+          </section>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+            <section class="card"><div class="card-h"><h3>Shipping address</h3></div><address class="card-b small" style="font-style: normal; white-space: pre-line">{{o.ship}}</address></section>
+            <section class="card"><div class="card-h"><h3>Billing address</h3></div><address class="card-b small" style="font-style: normal; white-space: pre-line">{{o.bill}}</address></section>
+            <section class="card"><div class="card-h"><h3>Payment</h3></div><dl class="card-b dl" style="grid-template-columns: 110px 1fr; font-size: 13px"><dt>Payment term</dt><dd>{{o.payTerm}}</dd><dt>Due</dt><dd class="num">{{o.due}}</dd><dt>Status</dt><dd><span class="badge neutral">Not yet due</span></dd><dt>Buyer PO</dt><dd class="mono">{{o.po}}</dd></dl></section>
+          </div>
+
+          <section class="card">
+            <div class="card-h"><h2>Notes</h2></div>
+            <div class="card-b col" style="gap: 12px">
+              <div class="alert" style="background: var(--muted)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span class="small"><b>From the buyer:</b> {{o.note}}</span></div>
+              <div class="field"><label class="label" for="inote">Internal note <span class="muted" style="font-weight: 400">(staff only)</span></label><textarea class="input" id="inote" rows="2" placeholder="Visible to admin users only"></textarea></div>
+              <button class="btn outline sm" type="button" style="align-self: flex-end">Add note</button>
+            </div>
+          </section>
+        </div>
+
+        <aside class="card" style="flex: 1 1 300px; min-width: 280px" aria-label="Status history">
+          <div class="card-h"><h2>Status history</h2></div>
+          <ol style="list-style: none; margin: 0; padding: 8px 16px 16px">
+            <sc-for list="{{history}}" as="h" hint-placeholder-count="4">
+              <li class="row" style="align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border)">
+                <span class="av" style="width: 24px; height: 24px; font-size: 10px">{{h.ini}}</span>
+                <div class="col" style="gap: 2px"><span class="small"><b>{{h.who}}</b> {{h.what}}</span><span class="xs muted num">{{h.when}}</span></div>
+              </li>
+            </sc-for>
+          </ol>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tax":{"editor":"enum","options":["India · CGST + SGST","India · IGST","United States · sales tax"],"default":"India · CGST + SGST"},"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mode = this.props.tax ?? 'India · CGST + SGST';
+    const us = mode.indexOf('United States') === 0;
+    const igst = mode === 'India · IGST';
+    const tz = us ? 'CT' : 'IST';
+    const items = us ? [
+      ['Deep groove ball bearing 6205-2RS', 'BRG-6205-2RS', 'HTS 8482.10', '400 Each', '$4.86', '$160.38', '$1,944.00'],
+      ['Nitrile coated safety gloves, size 9 (L)', 'GLV-NIT-9-L', 'HTS 4015.19', '120 Pair', '$1.35', '$13.37', '$162.00'],
+      ['Hex bolt M12 × 50, grade 8.8, box of 100', 'FST-HX-M12x50', 'HTS 7318.15', '25 Box', '$18.40', '$37.95', '$460.00'],
+      ['Bearing grease LGMT 2', 'BRG-GRS-LGMT2-1', 'HTS 3403.99', '18.500 kg', '$15.20', '$23.20', '$281.20'],
+      ['Carbide end mill 10 mm, 4 flute, TiAlN', 'CT-EM-10-4F', 'HTS 8207.70', '30 Each', '$31.75', '$78.58', '$952.50']
+    ] : [
+      ['Deep groove ball bearing 6205-2RS', 'BRG-6205-2RS', 'HSN 8482', '400 Each', '₹142.50', '₹10,260.00', '₹57,000.00'],
+      ['Nitrile coated safety gloves, size 9 (L)', 'GLV-NIT-9-L', 'HSN 4015', '120 Pair', '₹86.00', '₹1,857.60', '₹10,320.00'],
+      ['Hex bolt M12 × 50, grade 8.8, box of 100', 'FST-HX-M12x50', 'HSN 7318', '25 Box', '₹1,240.00', '₹5,580.00', '₹31,000.00'],
+      ['Bearing grease LGMT 2', 'BRG-GRS-LGMT2-1', 'HSN 3403', '18.500 kg', '₹1,120.00', '₹3,729.60', '₹20,720.00'],
+      ['Carbide end mill 10 mm, 4 flute, TiAlN', 'CT-EM-10-4F', 'HSN 8207', '30 Each', '₹2,180.00', '₹11,772.00', '₹65,400.00']
+    ];
+    const rate = us ? '8.25%' : (igst ? 'IGST 18%' : 'CGST 9% + SGST 9%');
+    const lines = items.map(([name, sku, code, qty, price, tax, total]) => ({ name, sku, code, qty, price, tax, total, rate }));
+    const T = (label, value, strong) => ({ label, value, dtCls: strong ? 'strong' : 'muted', ddCls: strong ? 'strong' : '' });
+    let totals;
+    if (us) {
+      totals = [T('Subtotal', '$3,799.70'), T('Shipping (taxable)', '$85.00'), T('Texas state sales tax 6.25%', '$242.79'), T('Houston city sales tax 1.00%', '$38.85'), T('Houston MTA transit tax 1.00%', '$38.85'), T('Total sales tax 8.25%', '$320.49'), T('Total', '$4,205.19', true)];
+    } else if (igst) {
+      totals = [T('Subtotal', '₹1,84,440.00'), T('Freight', '₹1,500.00'), T('Taxable value', '₹1,85,940.00'), T('IGST 18%', '₹33,469.20'), T('Total', '₹2,19,409.20', true)];
+    } else {
+      totals = [T('Subtotal', '₹1,84,440.00'), T('Freight', '₹1,500.00'), T('Taxable value', '₹1,85,940.00'), T('CGST 9%', '₹16,734.60'), T('SGST 9%', '₹16,734.60'), T('Total', '₹2,19,409.20', true)];
+    }
+    const o = us ? {
+      no: 'SO-US-2026-001980', customer: 'Gulf Coast Industrial Supply', buyer: 'Dana Whitfield', placed: 'Oct 26, 2026, 2:05 PM CT',
+      payTerm: 'Net 30', due: 'Nov 25, 2026', po: 'GCIS-PO-88412',
+      ship: 'Gulf Coast Industrial Supply\nHouston distribution center, Dock 6\n8420 Market Street Road\nHouston, TX 77029-1234\nUnited States',
+      bill: 'Gulf Coast Industrial Supply\nAccounts Payable\n1200 Smith Street, Suite 1600\nHouston, TX 77002\nUnited States',
+      note: 'Deliver to Dock 6 between 7 AM and 3 PM. Call ahead.'
+    } : {
+      no: 'SO-IN-2026-004826', customer: igst ? 'Acme Engineering (Hosur Works)' : 'Acme Engineering Pvt Ltd', buyer: igst ? 'Divya Raman' : 'Rohan Kulkarni', placed: '26 Oct 2026, 14:05 IST',
+      payTerm: 'Net 45', due: '10 Dec 2026', po: 'AEPL/PO/26-27/1184',
+      ship: igst
+        ? 'Acme Engineering (Hosur Works)\nHosur Works receiving\nSIPCOT Phase I, Plot B-7\nHosur, Tamil Nadu (33) 635126\nGSTIN 33AABCA1234F1Z1'
+        : 'Acme Engineering Pvt Ltd\nChakan stores\nGat No. 118, Chakan Industrial Area Phase II\nKhed, Pune, Maharashtra (27) 410501\nGSTIN 27AABCA1234F2Z4',
+      bill: 'Acme Engineering Pvt Ltd\nRegistered office\nPlot 42, MIDC Bhosari\nPune, Maharashtra (27) 411026\nGSTIN 27AABCA1234F1Z5',
+      note: 'Pack bearings separately from the grease. Unload at Gate 3.'
+    };
+    const stepDefs = us
+      ? [['Placed', 'Oct 26, 2:05 PM CT', 'done'], ['Approved', 'Oct 26, 4:40 PM CT', 'done'], ['Processing', 'Oct 27, 9:12 AM CT', 'current'], ['Shipped', '', 'todo'], ['Delivered', '', 'todo']]
+      : [['Placed', '26 Oct, 14:05 IST', 'done'], ['Approved', '26 Oct, 16:40 IST', 'done'], ['Processing', '27 Oct, 09:12 IST', 'current'], ['Shipped', '', 'todo'], ['Delivered', '', 'todo']];
+    const steps = stepDefs.map(([label, when, st]) => ({
+      label, when: when || 'Not yet',
+      bar: st === 'todo' ? 'var(--border)' : 'var(--primary)',
+      dotBg: st === 'done' ? 'var(--primary)' : 'var(--card)',
+      dotFg: st === 'done' ? 'var(--primary-foreground)' : 'var(--primary)',
+      glyph: st === 'done' ? '✓' : (st === 'current' ? '●' : ''),
+      cls: st === 'current' ? 'strong' : (st === 'todo' ? 'muted' : ''),
+      state: st === 'done' ? '(done)' : st === 'current' ? '(current step)' : '(not reached)'
+    }));
+    const history = [
+      { ini: 'PR', who: us ? 'Jordan Miller' : 'Priya Raman', what: 'changed status from Approved to Processing', when: us ? 'Oct 27, 2026, 9:12 AM CT' : '27 Oct 2026, 09:12 IST' },
+      { ini: 'SD', who: us ? 'Dana Whitfield (buyer)' : 'Sunita Deshpande (buyer)', what: 'approved the order', when: us ? 'Oct 26, 2026, 4:40 PM CT' : '26 Oct 2026, 16:40 IST' },
+      { ini: 'SY', who: 'System', what: 'checked credit limit: within limit', when: us ? 'Oct 26, 2026, 2:05 PM CT' : '26 Oct 2026, 14:05 IST' },
+      { ini: 'RK', who: o.buyer + ' (buyer)', what: 'placed the order', when: us ? 'Oct 26, 2026, 2:05 PM CT' : '26 Oct 2026, 14:05 IST' }
+    ];
+    return {
+      theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark,
+      site: us ? 'Muziris US' : 'Muziris India',
+      taxHead: us ? 'Sales tax' : 'GST', lines, totals, o, steps, history, tz
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Command palette · dark</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%; position: relative">
+<div class="app" aria-hidden="true">
+  <dc-import name="Sidebar" active="customers" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs"><a href="#">Customers</a></nav>
+      <div class="ph"><div><h1>Customers</h1><p>Companies that buy from you, with their subsidiaries and buyer users.</p></div><div class="ph-actions"><span class="btn">New customer</span></div></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th>Customer group</th><th>Parent customer</th><th class="r">Subsidiaries</th><th class="r">Buyer users</th></tr></thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="10"><tr><td class="strong">{{r.n}}</td><td>{{r.g}}</td><td class="muted">{{r.p}}</td><td class="r num">{{r.s}}</td><td class="r num">{{r.b}}</td></tr></sc-for>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="overlay" style="position: absolute; inset: 0; display: flex; justify-content: center; padding: 96px 16px 16px">
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Command palette" style="width: 640px; max-width: 100%; align-self: flex-start; overflow: hidden">
+    <div class="row" style="padding: 0 14px; height: 52px; border-bottom: 1px solid var(--border); gap: 10px">
+      <svg class="i lg muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg>
+      <label class="sr" for="cmdk">Search or run a command</label>
+      <input id="cmdk" class="grow" value="acme" style="border: 0; background: transparent; color: var(--foreground); font: inherit; font-size: 15px; height: 100%; outline: none">
+      <span class="kbd">Esc</span>
+    </div>
+    <div role="listbox" aria-label="Results" style="max-height: 460px; overflow: auto; padding: 6px">
+      <div class="menu-label">Customers</div>
+      <div class="menu-item on" role="option" aria-selected="true" style="height: 40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2"></path></svg><span class="grow"><b>Acme</b> Engineering Pvt Ltd</span><span class="xs muted">Pune · 3 subsidiaries</span><span class="kbd">Enter</span></div>
+      <div class="menu-item" role="option" aria-selected="false" style="height: 40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2"></path></svg><span class="grow"><b>Acme</b> Engineering (Chakan Plant)</span><span class="xs muted">Subsidiary of Acme Engineering Pvt Ltd</span></div>
+      <div class="menu-item" role="option" aria-selected="false" style="height: 40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2"></path></svg><span class="grow"><b>Acme</b> Industrial Supply Inc.</span><span class="xs muted">Houston, TX · Muziris US</span></div>
+      <div class="menu-label">Buyer users</div>
+      <div class="menu-item" role="option" aria-selected="false" style="height: 40px"><span class="av" style="width: 22px; height: 22px; font-size: 10px">RK</span><span class="grow">Rohan Kulkarni</span><span class="xs muted">rohan.k@acme-eng.in · <b>Acme</b> Engineering Pvt Ltd</span></div>
+      <div class="menu-label">Orders</div>
+      <div class="menu-item" role="option" aria-selected="false" style="height: 40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4"></path></svg><span class="grow mono">SO-IN-2026-004812</span><span class="xs muted num"><b>Acme</b> Engineering · ₹2,36,480.00</span></div>
+      <div class="menu-label">Actions</div>
+      <div class="menu-item" role="option" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span class="grow">New customer</span><span class="row" style="gap: 3px"><span class="kbd">N</span><span class="kbd">C</span></span></div>
+      <div class="menu-item" role="option" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg><span class="grow">Invite a buyer user</span></div>
+      <div class="menu-label">Go to</div>
+      <div class="menu-item" role="option" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01"></path></svg><span class="grow">Price lists</span><span class="row" style="gap: 3px"><span class="kbd">G</span><span class="kbd">P</span></span></div>
+    </div>
+    <div class="row xs muted" style="height: 38px; padding: 0 14px; border-top: 1px solid var(--border); gap: 16px; background: var(--muted)">
+      <span class="row" style="gap: 4px"><span class="kbd">↑</span><span class="kbd">↓</span>to move</span>
+      <span class="row" style="gap: 4px"><span class="kbd">Enter</span>to open</span>
+      <span class="row" style="gap: 4px"><span class="kbd">Ctrl</span><span class="kbd">Enter</span>open in new tab</span>
+      <span style="flex: 1"></span>
+      <span>Results limited to what you have permission to view</span>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = this.props.dark ?? true;
+    return {
+      theme: dark ? 'dark' : '',
+      isDark: !!dark,
+      rows: [
+        ['Acme Engineering Pvt Ltd', 'Key accounts (West)', '—', '3', '18'],
+        ['Acme Engineering (Chakan Plant)', 'Key accounts (West)', 'Acme Engineering Pvt Ltd', '1', '6'],
+        ['Bharat Heavy Castings', 'OEM manufacturers', '—', '0', '4'],
+        ['Coromandel Process Equipment', 'Distributors (South)', '—', '2', '9'],
+        ['Deccan Pumps & Valves Ltd', 'OEM manufacturers', '—', '0', '7'],
+        ['Kaveri Auto Components', 'Tier-1 automotive', '—', '1', '11'],
+        ['Sahyadri Fabricators LLP', 'SME workshops', '—', '0', '2'],
+        ['Gulf Coast Industrial Supply', 'US distributors', '—', '4', '23'],
+        ['Great Lakes MRO Partners', 'US distributors', '—', '0', '8'],
+        ['Lone Star Bearing & Transmission', 'US distributors', '—', '1', '5']
+      ].map(([n, g, p, s, b]) => ({ n, g, p, s, b }))
+    };
+  }
+}
+</script>
+</body>
+</html>

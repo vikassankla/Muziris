@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Price lists · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="prices" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><span aria-current="page">Price lists</span></nav>
+      <div class="ph">
+        <div><h1>Price lists</h1><p>Negotiated and list prices. A buyer gets the first price found: customer, then customer group, then website.</p></div>
+        <div class="ph-actions"><button class="btn outline" type="button">Price preview</button><button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New price list</button></div>
+      </div>
+      <div class="toolbar">
+        <div class="search" style="width: 280px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="plq">Search price lists</label><input class="input sm" id="plq" placeholder="Search by name"></div>
+        <button class="chip" type="button">Currency</button><button class="chip set" type="button">Active<span class="sep"></span><span class="strong">Today</span></button><button class="chip" type="button">Assigned to</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th scope="col">Name</th><th scope="col">Currency</th><th scope="col">Assigned to</th><th scope="col" class="r">Prices</th><th scope="col">Active dates</th><th scope="col">Status</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+          <tbody>
+            <sc-for list="{{lists}}" as="l" hint-placeholder-count="10">
+              <tr>
+                <td><a class="rl" href="#">{{l.name}}</a></td>
+                <td><span class="tag">{{l.cur}}</span></td>
+                <td><span class="row" style="gap: 4px; flex-wrap: wrap"><sc-for list="{{l.to}}" as="t" hint-placeholder-count="1"><span class="badge outline plain">{{t}}</span></sc-for></span></td>
+                <td class="r num">{{l.n}}</td>
+                <td class="num">{{l.dates}}</td>
+                <td><span class="badge {{l.tone}}">{{l.status}}</span></td>
+                <td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for {{l.name}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <div class="pager"><span>Showing <b class="num" style="color: var(--foreground)">1 to 10</b> of <b class="num" style="color: var(--foreground)">24</b></span><span style="flex: 1"></span><nav class="row" aria-label="Pagination" style="gap: 4px"><button class="btn outline icon sm" type="button" aria-label="Previous page" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button><span class="small" style="padding: 0 6px">Page 1 of 3</span><button class="btn outline icon sm" type="button" aria-label="Next page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></nav></div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      lists: [
+        ['Acme contract FY 2026-27', 'INR', ['Customer: Acme Engineering Pvt Ltd'], '1,842', '1 Apr 2026 to 31 Mar 2027', 'Active', 'ok'],
+        ['Key accounts (West) 2026', 'INR', ['Customer group: Key accounts (West)'], '4,310', '1 Jan 2026 to 31 Dec 2026', 'Active', 'ok'],
+        ['South distributor net 2026', 'INR', ['Customer group: Distributors (South)'], '6,118', '1 Jan 2026 to 31 Dec 2026', 'Active', 'ok'],
+        ['India list price', 'INR', ['Website: Muziris India'], '8,349', 'No end date', 'Active', 'ok'],
+        ['OEM volume tiers', 'INR', ['Customer group: OEM manufacturers', '+2 customers'], '2,206', '1 Jul 2026 to 30 Jun 2027', 'Active', 'ok'],
+        ['Diwali safety promo', 'INR', ['Website: Muziris India'], '214', '20 Oct 2026 to 5 Nov 2026', 'Active', 'ok'],
+        ['Key accounts (West) 2027', 'INR', ['Customer group: Key accounts (West)'], '4,402', '1 Jan 2027 to 31 Dec 2027', 'Scheduled', 'info'],
+        ['US distributor net 2026', 'USD', ['Customer group: US distributors'], '5,880', 'Jan 1, 2026 to Dec 31, 2026', 'Active', 'ok'],
+        ['US list price', 'USD', ['Website: Muziris US'], '7,912', 'No end date', 'Active', 'ok'],
+        ['Kaveri contract FY 2025-26', 'INR', ['Customer: Kaveri Auto Components'], '612', '1 Apr 2025 to 31 Mar 2026', 'Expired', 'neutral']
+      ].map(([name, cur, to, n, dates, status, tone]) => ({ name, cur, to, n, dates, status, tone }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Buyer roles · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="buyerroles" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Buyer roles</a><span aria-hidden="true">/</span><span aria-current="page">Purchaser</span></nav>
+      <div class="ph">
+        <div><div class="row" style="gap: 10px"><h1>Purchaser</h1><span class="tag mono">purchaser</span></div><p>What a buyer user with this role can do on the storefront. Used by 312 buyer users across 140 customers.</p></div>
+        <div class="ph-actions"><button class="btn outline" type="button">Cancel</button><button class="btn" type="button">Save buyer role</button></div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section class="card" style="flex: 1 1 260px; min-width: 240px" aria-labelledby="br-h">
+          <div class="card-h"><h2 id="br-h">Buyer roles</h2><span class="grow"></span><button class="btn outline sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New</button></div>
+          <ul style="list-style: none; margin: 0; padding: 6px">
+            <sc-for list="{{roles}}" as="r" hint-placeholder-count="5">
+              <li><a href="#" aria-current="{{r.cur}}" class="row" style="padding: 8px 10px; border-radius: 6px; text-decoration: none; background: {{r.bg}}"><span class="col grow" style="gap: 0"><span class="strong">{{r.name}}</span><span class="xs muted mono">{{r.code}}</span></span><span class="xs muted">{{r.perms}}</span></a></li>
+            </sc-for>
+          </ul>
+        </section>
+
+        <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section class="card" aria-labelledby="am-h">
+            <div class="card-h"><h2 id="am-h">Access levels</h2><span class="small muted">One level per storefront permission</span></div>
+            <div style="overflow-x: auto">
+            <table class="tbl" style="min-width: 720px">
+              <thead><tr>
+                <th scope="col">Storefront permission</th>
+                <sc-for list="{{levels}}" as="l" hint-placeholder-count="4"><th scope="col" style="text-align: center; width: 140px; white-space: normal; line-height: 1.25; padding-top: 8px; padding-bottom: 8px">{{l.label}}</th></sc-for>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{perms}}" as="p" hint-placeholder-count="7">
+                  <tr>
+                    <th scope="row" style="background: none; color: var(--foreground); font-size: 13.5px; height: 56px"><span class="col" style="gap: 1px"><span class="strong" id="{{p.id}}">{{p.label}}</span><span class="xs muted" style="font-weight: 400">{{p.desc}}</span></span></th>
+                    <sc-for list="{{p.cells}}" as="c" hint-placeholder-count="4">
+                      <td style="text-align: center; background: {{c.bg}}"><input class="radio" type="radio" name="{{p.id}}" checked="{{c.on}}" aria-label="{{c.aria}}"></td>
+                    </sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="ex-h">
+            <div class="card-h"><h2 id="ex-h">What each level means for a buyer</h2><span class="small muted">Example: Neha Shah, buyer user at Acme Engineering (Chakan Plant)</span></div>
+            <div class="card-b" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px">
+              <sc-for list="{{levels}}" as="l" hint-placeholder-count="4">
+                <div style="border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 6px">
+                  <span class="strong">{{l.label}}</span>
+                  <span class="small">{{l.explain}}</span>
+                  <span class="xs muted">{{l.example}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const levels = [
+      { label: 'None', explain: 'The buyer cannot see or use this at all.', example: 'Neha sees no Quotes menu.' },
+      { label: 'Own records', explain: 'Only records the buyer created themself.', example: 'Neha sees the orders she placed.' },
+      { label: 'My customer', explain: 'Records of everyone at the buyer’s own customer.', example: 'Neha sees all orders of the Chakan Plant.' },
+      { label: 'My customer and subsidiaries', explain: 'Also every subsidiary below it, at any depth.', example: 'Neha also sees orders of the Chakan Tool Room.' }
+    ];
+    const rows = [
+      ['orders', 'See orders', 'Order history and order details', 2],
+      ['place', 'Place orders', 'Check out and submit orders', 2],
+      ['lists', 'Shopping lists', 'Create, share and order from shopping lists', 1],
+      ['rfqs', 'RFQs', 'Request a quote and follow it up', 2],
+      ['quotes', 'Quotes', 'Read, accept or decline quotes', 2],
+      ['addr', 'Addresses', 'Choose and manage addresses', 2],
+      ['buyers', 'Buyer users', 'Invite and manage colleagues', 0]
+    ];
+    const perms = rows.map(([id, label, desc, sel]) => ({
+      id: 'bp-' + id, label, desc,
+      cells: levels.map((l, i) => ({ on: i === sel, bg: i === sel ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'transparent', aria: label + ': ' + l.label }))
+    }));
+    const roles = [
+      ['Administrator (buyer)', 'buyer-admin', '7 permissions', false],
+      ['Approver', 'approver', '5 permissions', false],
+      ['Purchaser', 'purchaser', '6 permissions', true],
+      ['Finance', 'buyer-finance', '3 permissions', false],
+      ['Viewer', 'viewer', '2 permissions', false]
+    ].map(([name, code, perms, cur]) => ({ name, code, perms, cur: cur ? 'page' : 'false', bg: cur ? 'var(--accent)' : 'transparent' }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, levels, perms, roles };
+  }
+}
+</script>
+</body>
+</html>

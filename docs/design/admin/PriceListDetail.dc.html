@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<title>US distributor net 2026 · Price list</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="prices" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris US" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Price lists</a><span aria-hidden="true">/</span><span aria-current="page">US distributor net 2026</span></nav>
+      <div class="ph">
+        <div><div class="row" style="gap: 10px"><h1>US distributor net 2026</h1><span class="badge ok">Active</span><span class="tag">USD</span></div><p>Jan 1, 2026 to Dec 31, 2026 · 5,880 prices · assigned to customer group US distributors</p></div>
+        <div class="ph-actions">
+          <button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Export CSV</button>
+          <button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14"></path></svg>Import CSV</button>
+          <button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add price</button>
+        </div>
+      </div>
+
+      <div class="alert warn" role="status" style="align-items: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span class="grow"><span class="t">Import finished: 1,204 prices updated, 3 rows skipped.</span> Rows 88, 412 and 977 name a product unit the product is not sold in.</span><button class="btn outline sm" type="button">Download skipped rows</button></div>
+
+      <div class="tabs" role="tablist" aria-label="Price list sections">
+        <button class="tab on" role="tab" aria-selected="true" type="button">Prices <span class="badge">5,880</span></button>
+        <button class="tab" role="tab" aria-selected="false" type="button">Assignments <span class="badge">1</span></button>
+        <button class="tab" role="tab" aria-selected="false" type="button">Import history</button>
+        <button class="tab" role="tab" aria-selected="false" type="button">Activity</button>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+          <div class="toolbar">
+            <div class="search" style="width: 260px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="prq">Search prices by SKU or product name</label><input class="input sm" id="prq" value="BRG-6"></div>
+            <button class="chip" type="button">Category</button><button class="chip" type="button">Product unit</button><button class="chip set" type="button">Tiers<span class="sep"></span><span class="strong">With tiers</span></button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th scope="col">Product</th><th scope="col">Product unit</th><th scope="col" class="r">Minimum quantity</th><th scope="col" class="r">Price (USD)</th><th scope="col" class="r">vs. US list price</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+              <tbody>
+                <sc-for list="{{prices}}" as="p" hint-placeholder-count="10">
+                  <tr>
+                    <td><sc-if value="{{p.first}}" hint-placeholder-val="{{ true }}"><span class="col" style="gap: 0"><a class="rl mono" href="#">{{p.sku}}</a><span class="xs muted">{{p.name}}</span></span></sc-if><sc-if value="{{p.tier}}" hint-placeholder-val="{{ false }}"><span class="xs muted" style="padding-left: 16px">↳ tier</span></sc-if></td>
+                    <td>{{p.unit}}</td>
+                    <td class="r num">{{p.min}}</td>
+                    <td class="r num strong">{{p.price}}</td>
+                    <td class="r num muted">{{p.diff}}</td>
+                    <td class="r"><button class="btn ghost icon sm" type="button" aria-label="Edit price {{p.sku}} {{p.unit}} from {{p.min}}"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></button></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div class="pager"><span>Showing <b class="num" style="color: var(--foreground)">1 to 25</b> of <b class="num" style="color: var(--foreground)">412</b> matching</span></div>
+
+          <section class="card" aria-labelledby="fb-h">
+            <div class="card-h"><h2 id="fb-h">Where this price list sits in the fallback chain</h2></div>
+            <div class="card-b" style="display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap">
+              <div style="flex: 1 1 180px; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px" class="col"><span class="xs muted strong">1 · Customer</span><span class="small">Price lists assigned to the buyer’s customer</span><span class="xs muted">e.g. Gulf Coast contract 2026</span></div>
+              <span class="muted" aria-hidden="true" style="align-self: center">→</span>
+              <div style="flex: 1 1 180px; border: 2px solid var(--primary); border-radius: var(--radius); padding: 11px; background: var(--accent)" class="col"><span class="xs strong" style="color: var(--accent-foreground)">2 · Customer group</span><span class="small strong">US distributor net 2026</span><span class="xs" style="color: var(--accent-foreground)">This price list · US distributors</span></div>
+              <span class="muted" aria-hidden="true" style="align-self: center">→</span>
+              <div style="flex: 1 1 180px; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px" class="col"><span class="xs muted strong">3 · Website</span><span class="small">US list price</span><span class="xs muted">Muziris US</span></div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="card" style="flex: 1 1 340px; min-width: 300px" aria-labelledby="pp-h">
+          <div class="card-h"><h2 id="pp-h">Price preview</h2></div>
+          <div class="card-b col" style="gap: 14px">
+            <div class="field"><label class="label" for="pp-c">Customer</label><button class="select" id="pp-c" type="button" role="combobox" aria-expanded="false">Gulf Coast Industrial Supply<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            <div class="field"><label class="label" for="pp-p">Product</label><button class="select" id="pp-p" type="button" role="combobox" aria-expanded="false"><span><span class="mono">BRG-6205-2RS</span> · Ball bearing 6205-2RS</span><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+              <div class="field"><label class="label" for="pp-q">Quantity</label><input class="input num" id="pp-q" value="120"></div>
+              <div class="field"><label class="label" for="pp-u">Product unit</label><button class="select" id="pp-u" type="button">Each<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            </div>
+            <div style="border-radius: var(--radius); background: var(--muted); padding: 14px" class="col">
+              <span class="xs muted">Final unit price</span>
+              <span class="stat num">$4.86</span>
+              <span class="small">From <a class="link" href="#">US distributor net 2026</a>, tier 100+ Each</span>
+              <span class="small num">120 × $4.86 = <b>$583.20</b> before sales tax</span>
+            </div>
+            <ol class="col small" style="list-style: none; margin: 0; padding: 0; gap: 8px" aria-label="How the price was found">
+              <li class="row" style="align-items: flex-start"><span class="badge neutral" style="min-width: 74px">Skipped</span><span><b>Customer</b> · Gulf Coast contract 2026 has no price for this product.</span></li>
+              <li class="row" style="align-items: flex-start"><span class="badge ok" style="min-width: 74px">Used</span><span><b>Customer group</b> · US distributor net 2026, tier 100+ Each.</span></li>
+              <li class="row" style="align-items: flex-start"><span class="badge neutral" style="min-width: 74px">Not reached</span><span><b>Website</b> · US list price would be $6.40.</span></li>
+            </ol>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rows = [
+      ['BRG-6004-ZZ', 'Ball bearing 6004-ZZ', 'Each', '1', '$3.12', '−18%'],
+      ['BRG-6004-ZZ', '', 'Each', '250', '$2.84', '−25%'],
+      ['BRG-6205-2RS', 'Ball bearing 6205-2RS', 'Each', '1', '$5.38', '−16%'],
+      ['BRG-6205-2RS', '', 'Each', '100', '$4.86', '−24%'],
+      ['BRG-6205-2RS', '', 'Each', '1,000', '$4.41', '−31%'],
+      ['BRG-6205-2RS', '', 'Box', '1', '$51.20', '−20%'],
+      ['BRG-6308-C3', 'Ball bearing 6308, C3 clearance', 'Each', '1', '$14.75', '−15%'],
+      ['BRG-6308-C3', '', 'Each', '50', '$13.20', '−24%'],
+      ['BRG-6001-2RS', 'Ball bearing 6001-2RS', 'Each', '1', '$1.94', '−19%'],
+      ['BRG-6001-2RS', '', 'Carton', '1', '$1,268.00', '−22%']
+    ];
+    let prev = '';
+    const prices = rows.map(([sku, name, unit, min, price, diff]) => {
+      const first = sku !== prev; prev = sku;
+      return { sku, name, unit, min, price, diff, first, tier: !first };
+    });
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, prices };
+  }
+}
+</script>
+</body>
+</html>

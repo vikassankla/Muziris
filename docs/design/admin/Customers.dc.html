@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Customers · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="customers" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><span aria-current="page">Customers</span></nav>
+      <div class="ph">
+        <div><h1>Customers</h1><p>Companies that buy from you, with their subsidiaries and buyer users.</p></div>
+        <div class="ph-actions">
+          <button class="btn outline" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Export</button>
+          <button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New customer</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search" style="width: 300px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="q">Search customers by name</label><input class="input sm" id="q" placeholder="Search by name"></div>
+        <button class="chip set" type="button" aria-label="Customer group filter: Key accounts (West), Distributors (South). Change"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"></path></svg>Customer group<span class="sep"></span><span class="strong">2 selected</span></button>
+        <button class="chip" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Parent customer</button>
+        <button class="chip" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Has buyer users</button>
+        <button class="btn ghost sm" type="button">Clear filters</button>
+        <span style="flex: 1"></span>
+        <button class="btn outline sm" type="button" aria-haspopup="menu"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM9 3v18M15 3v18"></path></svg>Columns</button>
+      </div>
+
+      <div class="bulk" role="region" aria-label="Bulk actions">
+        <input class="cb" type="checkbox" checked aria-label="Deselect all"><span class="strong">2 customers selected</span>
+        <span style="flex: 1"></span>
+        <button class="btn outline sm" type="button">Change customer group</button>
+        <button class="btn outline sm" type="button">Export selected</button>
+        <button class="btn ghost sm" type="button">Clear selection</button>
+      </div>
+
+      <div class="tbl-wrap" style="position: relative; overflow: visible">
+        <table class="tbl">
+          <thead><tr>
+            <th class="w" scope="col"><input class="cb" type="checkbox" aria-label="Select all on this page"></th>
+            <th scope="col" aria-sort="ascending"><button type="button">Name<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg></button></th>
+            <th scope="col"><button type="button">Customer group<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true" style="opacity: .5"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg></button></th>
+            <th scope="col">Parent customer</th>
+            <th scope="col" class="r"><button type="button">Subsidiaries</button></th>
+            <th scope="col" class="r"><button type="button">Buyer users</button></th>
+            <th scope="col" style="width: 48px"><span class="sr">Actions</span></th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+              <tr class="{{r.cls}}">
+                <td class="w"><input class="cb" type="checkbox" checked="{{r.sel}}" aria-label="Select {{r.name}}"></td>
+                <td><a class="rl" href="#">{{r.name}}</a><div class="xs muted">{{r.city}}</div></td>
+                <td>{{r.group}}</td>
+                <td><sc-if value="{{r.parent}}" hint-placeholder-val="{{ false }}"><a class="link" href="#">{{r.parent}}</a></sc-if><sc-if value="{{r.noParent}}" hint-placeholder-val="{{ true }}"><span class="muted">None</span></sc-if></td>
+                <td class="r num">{{r.subs}}</td>
+                <td class="r num">{{r.buyers}}</td>
+                <td class="r"><button class="btn ghost icon sm" type="button" aria-haspopup="menu" aria-label="Actions for {{r.name}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <div class="menu" role="menu" aria-label="Actions for Deccan Pumps &amp; Valves Ltd" style="position: absolute; right: 12px; top: 300px; z-index: 2; width: 230px">
+          <button class="menu-item" role="menuitem" type="button">Open</button>
+          <button class="menu-item on" role="menuitem" type="button">Invite a buyer user</button>
+          <button class="menu-item" role="menuitem" type="button">Change customer group</button>
+          <button class="menu-item" role="menuitem" type="button">Set parent customer</button>
+          <div class="menu-sep" role="separator"></div>
+          <button class="menu-item danger" role="menuitem" type="button">Delete customer…</button>
+        </div>
+      </div>
+
+      <div class="pager">
+        <span>Showing <b class="num" style="color: var(--foreground)">1 to 25</b> of <b class="num" style="color: var(--foreground)">1,284</b></span>
+        <span style="flex: 1"></span>
+        <label class="row" for="ps">Rows per page <button class="select sm" id="ps" type="button" style="width: 72px">25<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></label>
+        <nav class="row" aria-label="Pagination" style="gap: 4px">
+          <button class="btn outline icon sm" type="button" aria-label="Previous page" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <button class="btn sm" type="button" aria-current="page" style="min-width: 30px">1</button>
+          <button class="btn outline sm" type="button" style="min-width: 30px">2</button>
+          <button class="btn outline sm" type="button" style="min-width: 30px">3</button>
+          <span class="muted">…</span>
+          <button class="btn outline sm" type="button" style="min-width: 30px">52</button>
+          <button class="btn outline icon sm" type="button" aria-label="Next page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+        </nav>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const data = [
+      ['Acme Engineering Pvt Ltd', 'Pune, Maharashtra', 'Key accounts (West)', '', 3, 18, true],
+      ['Acme Engineering (Chakan Plant)', 'Chakan, Maharashtra', 'Key accounts (West)', 'Acme Engineering Pvt Ltd', 1, 6, true],
+      ['Acme Engineering (Chakan Tool Room)', 'Chakan, Maharashtra', 'Key accounts (West)', 'Acme Engineering (Chakan Plant)', 0, 2, false],
+      ['Acme Engineering (Hosur Works)', 'Hosur, Tamil Nadu', 'Key accounts (West)', 'Acme Engineering Pvt Ltd', 0, 5, false],
+      ['Coromandel Process Equipment', 'Chennai, Tamil Nadu', 'Distributors (South)', '', 2, 9, false],
+      ['Coromandel Process (Ennore)', 'Ennore, Tamil Nadu', 'Distributors (South)', 'Coromandel Process Equipment', 0, 3, false],
+      ['Deccan Pumps & Valves Ltd', 'Hyderabad, Telangana', 'Distributors (South)', '', 0, 7, false],
+      ['Kaveri Industrial Traders', 'Mysuru, Karnataka', 'Distributors (South)', '', 0, 4, false],
+      ['Malabar Marine Spares', 'Kochi, Kerala', 'Distributors (South)', '', 1, 3, false],
+      ['Malabar Marine Spares (Vizhinjam)', 'Thiruvananthapuram, Kerala', 'Distributors (South)', 'Malabar Marine Spares', 0, 1, false],
+      ['Sahyadri Forgings Pvt Ltd', 'Kolhapur, Maharashtra', 'Key accounts (West)', '', 0, 6, false],
+      ['Western Ghats Tools & Dies', 'Nashik, Maharashtra', 'Key accounts (West)', '', 0, 0, false]
+    ];
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      rows: data.map(([name, city, group, parent, subs, buyers, sel]) => ({
+        name, city, group, parent, noParent: !parent, subs, buyers, sel, cls: sel ? 'sel' : ''
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

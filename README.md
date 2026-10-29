@@ -11,6 +11,7 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 | Path                | What it is                                                                 |
 | ------------------- | -------------------------------------------------------------------------- |
 | `apps/api`          | The HTTP API (Hono on Node.js): health checks today, the APIs later        |
+| `apps/admin`        | The admin app (React, Vite, TanStack Router, shadcn/ui)                    |
 | `modules/platform`  | Organization, websites, and settings that resolve from customer to global  |
 | `modules/identity`  | Admin and buyer accounts, password hashing, sessions, rate limiting        |
 | `modules/access`    | Admin roles and permissions, buyer roles with access levels, query scoping |
@@ -19,7 +20,7 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 | `modules/catalog`   | Simple products, product units with precision, category tree, attributes   |
 | `packages/db`       | PostgreSQL connection and the ordered migration runner                     |
 | `packages/money`    | Exact money and decimal maths, currency rules, lakh and crore formatting   |
-| `docs/`             | Glossary and architecture decision records                                 |
+| `docs/`             | Glossary, architecture decision records, admin design boards               |
 
 ## Run it locally
 
@@ -37,6 +38,22 @@ pnpm --filter @muziris/api dev
 `admin:create` asks for the password without showing it and gives the new admin the built-in
 `administrator` role. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
+
+### The admin app
+
+With the API running on `127.0.0.1:4000`, start the admin app in a second terminal:
+
+```sh
+pnpm --filter @muziris/admin dev    # http://localhost:5173
+```
+
+Sign in with the admin you made with `admin:create`. The Vite dev server proxies `/admin/v1` to
+the API, so the app and the API share one origin and the `__Host-` session cookie stays
+first-party. `http://localhost:5173` must be in `CORS_ORIGINS`, because the API checks the
+Origin of every sign-in and change. The app keeps no tokens; browser storage holds only the theme and sidebar preferences. In
+the Claude desktop app, `.claude/launch.json` has `admin` and `api` entries for the same
+commands. In production, serve the built app (`pnpm --filter @muziris/admin build`, output in
+`apps/admin/dist`) from the same origin as the API, behind one reverse proxy.
 
 Sign-in endpoints: `POST /admin/v1/auth/sign-in` and `POST /storefront/v1/auth/sign-in` with
 `{"email": "...", "password": "..."}`. Requests must come from an origin listed in

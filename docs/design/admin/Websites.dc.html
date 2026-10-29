@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Websites · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="websites" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Settings</a><span aria-hidden="true">/</span><span aria-current="page">Websites</span></nav>
+      <div class="ph">
+        <div><h1>Websites</h1><p>Each website is a storefront with its own currency, locale and time zone. Amounts and dates in the admin follow the selected website.</p></div>
+        <div class="ph-actions"><button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New website</button></div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Country</th><th scope="col">Currency</th><th scope="col">Locale</th><th scope="col">Time zone</th><th scope="col">Units</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            <sc-for list="{{sites}}" as="s" hint-placeholder-count="3">
+              <tr class="{{s.cls}}" aria-selected="{{s.sel}}"><td class="mono">{{s.code}}</td><td><a class="rl" href="#">{{s.name}}</a></td><td>{{s.country}}</td><td><span class="tag">{{s.cur}}</span></td><td class="mono">{{s.locale}}</td><td>{{s.tz}}</td><td>{{s.units}}</td><td><span class="badge {{s.tone}}">{{s.status}}</span></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section class="card" style="flex: 999 1 640px; min-width: 0" aria-labelledby="ws-h">
+          <div class="card-h"><h2 id="ws-h">Muziris India</h2><span class="badge ok">Active</span><span class="grow"></span><span class="xs muted">Created 2 Jan 2024</span></div>
+          <form class="card-b" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+            <div class="field"><label class="label" for="w-code">Code</label><input class="input mono" id="w-code" value="in" disabled><span class="hint">Set when the website was created; cannot be changed.</span></div>
+            <div class="field"><label class="label" for="w-name">Name</label><input class="input" id="w-name" value="Muziris India"></div>
+            <div class="field"><label class="label" for="w-country">Country</label><button class="select" id="w-country" type="button">India<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><span class="hint">Decides tax: GST for India, sales tax for the United States.</span></div>
+            <div class="field"><label class="label" for="w-cur">Default currency</label><button class="select" id="w-cur" type="button">INR · Indian rupee (₹)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><span class="hint">Locked: 4,812 orders use this currency.</span></div>
+            <div class="field"><label class="label" for="w-loc">Default locale</label><button class="select" id="w-loc" type="button">English (India) · en-IN<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            <div class="field"><label class="label" for="w-tz">Time zone</label><button class="select" id="w-tz" type="button">Asia/Kolkata · IST (UTC+05:30)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            <fieldset style="border: 0; padding: 0; margin: 0" class="field">
+              <legend class="label" style="margin-bottom: 6px">Unit system</legend>
+              <div class="row" style="gap: 20px"><label class="row"><input class="radio" type="radio" name="units" checked>Metric (kg, m)</label><label class="row"><input class="radio" type="radio" name="units">Imperial (lb, ft)</label></div>
+            </fieldset>
+            <div class="field">
+              <span class="label" id="w-act-l">Active</span>
+              <div class="row" style="gap: 10px"><button class="switch on" type="button" role="switch" aria-checked="true" aria-labelledby="w-act-l"></button><span class="small muted">Buyers can sign in and order on this storefront.</span></div>
+            </div>
+          </form>
+          <div class="card-f"><button class="btn outline" type="button">Cancel</button><button class="btn" type="button">Save website</button></div>
+        </section>
+
+        <aside class="card" style="flex: 1 1 320px; min-width: 280px" aria-labelledby="wp-h">
+          <div class="card-h"><h2 id="wp-h">How this website formats</h2></div>
+          <dl class="card-b dl num" style="grid-template-columns: 120px 1fr">
+            <dt>Money</dt><dd>₹12,34,567.50</dd>
+            <dt>Large amounts</dt><dd>₹4,26,18,940.00</dd>
+            <dt>Date and time</dt><dd>27 Oct 2026, 14:05 IST</dd>
+            <dt>Quantity</dt><dd>2.000 kg · 1,250 Each</dd>
+            <dt>Weight</dt><dd>Metric: 18.500 kg</dd>
+          </dl>
+          <div class="card-b small muted" style="border-top: 1px solid var(--border)">Muziris US shows $1,234,567.50 and Oct 27, 2026, 2:05 PM CT.</div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sites = [
+      ['in', 'Muziris India', 'India', 'INR', 'en-IN', 'Asia/Kolkata (IST)', 'Metric', 'Active', 'ok', true],
+      ['us', 'Muziris US', 'United States', 'USD', 'en-US', 'America/Chicago (CT)', 'Imperial', 'Active', 'ok', false],
+      ['ae', 'Muziris Gulf', 'United Arab Emirates', 'AED', 'en-AE', 'Asia/Dubai (GST)', 'Metric', 'Inactive', 'neutral', false]
+    ].map(([code, name, country, cur, locale, tz, units, status, tone, sel]) => ({ code, name, country, cur, locale, tz, units, status, tone, sel: sel ? 'true' : 'false', cls: sel ? 'sel' : '' }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, sites };
+  }
+}
+</script>
+</body>
+</html>

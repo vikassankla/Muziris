@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Customer groups · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%; position: relative">
+<div class="app">
+  <dc-import name="Sidebar" active="groups" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Customers</a><span aria-hidden="true">/</span><span aria-current="page">Customer groups</span></nav>
+      <div class="ph">
+        <div><h1>Customer groups</h1><p>Group customers to share price lists, settings and payment terms.</p></div>
+        <div class="ph-actions"><button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New customer group</button></div>
+      </div>
+      <div class="toolbar"><div class="search" style="width: 280px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="gq">Search customer groups</label><input class="input sm" id="gq" placeholder="Search code or name"></div></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th scope="col" aria-sort="ascending"><button type="button">Code<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg></button></th><th scope="col">Name</th><th scope="col" class="r">Customers</th><th scope="col">Price lists <span class="tab-planned">Planned</span></th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+          <tbody>
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="8">
+              <tr><td class="mono">{{g.code}}</td><td><a class="rl" href="#">{{g.name}}</a></td><td class="r num">{{g.n}}</td><td class="muted">{{g.pl}}</td><td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for {{g.name}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <div class="pager"><span>Showing <b class="num" style="color: var(--foreground)">1 to 8</b> of <b class="num" style="color: var(--foreground)">8</b></span></div>
+    </main>
+  </div>
+</div>
+<div class="overlay" style="position: absolute; inset: 0; display: flex; justify-content: flex-end">
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="ng-h" style="width: 420px; max-width: 100%; height: 100%">
+    <header class="row" style="align-items: flex-start; padding: 20px 20px 16px; border-bottom: 1px solid var(--border)">
+      <div class="grow"><h2 id="ng-h" style="margin: 0; font-size: 17px; font-weight: 650">New customer group</h2><p class="small muted" style="margin: 4px 0 0">You can assign customers and price lists after saving.</p></div>
+      <button class="btn ghost icon sm" type="button" aria-label="Close"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </header>
+    <form style="flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+      <div class="field"><label class="label" for="ng-n">Name</label><input class="input" id="ng-n" value="Key accounts (West)"></div>
+      <div class="field">
+        <label class="label" for="ng-c">Code</label>
+        <input class="input invalid mono" id="ng-c" value="key-accounts-west" aria-invalid="true" aria-describedby="ng-c-e">
+        <span class="err" id="ng-c-e"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 8v4M12 16h.01"></path></svg>This code is already used by another customer group.</span>
+        <span class="hint">Lowercase letters, numbers and hyphens. Used in imports and the API; cannot be changed later.</span>
+      </div>
+    </form>
+    <footer class="row" style="padding: 14px 20px; border-top: 1px solid var(--border); justify-content: flex-end"><button class="btn outline" type="button">Cancel</button><button class="btn" type="submit">Create customer group</button></footer>
+  </section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      groups: [
+        ['distributors-south', 'Distributors (South)', '214', 'South distributor net 2026'],
+        ['distributors-west', 'Distributors (West)', '187', 'West distributor net 2026'],
+        ['key-accounts-west', 'Key accounts (West)', '36', 'Key accounts (West) 2026'],
+        ['oem-manufacturers', 'OEM manufacturers', '92', 'OEM volume tiers'],
+        ['sme-workshops', 'SME workshops', '611', 'India list price'],
+        ['tier1-automotive', 'Tier-1 automotive', '28', 'Auto Tier-1 contract'],
+        ['us-distributors', 'US distributors', '104', 'US distributor net 2026'],
+        ['us-government', 'US government and municipal', '12', 'None assigned']
+      ].map(([code, name, n, pl]) => ({ code, name, n, pl }))
+    };
+  }
+}
+</script>
+</body>
+</html>

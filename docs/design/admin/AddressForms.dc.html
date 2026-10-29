@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Add address · India and United States</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%; background: var(--muted); padding: 40px 32px">
+  <div style="max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 32px">
+
+    <div class="col" style="gap: 10px">
+      <span class="tag" style="align-self: flex-start">Sheet · India address (Muziris India)</span>
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="in-h" style="border: 1px solid var(--border); border-radius: var(--radius); min-height: 860px">
+        <header class="row" style="align-items: flex-start; padding: 20px 20px 16px; border-bottom: 1px solid var(--border)">
+          <div class="grow"><h2 id="in-h" style="margin: 0; font-size: 17px; font-weight: 650">Add address</h2><p class="small muted" style="margin: 4px 0 0">Acme Engineering Pvt Ltd</p></div>
+          <button class="btn ghost icon sm" type="button" aria-label="Close"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </header>
+        <form style="flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start">
+          <div class="field" style="grid-column: span 2"><label class="label" for="in-c">Country</label><button class="select" id="in-c" type="button">India<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="in-l">Label</label><input class="input" id="in-l" value="Chakan stores"><span class="hint">Shown to buyers when they pick an address.</span></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="in-s1">Street address</label><input class="input" id="in-s1" value="Gat No. 118, Chakan Industrial Area Phase II"></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="in-s2">Street address line 2 <span class="muted" style="font-weight: 400">(optional)</span></label><input class="input" id="in-s2" value="Near Mahalunge Gate"></div>
+          <div class="field"><label class="label" for="in-city">City</label><input class="input" id="in-city" value="Khed, Pune"></div>
+          <div class="field"><label class="label" for="in-pin">PIN code</label><input class="input num" id="in-pin" inputmode="numeric" maxlength="6" value="410501"><span class="hint">6 digits</span></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="in-st">State</label><button class="select" id="in-st" type="button"><span><span class="mono muted">27</span> · Maharashtra</span><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><span class="hint">GST state code. Decides CGST + SGST or IGST on orders.</span></div>
+          <div class="field" style="grid-column: span 2">
+            <label class="label" for="in-gst">GSTIN <span class="muted" style="font-weight: 400">(optional)</span></label>
+            <input class="input invalid mono" id="in-gst" maxlength="15" value="29AABCA1234F2Z4" aria-invalid="true" aria-describedby="in-gst-e" style="letter-spacing: .06em">
+            <span class="err" id="in-gst-e"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 8v4M12 16h.01"></path></svg>GSTIN starts with 29 (Karnataka) but the state is 27 (Maharashtra).</span>
+            <span class="hint">15 characters: state code, PAN, entity number, Z, check digit.</span>
+          </div>
+          <fieldset style="grid-column: span 2; border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px">
+            <legend class="label" style="margin-bottom: 8px">Defaults</legend>
+            <label class="row"><input class="cb" type="checkbox">Default billing address</label>
+            <label class="row"><input class="cb" type="checkbox" checked>Default shipping address <span class="xs muted">(replaces Registered office, Pune)</span></label>
+          </fieldset>
+        </form>
+        <footer class="row" style="padding: 14px 20px; border-top: 1px solid var(--border); justify-content: flex-end"><button class="btn outline" type="button">Cancel</button><button class="btn" type="submit">Save address</button></footer>
+      </section>
+    </div>
+
+    <div class="col" style="gap: 10px">
+      <span class="tag" style="align-self: flex-start">Sheet · United States address (Muziris US)</span>
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="us-h" lang="en-US" style="border: 1px solid var(--border); border-radius: var(--radius); min-height: 860px">
+        <header class="row" style="align-items: flex-start; padding: 20px 20px 16px; border-bottom: 1px solid var(--border)">
+          <div class="grow"><h2 id="us-h" style="margin: 0; font-size: 17px; font-weight: 650">Add address</h2><p class="small muted" style="margin: 4px 0 0">Gulf Coast Industrial Supply</p></div>
+          <button class="btn ghost icon sm" type="button" aria-label="Close"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </header>
+        <form style="flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start">
+          <div class="field" style="grid-column: span 2"><label class="label" for="us-c">Country</label><button class="select" id="us-c" type="button">United States<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="us-l">Label</label><input class="input" id="us-l" value="Houston distribution center"></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="us-s1">Street address</label><input class="input" id="us-s1" value="8420 Market Street Road"></div>
+          <div class="field" style="grid-column: span 2"><label class="label" for="us-s2">Street address line 2 <span class="muted" style="font-weight: 400">(optional)</span></label><input class="input" id="us-s2" value="Dock 6"></div>
+          <div class="field"><label class="label" for="us-city">City</label><input class="input" id="us-city" value="Houston"></div>
+          <div class="field"><label class="label" for="us-st">State</label><button class="select" id="us-st" type="button">Texas (TX)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+          <div class="field" style="grid-column: span 2">
+            <label class="label" for="us-zip">ZIP code</label>
+            <input class="input invalid num" id="us-zip" value="77029-12" aria-invalid="true" aria-describedby="us-zip-e" style="max-width: 200px">
+            <span class="err" id="us-zip-e"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 8v4M12 16h.01"></path></svg>Enter a 5-digit ZIP code (77029) or ZIP+4 (77029-1234).</span>
+          </div>
+          <div class="alert info" style="grid-column: span 2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16v-4M12 8h.01"></path></svg><span class="small">Sales tax on orders shipped here uses the Texas rate for this ZIP code.</span></div>
+          <fieldset style="grid-column: span 2; border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px">
+            <legend class="label" style="margin-bottom: 8px">Defaults</legend>
+            <label class="row"><input class="cb" type="checkbox" checked>Default billing address</label>
+            <label class="row"><input class="cb" type="checkbox" checked>Default shipping address</label>
+          </fieldset>
+        </form>
+        <footer class="row" style="padding: 14px 20px; border-top: 1px solid var(--border); justify-content: flex-end"><button class="btn outline" type="button">Cancel</button><button class="btn" type="submit">Save address</button></footer>
+      </section>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.dark ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

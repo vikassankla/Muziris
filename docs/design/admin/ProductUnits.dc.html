@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Product units · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="units" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">Product units</span></nav>
+      <div class="ph">
+        <div><h1>Product units</h1><p>The units products are sold in, and how many decimal places a quantity may have.</p></div>
+        <div class="ph-actions"><button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New product unit</button></div>
+      </div>
+      <div class="alert info"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16v-4M12 8h.01"></path></svg><div class="col" style="gap: 2px"><span class="t">Create product units before your first product.</span><span class="small">Every product needs a primary product unit. Precision cannot be lowered once orders use the unit.</span></div></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col" class="r">Decimal precision</th><th scope="col">A quantity is shown as</th><th scope="col" class="r">Products</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+          <tbody>
+            <sc-for list="{{units}}" as="u" hint-placeholder-count="8">
+              <tr><td class="mono">{{u.code}}</td><td class="strong">{{u.name}}</td><td class="r num">{{u.prec}}</td><td class="num">{{u.ex}}</td><td class="r num">{{u.n}}</td><td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for {{u.name}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin: 0">Quantities always show every decimal place the unit allows: 2 kg with precision 3 is shown as <span class="num" style="color: var(--foreground)">2.000 kg</span>.</p>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      units: [
+        ['each', 'Each', 0, '1,250 Each', '7,904'],
+        ['box', 'Box', 0, '12 Box', '1,322'],
+        ['carton', 'Carton', 0, '3 Carton', '418'],
+        ['pair', 'Pair', 0, '24 Pair', '214'],
+        ['kg', 'Kilogram', 3, '2.000 kg', '96'],
+        ['m', 'Metre', 2, '15.50 m', '138'],
+        ['l', 'Litre', 2, '20.00 l', '41'],
+        ['set', 'Set', 0, '6 Set', '77']
+      ].map(([code, name, prec, ex, n]) => ({ code, name, prec, ex, n }))
+    };
+  }
+}
+</script>
+</body>
+</html>

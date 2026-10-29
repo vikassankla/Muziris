@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Quote Q-2026-0421 · Muziris admin</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="quotes" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Quotes</a><span aria-hidden="true">/</span><span aria-current="page" class="mono">Q-2026-0421</span></nav>
+      <div class="ph">
+        <div>
+          <div class="row" style="gap: 10px; flex-wrap: wrap"><h1>Quote <span class="mono" style="font-size: 20px">Q-2026-0421</span></h1><span class="badge neutral">Draft</span></div>
+          <p>For <a class="link" href="#">Acme Engineering Pvt Ltd</a> · built from <a class="link mono" href="RFQs.dc.html">RFQ-2026-1187</a> · last saved 28 Oct 2026, 10:42 IST</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn ghost" type="button">Delete draft…</button>
+          <button class="btn outline" type="button">Preview as buyer</button>
+          <button class="btn outline" type="button">Save draft</button>
+          <button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"></path></svg>Send to buyer</button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 999 1 720px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <section class="card">
+            <div class="card-h"><h2>Quote details</h2></div>
+            <div class="card-b" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+              <div class="field"><label class="label" for="q-c">Customer</label><button class="select" id="q-c" type="button" role="combobox" aria-expanded="false">Acme Engineering Pvt Ltd<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+              <div class="field"><label class="label" for="q-b">Buyer user</label><button class="select" id="q-b" type="button" role="combobox" aria-expanded="false">Rohan Kulkarni<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+              <div class="field"><label class="label" for="q-v">Valid until</label><button class="select" id="q-v" type="button"><span class="num">17 Nov 2026, 23:59 IST</span><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v16H3zM3 10h18M8 3v4M16 3v4"></path></svg></button><span class="hint">20 days. The buyer can accept until then.</span></div>
+              <div class="field"><label class="label" for="q-pt">Payment term</label><button class="select" id="q-pt" type="button">Net 45 (customer default)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+              <div class="field" style="grid-column: span 2"><label class="label" for="q-s">Ship to</label><button class="select" id="q-s" type="button">Chakan stores · Khed, Pune, Maharashtra (27)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-h"><h2>Lines</h2><span class="small muted">Negotiated price per line. List price comes from Acme contract FY 2026-27.</span><span class="grow"></span><button class="btn outline sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add product</button></div>
+            <div style="overflow-x: auto">
+            <table class="tbl" style="min-width: 860px">
+              <thead><tr><th scope="col">Product</th><th scope="col" class="r" style="width: 130px">Quantity</th><th scope="col" class="r">List price</th><th scope="col" class="r" style="width: 150px">Quoted unit price</th><th scope="col" class="r">vs. list</th><th scope="col" class="r">Line total</th><th scope="col" style="width: 40px"><span class="sr">Remove</span></th></tr></thead>
+              <tbody>
+                <sc-for list="{{lines}}" as="l" hint-placeholder-count="6">
+                  <tr>
+                    <td style="white-space: normal; padding-top: 8px; padding-bottom: 8px"><span class="col" style="gap: 1px"><span>{{l.name}}</span><span class="xs muted"><span class="mono">{{l.sku}}</span> · asked {{l.asked}}</span></span></td>
+                    <td class="r"><span class="row" style="justify-content: flex-end; gap: 6px"><label class="sr" for="{{l.qid}}">Quantity of {{l.sku}}</label><input class="input sm num" id="{{l.qid}}" value="{{l.qty}}" style="width: 78px; text-align: right"><span class="xs muted" style="width: 30px; text-align: left">{{l.unit}}</span></span></td>
+                    <td class="r num muted">{{l.list}}</td>
+                    <td class="r"><label class="sr" for="{{l.pid}}">Quoted unit price of {{l.sku}} in rupees</label><input class="input sm num" id="{{l.pid}}" value="{{l.price}}" style="width: 120px; text-align: right; margin-left: auto"></td>
+                    <td class="r num {{l.diffCls}}">{{l.diff}}</td>
+                    <td class="r num strong">{{l.total}}</td>
+                    <td><button class="btn ghost icon sm" type="button" aria-label="Remove {{l.sku}}"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; border-top: 1px solid var(--border)">
+              <div class="card-b col" style="gap: 8px; flex: 1 1 280px">
+                <div class="field"><label class="label" for="q-n">Note to the buyer</label><textarea class="input" id="q-n" rows="3">Bearings and gloves ship by 6 Nov to meet your shutdown. End mills quoted in our standard brand; an alternative with 3-day lead time is available on request.</textarea></div>
+              </div>
+              <dl class="card-b num" style="margin: 0; display: grid; grid-template-columns: auto 150px; gap: 8px 24px; font-size: 13.5px; align-content: start">
+                <dt class="muted" style="text-align: right">List value</dt><dd class="muted" style="margin: 0; text-align: right; text-decoration: line-through">₹8,03,250.00</dd>
+                <dt class="muted" style="text-align: right">Subtotal</dt><dd style="margin: 0; text-align: right">₹7,45,800.00</dd>
+                <dt class="muted" style="text-align: right">Freight</dt><dd style="margin: 0; text-align: right">₹2,500.00</dd>
+                <dt class="muted" style="text-align: right">CGST 9%</dt><dd style="margin: 0; text-align: right">₹67,347.00</dd>
+                <dt class="muted" style="text-align: right">SGST 9%</dt><dd style="margin: 0; text-align: right">₹67,347.00</dd>
+                <dt class="strong" style="text-align: right">Quote total</dt><dd class="strong" style="margin: 0; text-align: right; font-size: 16px">₹8,82,994.00</dd>
+                <dt class="muted xs" style="text-align: right">Buyer saves</dt><dd class="xs" style="margin: 0; text-align: right">₹57,450.00 (7.2%)</dd>
+              </dl>
+            </div>
+          </section>
+        </div>
+
+        <aside style="flex: 1 1 320px; min-width: 300px; display: flex; flex-direction: column; gap: 16px">
+          <section class="card" aria-labelledby="ql-h">
+            <div class="card-h"><h2 id="ql-h">Quote status</h2></div>
+            <ol class="card-b col" style="list-style: none; margin: 0; gap: 12px">
+              <li class="row" style="align-items: flex-start"><span class="badge info" style="min-width: 86px">Now</span><span class="small"><b>Draft</b> · only staff can see it</span></li>
+              <li class="row" style="align-items: flex-start"><span class="badge outline plain" style="min-width: 86px">Next</span><span class="small"><b>Sent</b> · the buyer gets an email and sees it under Quotes</span></li>
+              <li class="row" style="align-items: flex-start"><span class="badge outline plain" style="min-width: 86px">Then</span><span class="small"><b>Accepted</b> becomes an order at these prices; <b>Declined</b> keeps the buyer’s reason; <b>Expired</b> after 17 Nov 2026</span></li>
+            </ol>
+          </section>
+          <section class="card" aria-labelledby="qo-h">
+            <div class="card-h"><h2 id="qo-h">Other quotes for this customer</h2></div>
+            <table class="tbl compact">
+              <thead><tr><th scope="col">Quote</th><th scope="col">Status</th><th scope="col" class="r">Total</th></tr></thead>
+              <tbody>
+                <tr><td><a class="rl mono" href="#">Q-2026-0418</a><div class="xs muted">expires today, 18:00 IST</div></td><td><span class="badge info">Sent</span></td><td class="r num">₹6,48,200.00</td></tr>
+                <tr><td><a class="rl mono" href="#">Q-2026-0377</a><div class="xs muted">accepted 12 Oct 2026</div></td><td><span class="badge ok">Accepted</span></td><td class="r num">₹11,04,750.00</td></tr>
+                <tr><td><a class="rl mono" href="#">Q-2026-0342</a><div class="xs muted">“Price too high on 22212-E”</div></td><td><span class="badge bad">Declined</span></td><td class="r num">₹2,91,600.00</td></tr>
+                <tr><td><a class="rl mono" href="#">Q-2026-0309</a><div class="xs muted">expired 30 Sep 2026</div></td><td><span class="badge neutral">Expired</span></td><td class="r num">₹84,300.00</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section class="card" aria-labelledby="qa-h">
+            <div class="card-h"><h2 id="qa-h">Activity</h2></div>
+            <ol style="list-style: none; margin: 0; padding: 4px 16px 12px">
+              <li class="small" style="padding: 8px 0; border-bottom: 1px solid var(--border)"><b>Priya Raman</b> changed price of BRG-6205-2RS from ₹128.00 to ₹130.00<div class="xs muted num">28 Oct 2026, 10:42 IST</div></li>
+              <li class="small" style="padding: 8px 0; border-bottom: 1px solid var(--border)"><b>Priya Raman</b> matched “Stainless hex bolt M16 × 80, A4-80” to FST-SS-M16x80-A4<div class="xs muted num">28 Oct 2026, 10:31 IST</div></li>
+              <li class="small" style="padding: 8px 0"><b>Priya Raman</b> created the draft from RFQ-2026-1187<div class="xs muted num">28 Oct 2026, 10:25 IST</div></li>
+            </ol>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const lines = [
+      ['Deep groove ball bearing 6205-2RS', 'BRG-6205-2RS', '2,000 Each', '2,000', 'Each', '₹142.50', '130.00', '−8.8%', '₹2,60,000.00'],
+      ['Spherical roller bearing 22212-E', 'BRG-22212-E', '40 Each', '40', 'Each', '₹6,840.00', '6,480.00', '−5.3%', '₹2,59,200.00'],
+      ['Nitrile coated safety gloves, size 9 (L)', 'GLV-NIT-9-L', '600 Pair', '600', 'Pair', '₹86.00', '79.00', '−8.1%', '₹47,400.00'],
+      ['Carbide end mill 10 mm, 4 flute, TiAlN', 'CT-EM-10-4F', '60 Each', '60', 'Each', '₹2,180.00', '1,995.00', '−8.5%', '₹1,19,700.00'],
+      ['Bearing grease LGMT 2', 'BRG-GRS-LGMT2-1', '25.000 kg', '25.000', 'kg', '₹1,120.00', '1,120.00', '0.0%', '₹28,000.00'],
+      ['Stainless hex bolt M16 × 80, A4-80', 'FST-SS-M16x80-A4', '500 Each', '500', 'Each', '₹68.50', '63.00', '−8.0%', '₹31,500.00']
+    ].map(([name, sku, asked, qty, unit, list, price, diff, total], i) => ({
+      name, sku, asked, qty, unit, list, price, diff, total, qid: 'qq' + i, pid: 'qp' + i,
+      diffCls: diff === '0.0%' ? 'muted' : ''
+    }));
+    return { theme: this.props.dark ? 'dark' : '', isDark: !!this.props.dark, lines };
+  }
+}
+</script>
+</body>
+</html>

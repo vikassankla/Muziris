@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Acme Engineering Pvt Ltd · Customer</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%">
+<div class="app">
+  <dc-import name="Sidebar" active="customers" dark="{{isDark}}" hint-size="240px,100%"></dc-import>
+  <div class="app-main">
+    <dc-import name="Topbar" website="Muziris India" dark="{{isDark}}" hint-size="100%,56px"></dc-import>
+    <main class="page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Home</a><span aria-hidden="true">/</span><a href="#">Customers</a><span aria-hidden="true">/</span><span aria-current="page">Acme Engineering Pvt Ltd</span></nav>
+      <div class="ph">
+        <span class="av lg" style="border-radius: 10px"><svg class="i lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10M9 7h2M9 11h2M9 15h2"></path></svg></span>
+        <div>
+          <div class="row" style="gap: 10px; flex-wrap: wrap"><h1>Acme Engineering Pvt Ltd</h1><span class="badge info">Key accounts (West)</span><span class="badge outline plain">Top-level customer</span></div>
+          <p>Pune, Maharashtra · 3 subsidiaries · 18 buyer users · customer since 14 Mar 2024</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn outline" type="button">Edit</button>
+          <button class="btn" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg>Invite a buyer user</button>
+          <button class="btn outline icon" type="button" aria-haspopup="menu" aria-label="More actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Customer sections">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="10">
+          <button class="{{t.cls}}" role="tab" type="button" aria-selected="{{t.on}}" onClick="{{t.pick}}">{{t.label}}<sc-if value="{{t.count}}" hint-placeholder-val="{{ false }}"><span class="badge">{{t.count}}</span></sc-if><sc-if value="{{t.planned}}" hint-placeholder-val="{{ false }}"><span class="tab-planned">Planned</span></sc-if></button>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+          <sc-if value="{{show.overview}}" hint-placeholder-val="{{ true }}">
+            <section class="card">
+              <div class="card-h"><h2>Details</h2></div>
+              <div class="card-b">
+                <dl class="dl" style="align-items: center">
+                  <dt>Name</dt><dd class="row"><span class="grow">Acme Engineering Pvt Ltd</span><button class="btn ghost sm" type="button">Rename</button></dd>
+                  <dt>Customer group</dt><dd class="row"><span class="grow"><a class="link" href="#">Key accounts (West)</a></span><button class="btn ghost sm" type="button">Change</button></dd>
+                  <dt>Parent customer</dt><dd class="row"><span class="grow muted">None (top-level customer)</span><button class="btn ghost sm" type="button">Change</button></dd>
+                  <dt>Website</dt><dd>Muziris India</dd>
+                  <dt>Payment term</dt><dd>Net 45 <span class="muted small">(from customer group)</span></dd>
+                </dl>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-h"><h2>Hierarchy</h2><span class="grow"></span><button class="btn outline sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add subsidiary</button></div>
+              <div class="card-b">
+                <ul role="tree" aria-label="Customer hierarchy" style="list-style: none; margin: 0; padding: 0">
+                  <sc-for list="{{tree}}" as="n" hint-placeholder-count="5">
+                    <li role="treeitem" aria-level="{{n.level}}" aria-current="{{n.current}}" class="row" style="height: 40px; padding-left: {{n.pad}}; border-radius: 6px; background: {{n.bg}}">
+                      <span class="muted" aria-hidden="true" style="width: 16px; text-align: center">{{n.glyph}}</span>
+                      <svg class="i muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M15 9h4a2 2 0 0 1 2 2v10"></path></svg>
+                      <a class="{{n.linkCls}}" href="#">{{n.name}}</a>
+                      <sc-if value="{{n.isCurrent}}" hint-placeholder-val="{{ false }}"><span class="badge outline plain">This customer</span></sc-if>
+                      <span class="grow"></span>
+                      <span class="xs muted num" style="padding-right: 10px">{{n.meta}}</span>
+                    </li>
+                  </sc-for>
+                </ul>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{show.buyers}}" hint-placeholder-val="{{ false }}">
+            <div class="toolbar">
+              <div class="search" style="width: 260px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"></path></svg><label class="sr" for="bq">Search buyer users</label><input class="input sm" id="bq" placeholder="Search name or email"></div>
+              <button class="chip" type="button">Buyer role</button><button class="chip" type="button">Status</button>
+              <label class="row small"><input class="cb" type="checkbox" checked>Include subsidiaries</label>
+              <span style="flex: 1"></span>
+              <button class="btn outline sm" type="button">Link existing buyer user</button>
+              <button class="btn sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add buyer user</button>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Buyer roles</th><th scope="col">Status</th><th scope="col">Last sign-in</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+                <tbody>
+                  <sc-for list="{{buyers}}" as="u" hint-placeholder-count="6">
+                    <tr>
+                      <td><span class="row"><span class="av">{{u.ini}}</span><span class="col" style="gap: 0"><a class="rl" href="#">{{u.name}}</a><span class="xs muted">{{u.cust}}</span></span></span></td>
+                      <td class="muted">{{u.email}}</td>
+                      <td><span class="row" style="gap: 4px; flex-wrap: wrap"><sc-for list="{{u.roles}}" as="ro" hint-placeholder-count="2"><span class="badge outline plain">{{ro}}</span></sc-for><button class="btn ghost icon sm" type="button" aria-label="Edit buyer roles of {{u.name}}"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button></span></td>
+                      <td><span class="badge {{u.tone}}">{{u.status}}</span></td>
+                      <td class="muted num">{{u.last}}</td>
+                      <td class="r"><button class="btn ghost icon sm" type="button" aria-label="Actions for {{u.name}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.invites}}" hint-placeholder-val="{{ false }}">
+            <div class="toolbar">
+              <button class="chip set" type="button">Status<span class="sep"></span><span class="strong">Pending, Expired</span></button>
+              <span style="flex: 1"></span>
+              <button class="btn sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg>Invite a buyer user</button>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th scope="col">Email</th><th scope="col">Name</th><th scope="col">Invited by</th><th scope="col">Sent</th><th scope="col">Expires</th><th scope="col">Status</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+                <tbody>
+                  <sc-for list="{{invites}}" as="v" hint-placeholder-count="5">
+                    <tr>
+                      <td>{{v.email}}</td><td>{{v.name}}</td><td class="muted">{{v.by}}</td><td class="num">{{v.sent}}</td><td class="num">{{v.exp}}</td>
+                      <td><span class="badge {{v.tone}}">{{v.status}}</span></td>
+                      <td class="r"><sc-if value="{{v.pending}}" hint-placeholder-val="{{ false }}"><button class="btn outline sm" type="button">Resend</button> <button class="btn ghost sm" type="button" style="color: var(--destructive)">Revoke</button></sc-if><sc-if value="{{v.expired}}" hint-placeholder-val="{{ false }}"><button class="btn outline sm" type="button">Invite again</button></sc-if></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.addresses}}" hint-placeholder-val="{{ false }}">
+            <div class="toolbar"><span class="muted small">4 addresses</span><span style="flex: 1"></span><button class="btn sm" type="button"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add address</button></div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px">
+              <sc-for list="{{addresses}}" as="a" hint-placeholder-count="4">
+                <article class="card card-b" style="display: flex; flex-direction: column; gap: 8px">
+                  <div class="row"><h3 style="margin: 0; font-size: 14px; font-weight: 620" class="grow">{{a.label}}</h3><button class="btn ghost icon sm" type="button" aria-label="Actions for address {{a.label}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 3"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></div>
+                  <div class="row" style="gap: 6px; flex-wrap: wrap"><sc-for list="{{a.badges}}" as="b" hint-placeholder-count="1"><span class="badge ok">{{b}}</span></sc-for></div>
+                  <address class="small" style="font-style: normal; white-space: pre-line">{{a.lines}}</address>
+                  <div class="xs muted">{{a.tax}}</div>
+                </article>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.orders}}" hint-placeholder-val="{{ false }}">
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th scope="col">Order</th><th scope="col">Buyer user</th><th scope="col">Placed at (IST)</th><th scope="col">Status</th><th scope="col" class="r">Total</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{orders}}" as="o" hint-placeholder-count="5"><tr><td><a class="rl mono" href="#">{{o.no}}</a></td><td>{{o.buyer}}</td><td class="num">{{o.at}}</td><td><span class="badge {{o.tone}}">{{o.status}}</span></td><td class="r num">{{o.total}}</td></tr></sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{show.prices}}" hint-placeholder-val="{{ false }}">
+            <section class="card">
+              <div class="card-h"><h2>Price lists assigned</h2><span class="grow"></span><button class="btn outline sm" type="button">Assign price list</button></div>
+              <table class="tbl">
+                <thead><tr><th scope="col">Priority</th><th scope="col">Price list</th><th scope="col">Assigned at</th><th scope="col">Active dates</th></tr></thead>
+                <tbody>
+                  <tr><td class="num">1</td><td><a class="rl" href="#">Acme contract FY 2026-27</a></td><td><span class="badge info plain">Customer</span></td><td class="num">1 Apr 2026 to 31 Mar 2027</td></tr>
+                  <tr><td class="num">2</td><td><a class="rl" href="#">Key accounts (West) 2026</a></td><td><span class="badge neutral plain">Customer group</span></td><td class="num">1 Jan 2026 to 31 Dec 2026</td></tr>
+                  <tr><td class="num">3</td><td><a class="rl" href="#">India list price</a></td><td><span class="badge neutral plain">Website</span></td><td class="muted">No end date</td></tr>
+                </tbody>
+              </table>
+              <div class="card-b small muted" style="border-top: 1px solid var(--border)">Buyers get the first price found, top to bottom. Subsidiaries inherit nothing from this customer unless assigned directly.</div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{show.payment}}" hint-placeholder-val="{{ false }}">
+            <section class="card">
+              <div class="card-h"><h2>Payment term</h2></div>
+              <div class="card-b" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+                <div class="field"><label class="label" for="pt">Payment term</label><button class="select" id="pt" type="button">Net 45 (from customer group)<svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><span class="hint">Override to set a term for this customer only.</span></div>
+                <div class="field"><label class="label" for="cl">Credit limit (₹)</label><input class="input num" id="cl" value="25,00,000.00"><span class="hint">Orders above the remaining limit need finance approval.</span></div>
+              </div>
+              <div class="card-f"><button class="btn outline" type="button">Cancel</button><button class="btn" type="button">Save</button></div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{show.planned}}" hint-placeholder-val="{{ false }}">
+            <section class="card card-b col" style="gap: 8px">
+              <h2 style="margin: 0; font-size: 15px">{{plannedTitle}}</h2>
+              <p class="muted" style="margin: 0">{{plannedBody}}</p>
+            </section>
+          </sc-if>
+        </div>
+
+        <aside class="card" style="flex: 1 1 300px; min-width: 280px" aria-label="Activity">
+          <div class="card-h"><h2>Activity</h2><span class="grow"></span><a class="small link" href="#">Full history</a></div>
+          <ol style="list-style: none; margin: 0; padding: 8px 16px 16px">
+            <sc-for list="{{activity}}" as="e" hint-placeholder-count="6">
+              <li class="row" style="align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border)">
+                <span class="av" style="width: 24px; height: 24px; font-size: 10px">{{e.ini}}</span>
+                <div class="col" style="gap: 2px"><span class="small"><b>{{e.who}}</b> {{e.what}}</span><span class="xs muted num">{{e.when}}</span></div>
+              </li>
+            </sc-for>
+          </ol>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1150}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'overview' }; }
+  renderVals() {
+    const tab = this.state.tab;
+    const defs = [
+      ['overview', 'Overview'], ['buyers', 'Buyer users', '18'], ['invites', 'Invitations', '3'], ['addresses', 'Addresses', '4'],
+      ['orders', 'Orders', '', true], ['quotes', 'Quotes', '', true], ['prices', 'Price lists', '', true], ['settings', 'Settings overrides', '', true], ['payment', 'Payment term', '', true]
+    ];
+    const tabs = defs.map(([k, label, count, planned]) => ({
+      label, count, planned: !!planned, on: tab === k ? 'true' : 'false',
+      cls: 'tab' + (tab === k ? ' on' : ''), pick: () => this.setState({ tab: k })
+    }));
+    const planned = tab === 'quotes' || tab === 'settings';
+    const tree = [
+      [1, 'Acme Engineering Pvt Ltd', 'Pune · 7 buyer users', true, '▾'],
+      [2, 'Acme Engineering (Chakan Plant)', 'Chakan · 6 buyer users', false, '▾'],
+      [3, 'Acme Engineering (Chakan Tool Room)', 'Chakan · 2 buyer users', false, '·'],
+      [2, 'Acme Engineering (Hosur Works)', 'Hosur · 5 buyer users', false, '·'],
+      [2, 'Acme Engineering (Sanand Unit)', 'Sanand · no buyer users', false, '·']
+    ].map(([level, name, meta, cur, glyph]) => ({
+      level, name, meta, glyph, isCurrent: cur, current: cur ? 'true' : 'false',
+      pad: (8 + (level - 1) * 28) + 'px', bg: cur ? 'var(--accent)' : 'transparent',
+      linkCls: cur ? 'strong' : 'link'
+    }));
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      isDark: !!this.props.dark,
+      tabs,
+      show: {
+        overview: tab === 'overview', buyers: tab === 'buyers', invites: tab === 'invites', addresses: tab === 'addresses',
+        orders: tab === 'orders', prices: tab === 'prices', payment: tab === 'payment', planned
+      },
+      plannedTitle: tab === 'quotes' ? 'Quotes' : 'Settings overrides',
+      plannedBody: tab === 'quotes'
+        ? 'Quotes sent to this customer with status (sent, accepted, expired, declined), validity date and total. Same table pattern as Orders.'
+        : 'Settings this customer overrides, each showing the effective value and the scope it comes from. Same pattern as the Settings screen, filtered to this customer.',
+      tree,
+      buyers: [
+        ['RK', 'Rohan Kulkarni', 'rohan.k@acme-eng.in', ['Purchaser', 'Approver'], 'Active', 'ok', '27 Oct 2026, 17:42 IST', 'Acme Engineering Pvt Ltd'],
+        ['SD', 'Sunita Deshpande', 'sunita.d@acme-eng.in', ['Administrator (buyer)'], 'Active', 'ok', '28 Oct 2026, 08:15 IST', 'Acme Engineering Pvt Ltd'],
+        ['NS', 'Neha Shah', 'neha.shah@acme-eng.in', ['Purchaser'], 'Active', 'ok', '26 Oct 2026, 11:03 IST', 'Acme Engineering (Chakan Plant)'],
+        ['AJ', 'Amit Joshi', 'amit.j@acme-eng.in', ['Viewer'], 'Disabled', 'neutral', '2 Aug 2026, 10:20 IST', 'Acme Engineering (Chakan Plant)'],
+        ['DR', 'Divya Raman', 'divya.r@acme-eng.in', ['Purchaser'], 'Active', 'ok', '28 Oct 2026, 09:01 IST', 'Acme Engineering (Hosur Works)'],
+        ['KP', 'Kiran Pawar', 'kiran.p@acme-eng.in', ['Finance'], 'Active', 'ok', '21 Oct 2026, 15:37 IST', 'Acme Engineering Pvt Ltd']
+      ].map(([ini, name, email, roles, status, tone, last, cust]) => ({ ini, name, email, roles, status, tone, last, cust })),
+      invites: [
+        ['prakash.n@acme-eng.in', 'Prakash Nair', 'Priya Raman', '26 Oct 2026', '2 Nov 2026', 'Pending', 'info'],
+        ['f.qureshi@acme-eng.in', 'Farah Qureshi', 'Sunita Deshpande (buyer)', '24 Oct 2026', '31 Oct 2026', 'Pending', 'info'],
+        ['m.gokhale@acme-eng.in', 'Mandar Gokhale', 'Priya Raman', '2 Oct 2026', '9 Oct 2026', 'Expired', 'neutral'],
+        ['neha.shah@acme-eng.in', 'Neha Shah', 'Priya Raman', '12 Sep 2026', '19 Sep 2026', 'Accepted', 'ok'],
+        ['ops@acme-eng.in', 'Ops desk', 'Arun Pillai', '3 Sep 2026', '10 Sep 2026', 'Revoked', 'bad']
+      ].map(([email, name, by, sent, exp, status, tone]) => ({ email, name, by, sent, exp, status, tone, pending: status === 'Pending', expired: status === 'Expired' })),
+      addresses: [
+        { label: 'Registered office, Pune', badges: ['Default billing'], lines: 'Plot 42, MIDC Bhosari\nPune, Maharashtra (27)\n411026, India', tax: 'GSTIN 27AABCA1234F1Z5' },
+        { label: 'Chakan stores', badges: ['Default shipping'], lines: 'Gat No. 118, Chakan Industrial Area Phase II\nKhed, Pune, Maharashtra (27)\n410501, India', tax: 'GSTIN 27AABCA1234F2Z4' },
+        { label: 'Hosur Works receiving', badges: [], lines: 'SIPCOT Phase I, Plot B-7\nHosur, Tamil Nadu (33)\n635126, India', tax: 'GSTIN 33AABCA1234F1Z1' },
+        { label: 'Sanand Unit', badges: [], lines: 'GIDC Sanand II, Shed 14\nAhmedabad, Gujarat (24)\n382110, India', tax: 'No GSTIN' }
+      ],
+      orders: [
+        ['SO-IN-2026-004812', 'Rohan Kulkarni', '27 Oct 2026, 14:05', 'Processing', 'info', '₹2,36,480.00'],
+        ['SO-IN-2026-004790', 'Divya Raman', '25 Oct 2026, 10:41', 'Shipped', 'ok', '₹48,212.40'],
+        ['SO-IN-2026-004731', 'Neha Shah', '21 Oct 2026, 16:22', 'Delivered', 'ok', '₹11,04,750.00'],
+        ['SO-IN-2026-004702', 'Rohan Kulkarni', '18 Oct 2026, 09:12', 'Cancelled', 'neutral', '₹19,880.00']
+      ].map(([no, buyer, at, status, tone, total]) => ({ no, buyer, at, status, tone, total })),
+      activity: [
+        { ini: 'PR', who: 'Priya Raman', what: 'invited Prakash Nair as a buyer user', when: '26 Oct 2026, 16:10 IST' },
+        { ini: 'PR', who: 'Priya Raman', what: 'assigned buyer role Approver to Rohan Kulkarni', when: '24 Oct 2026, 11:32 IST' },
+        { ini: 'AP', who: 'Arun Pillai', what: 'changed customer group from Distributors (West) to Key accounts (West)', when: '3 Sep 2026, 12:05 IST' },
+        { ini: 'AP', who: 'Arun Pillai', what: 'added subsidiary Acme Engineering (Sanand Unit)', when: '28 Aug 2026, 15:48 IST' },
+        { ini: 'SY', who: 'System', what: 'imported 4 addresses from ERP', when: '14 Mar 2024, 10:00 IST' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
