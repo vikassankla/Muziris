@@ -30,8 +30,8 @@ describe('session guard', () => {
     });
     renderApp('/customers');
 
-    expect(await screen.findByRole('link', { name: CUSTOMER.name })).toBeTruthy();
-    expect(screen.getByText('Asha Rao (asha@example.com)')).toBeTruthy();
+    expect((await screen.findAllByRole('link', { name: CUSTOMER.name })).length).toBeGreaterThan(0);
+    expect(screen.getByText('Asha Rao')).toBeTruthy();
   });
 
   it('sends the admin to sign-in when the session ends between the guard and the data', async () => {
@@ -45,6 +45,7 @@ describe('session guard', () => {
   it('checks the session again on every navigation', async () => {
     let signedInNow = true;
     mockApi({
+      'GET /customers/groups': () => json({ customerGroups: [], nextAfter: null }),
       'GET /auth/me': () =>
         signedInNow
           ? json({ user: { id: 'a', realm: 'admin', email: 'a@x.in', displayName: 'A' } })
@@ -53,7 +54,7 @@ describe('session guard', () => {
       'GET /customers': () => json({ customers: [CUSTOMER], nextAfter: null }),
     });
     const { router } = renderApp('/');
-    expect(await screen.findByRole('heading', { name: 'Welcome, A' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /, A$/ })).toBeTruthy();
 
     signedInNow = false;
     await router.navigate({ to: '/customers' });

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { safeRedirect } from '../lib/redirect.js';
 import { formatRetryAfter } from '../lib/retry.js';
@@ -62,8 +63,12 @@ describe('sign-in', () => {
     renderApp('/sign-in');
     await submit();
 
-    expect(await screen.findByText('Too many sign-in attempts')).toBeTruthy();
-    expect(screen.getByText(message)).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      `Too many sign-in attempts. ${message}`,
+    );
+    // The form waits until the time is up.
+    expect(screen.getByLabelText<HTMLInputElement>('Password').disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Sign in' }).disabled).toBe(true);
   });
 
   it('says "try again later" when too_many_attempts has no Retry-After', async () => {
@@ -73,7 +78,9 @@ describe('sign-in', () => {
     });
     renderApp('/sign-in');
     await submit();
-    expect(await screen.findByText('Try again later.')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Too many sign-in attempts. Try again later.',
+    );
   });
 
   it('shows the generic title for a 500 and none of its detail', async () => {
@@ -83,7 +90,7 @@ describe('sign-in', () => {
     });
     renderApp('/sign-in');
     await submit();
-    expect(await screen.findByText('Something went wrong on our side')).toBeTruthy();
+    expect(await screen.findByText(/Something went wrong on our side/)).toBeTruthy();
     expect(screen.queryByText(/Argon2|ECONNREFUSED/)).toBeNull();
   });
 
@@ -111,7 +118,9 @@ describe('sign-in', () => {
       'POST /auth/sign-out': () => new Response(null, { status: 204 }),
     });
     const { router } = renderApp('/');
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Asha Rao/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/sign-in');

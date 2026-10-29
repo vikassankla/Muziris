@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { ComponentProps } from 'react';
 import { cn } from '../../lib/cn.js';
 
 const base =
@@ -8,7 +8,7 @@ export function Input({
   className,
   inputSize = 'default',
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { inputSize?: 'default' | 'sm' }) {
+}: ComponentProps<'input'> & { inputSize?: 'default' | 'sm' }) {
   return (
     <input
       className={cn(base, inputSize === 'sm' ? 'h-control-sm text-[13px]' : 'h-control', className)}
@@ -17,6 +17,6 @@ export function Input({
   );
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
   return <textarea className={cn(base, 'min-h-20 py-2', className)} {...props} />;
 }

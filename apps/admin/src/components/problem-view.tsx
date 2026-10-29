@@ -1,30 +1,21 @@
 import { Navigate, useLocation, type ErrorComponentProps } from '@tanstack/react-router';
 import { isApiProblem, SERVER_ERROR_TITLE, type ApiProblem } from '../lib/api.js';
+import { sessionWasActive } from '../lib/session.js';
+import { ErrorState, NoAccess } from './states.js';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
 
-/** Shown for a 403 permission_denied: the API refused, whatever the navigation showed. */
-export function NoAccess() {
-  return (
-    <Alert>
-      <AlertTitle>No access</AlertTitle>
-      <AlertDescription>
-        Your admin roles do not let you see this. Ask an administrator if you need it.
-      </AlertDescription>
-    </Alert>
-  );
-}
-
 /**
- * An API problem as the admin should see it: the title, field errors for validation_failed,
- * and the request id to quote to support. Server details are never shown.
+ * A refused change, inline in a form or dialog: the API's title, field errors for
+ * validation_failed, and the request id. A 5xx shows the fixed message, never server detail.
  */
 export function ProblemAlert({ problem }: { problem: ApiProblem }) {
+  const title = problem.status >= 500 ? SERVER_ERROR_TITLE : problem.title;
   return (
     <Alert variant="destructive">
-      <AlertTitle>{problem.title}</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       {problem.code === 'validation_failed' && problem.errors.length > 0 ? (
         <AlertDescription>
-          <ul className="list-disc pl-5">
+          <ul className="m-0 list-disc pl-5">
             {problem.errors.map((error) => (
               <li key={`${error.path}:${error.message}`}>
                 {error.path ? `${error.path}: ` : ''}
@@ -35,7 +26,7 @@ export function ProblemAlert({ problem }: { problem: ApiProblem }) {
         </AlertDescription>
       ) : null}
       {problem.requestId ? (
-        <AlertDescription className="mt-1 text-xs opacity-80">
+        <AlertDescription className="text-xs opacity-80">
           Reference: {problem.requestId}
         </AlertDescription>
       ) : null}
@@ -43,30 +34,36 @@ export function ProblemAlert({ problem }: { problem: ApiProblem }) {
   );
 }
 
-/** Any error a screen can end in, branched on the problem's code. */
-export function ErrorView({ error }: { error: unknown }) {
+/** Any error a screen can end in, branched on the problem's status and code. */
+export function ErrorView({ error, what }: { error: unknown; what?: string }) {
   const location = useLocation();
   if (isApiProblem(error)) {
     if (error.status === 401) {
       // The session ended after the guard ran. Once the move to sign-in has begun, render
       // nothing, or the next render would send the admin to sign-in from sign-in.
       if (location.pathname === '/sign-in') return null;
-      return <Navigate to="/sign-in" search={{ redirect: location.href }} replace />;
+      return (
+        <Navigate
+          to="/sign-in"
+          search={{
+            redirect: location.href,
+            ...(sessionWasActive() ? { reason: 'session_ended' as const } : {}),
+          }}
+          replace
+        />
+      );
     }
     if (error.code === 'permission_denied') return <NoAccess />;
-    return <ProblemAlert problem={error} />;
+    return <ErrorState problem={error} {...(what ? { what } : {})} />;
   }
   // A fault in the app itself: say so without echoing the exception.
-  return (
-    <Alert variant="destructive">
-      <AlertTitle>{SERVER_ERROR_TITLE}</AlertTitle>
-      <AlertDescription>
-        Reload the page. If it happens again, tell your administrator.
-      </AlertDescription>
-    </Alert>
-  );
+  return <ErrorState {...(what ? { what } : {})} />;
 }
 
 export function RouteError({ error }: ErrorComponentProps) {
-  return <ErrorView error={error} />;
+  return (
+    <div className="flex w-full max-w-[1400px] flex-col gap-5 px-6 pt-5 pb-12 xl:px-8">
+      <ErrorView error={error} />
+    </div>
+  );
 }

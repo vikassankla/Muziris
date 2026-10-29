@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '../components/ui/table.js';
 import { listCategories, listProducts, type CategoryNode } from '../lib/endpoints.js';
-import { afterSearch } from '../lib/redirect.js';
+import { listSearch as afterSearch } from '../lib/search.js';
 import { authedRoute } from './authed.js';
 
 export const productsRoute = createRoute({
@@ -60,7 +60,13 @@ function ProductsPage() {
           </TableBody>
         </Table>
       )}
-      <Pager after={after} nextAfter={page.nextAfter} />
+      <Pager
+        after={after}
+        nextAfter={page.nextAfter}
+        limit={undefined}
+        shown={page.items.length}
+        noun="rows"
+      />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '../components/ui/table.js';
 import { allBuyerRoles, listBuyerRoles } from '../lib/endpoints.js';
-import { afterSearch } from '../lib/redirect.js';
+import { listSearch as afterSearch } from '../lib/search.js';
 import { authedRoute } from './authed.js';
 
 /** Access levels in the glossary's words (Buyer role). */
@@ -69,7 +69,13 @@ function BuyerRolesPage() {
           </TableBody>
         </Table>
       )}
-      <Pager after={after} nextAfter={page.nextAfter} />
+      <Pager
+        after={after}
+        nextAfter={page.nextAfter}
+        limit={undefined}
+        shown={page.items.length}
+        noun="rows"
+      />
     </div>
   );
 }

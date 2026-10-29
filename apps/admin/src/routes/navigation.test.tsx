@@ -5,28 +5,40 @@ import { json, mockApi, problem, renderApp, signedIn } from '../test/mock-api.js
 function navLinks(): string[] {
   const nav = screen.getByRole('navigation', { name: 'Main' });
   return within(nav)
-    .queryAllByRole('link')
-    .map((link) => link.textContent);
+    .queryAllByRole('listitem')
+    .map((item) => item.textContent);
 }
 
 describe('permission-aware navigation', () => {
   it.each([
-    [[], []],
-    [['customer.view'], ['Customers']],
-    [['product.view'], ['Products', 'Categories']],
+    [[], ['Home']],
+    [['customer.view'], ['Home', 'Customers', 'Customer groups']],
+    [['product.view'], ['Home', 'Products', 'Categories', 'Product units']],
     [
       ['buyer_role.view', 'admin_role.view'],
-      ['Buyer roles', 'Admin roles'],
+      ['Home', 'Admin roles', 'Buyer roles'],
     ],
-    [['customer.manage', 'order.view'], []],
+    [
+      ['customer.manage', 'order.view', 'price_list.view', 'website.view', 'setting.view'],
+      ['Home'],
+    ],
     [
       ['admin_role.view', 'buyer_role.view', 'customer.view', 'product.view'],
-      ['Customers', 'Buyer roles', 'Products', 'Categories', 'Admin roles'],
+      [
+        'Home',
+        'Customers',
+        'Customer groups',
+        'Products',
+        'Categories',
+        'Product units',
+        'Admin roles',
+        'Buyer roles',
+      ],
     ],
   ])('with %j shows %j', async (permissions, expected) => {
     mockApi(signedIn(permissions));
     renderApp('/');
-    await screen.findByRole('heading', { name: /^Welcome/ });
+    await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening)/ });
     expect(navLinks()).toEqual(expected);
   });
 
@@ -45,10 +57,10 @@ describe('permission-aware navigation', () => {
         problem(403, 'permission_denied', 'You do not have permission to do this'),
     });
     renderApp('/admin-roles');
-    expect(await screen.findByText('No access')).toBeTruthy();
-    expect(screen.getByText(/Ask an administrator if you need it/)).toBeTruthy();
+    expect(await screen.findByText('You don’t have permission to view this.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Go to Home' })).toBeTruthy();
     // The layout stays, so the admin can go elsewhere or sign out.
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeTruthy();
   });
 
   it('shows "No access" when the navigation was stale and the API now refuses', async () => {
@@ -58,7 +70,7 @@ describe('permission-aware navigation', () => {
         problem(403, 'permission_denied', 'You do not have permission to do this'),
     });
     renderApp('/customers');
-    expect(await screen.findByText('No access')).toBeTruthy();
+    expect(await screen.findByText('You don’t have permission to view this.')).toBeTruthy();
   });
 
   it('shows the title of other problems and never a 500’s detail', async () => {
@@ -71,7 +83,8 @@ describe('permission-aware navigation', () => {
         }),
     });
     renderApp('/categories');
-    expect(await screen.findByText('Something went wrong on our side')).toBeTruthy();
+    expect(await screen.findByText(/Something went wrong on our side/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
     expect(screen.getByText('Reference: req-12345678')).toBeTruthy();
     expect(screen.queryByText(/exploded|does not exist/)).toBeNull();
   });

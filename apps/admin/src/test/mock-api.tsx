@@ -42,11 +42,12 @@ export const ADMIN = {
   displayName: 'Asha Rao',
 } as const;
 
-/** Handlers for a signed-in admin holding `permissions`. */
+/** Handlers for a signed-in admin holding `permissions`, with empty lists for side data. */
 export function signedIn(permissions: string[]): Record<string, Handler> {
   return {
     'GET /auth/me': () => json({ user: ADMIN }),
     'GET /access/me': () => json({ permissions }),
+    'GET /customers/groups': () => json({ customerGroups: [], nextAfter: null }),
   };
 }
 
