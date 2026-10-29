@@ -77,6 +77,18 @@ export async function listCustomerGroups(
   return { customerGroups: items, nextAfter };
 }
 
+export async function findCustomerGroup(
+  db: Database,
+  groupId: string,
+): Promise<CustomerGroup | undefined> {
+  const [row] = await db
+    .select()
+    .from(customerGroups)
+    .where(eq(customerGroups.id, idSchema.parse(groupId)))
+    .limit(1);
+  return row;
+}
+
 /** A missing parent or group surfaces as a foreign key violation; name it for the caller. */
 function refusedReference(error: unknown): CustomerError | undefined {
   if (!isForeignKeyViolation(error)) return undefined;

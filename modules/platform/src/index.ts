@@ -25,6 +25,7 @@ export {
 export {
   createOrganization,
   createWebsite,
+  findWebsite,
   findWebsiteByCode,
   listWebsites,
   newWebsiteSchema,
