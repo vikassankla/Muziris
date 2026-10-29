@@ -211,7 +211,7 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
     ['?q=bearing&limit=50&offset=951', 'a page beyond the first 1,000 results'],
     ['?q=bearing&limit=-1', 'a negative page size'],
     ['?q=bearing&status=archived', 'an unknown status'],
-  ])('refuses %j (%s)', async (query, _why) => {
+  ])('refuses %j (%s)', async (query) => {
     const asha = await signedInAdmin('asha@acme.example', ['product.view']);
     const res = await call('GET', `/products${query}`, asha);
     expect(res.status).toBe(400);
