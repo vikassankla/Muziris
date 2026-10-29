@@ -50,6 +50,13 @@
       "when": 1793272958272,
       "tag": "0006_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793288708069,
+      "tag": "0007_visibility",
+      "breakpoints": true
     }
   ]
 }
