@@ -30,7 +30,7 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 Decisions are recorded in `docs/adr/0001` to `0013`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
-ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is in review with status proposed. Every admin list endpoint is paged with
+ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -56,9 +56,9 @@ emails wait for the email work in week 4.
    `visibility.view` and `visibility.manage`, and `visibleProductIdsForBuyer` and
    `visibleCategoryIdsForBuyer` for search and the storefront to put in their queries. No
    admin screens yet.
-3. PostgreSQL search (ADR 0013). **In review** on `feature/search`, with a pull request to
-   `main`; it scopes buyer data, so it needs a second human review under CLAUDE.md rule 4
-   before it merges. Module `modules/search`, admin routes under `/admin/v1/search`
+3. PostgreSQL search (ADR 0013). **Merged** (PR 15, 2026-10-29, approved by Vikas in chat,
+   with no second review recorded on GitHub; it scopes buyer data, so CLAUDE.md rule 4 asks
+   for one). Module `modules/search`, admin routes under `/admin/v1/search`
    (`product.view`, and `product.manage` for the build), the `search:build` command, and
    `searchProductsForBuyer` for the storefront API to call. The catalog routes reindex after
    each write. Migrations `0008` (creates `pg_trgm`) and `0009`. No admin screen yet.
