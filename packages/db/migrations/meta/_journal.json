@@ -57,6 +57,20 @@
       "when": 1793288708069,
       "tag": "0007_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793290563606,
+      "tag": "0008_search_extensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793290571003,
+      "tag": "0009_search",
+      "breakpoints": true
     }
   ]
 }

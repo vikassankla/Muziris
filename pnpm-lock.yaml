@@ -276,6 +276,34 @@ importers:
         specifier: workspace:*
         version: link:../identity
 
+  modules/search:
+    dependencies:
+      '@muziris/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@muziris/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@muziris/visibility':
+        specifier: workspace:*
+        version: link:../visibility
+      drizzle-orm:
+        specifier: ^0.45.4
+        version: 0.45.4(postgres@3.4.9)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@muziris/customers':
+        specifier: workspace:*
+        version: link:../customers
+      '@muziris/identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@muziris/platform':
+        specifier: workspace:*
+        version: link:../platform
+
   modules/visibility:
     dependencies:
       '@muziris/catalog':
