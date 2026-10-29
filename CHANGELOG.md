@@ -99,6 +99,18 @@ All notable changes are listed here. The project follows semantic versioning fro
   the hierarchy and its subsidiaries, buyer roles (paged) with their grants, products (paged),
   the category tree and admin roles. The session lives only in the API's `__Host-` cookie;
   nothing goes in browser storage. The Vite dev server proxies `/admin/v1` to the API.
+- Admin app design pass, following the Claude Design boards kept in `docs/design/admin`: the
+  boards' light and dark tokens under shadcn names, self-hosted Inter and JetBrains Mono, a
+  grouped sidebar (Ctrl+B), a top bar with a placeholder website switcher, a Ctrl+K command
+  palette and a user menu with the theme, breadcrumbs, and the shared loading, empty, no
+  access, error, toast and confirm states. Sign-in shows failed, locked (with a countdown)
+  and session-ended states. Screens with their forms: customers (create, change customer
+  group and parent), customer detail (hierarchy, buyer users, invitations, India and US
+  addresses with PIN, ZIP and GSTIN checks), customer groups, products and product detail
+  (edit, product units, attributes, unsaved-changes guard), categories (create, rename, move,
+  reorder, delete), product units, admin roles (permission matrix that locks what the admin
+  does not hold) and buyer roles (access-level matrix). Money, quantities and dates follow
+  the website's locale (lakh grouping for en-IN).
 - `.claude/launch.json` entries for the admin dev server and the API.
 
 ### Changed

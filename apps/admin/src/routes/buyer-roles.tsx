@@ -178,6 +178,7 @@ function AccessMatrix({
                 <RadioGroup
                   key={permission.key}
                   asChild
+                  className="table-row"
                   value={value}
                   disabled={!editable}
                   aria-labelledby={labelId}

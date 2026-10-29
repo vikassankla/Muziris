@@ -270,7 +270,7 @@ export function TopBar({
             className="flex h-10 items-center gap-2.5 rounded-md pr-1.5 pl-1 hover:bg-muted data-[state=open]:bg-muted"
           >
             <Avatar name={session.user.displayName} />
-            <span className="flex flex-col text-left leading-tight">
+            <span className="flex flex-col text-left leading-tight whitespace-nowrap">
               <span className="text-[12.5px] font-semibold">{session.user.displayName}</span>
               <span className="text-xs text-muted-foreground">Admin user</span>
             </span>
