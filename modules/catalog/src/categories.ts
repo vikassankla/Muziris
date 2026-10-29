@@ -71,6 +71,15 @@ export function categorySubtreeIds(categoryId: string): SQL {
   return walkDown(sql`select id from ${categories} where id = ${id}`);
 }
 
+/**
+ * An SQL select of every category's id and parent id (null at the top), as the columns
+ * `category_id` and `parent_id`, without surrounding parentheses. Visibility walks it to find a
+ * category's ancestors without reading catalog tables.
+ */
+export function categoryParents(): SQL {
+  return sql`select id as category_id, parent_id from ${categories}`;
+}
+
 function siblingOrder(a: Category, b: Category): number {
   if (a.position !== b.position) return a.position - b.position;
   if (a.name !== b.name) return a.name < b.name ? -1 : 1;

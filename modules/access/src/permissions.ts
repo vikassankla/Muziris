@@ -20,6 +20,8 @@ export const ADMIN_PERMISSIONS = {
   'product.manage': 'Create and edit products and categories',
   'price_list.view': 'See price lists',
   'price_list.manage': 'Create and edit price lists',
+  'visibility.view': 'See which products and categories buyers may see, and why',
+  'visibility.manage': 'Show or hide products and categories for buyers, and run the build',
   'order.view': 'See orders',
   'order.manage': 'Change and cancel orders',
 } as const;

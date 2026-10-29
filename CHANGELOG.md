@@ -137,6 +137,27 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `pricing:build` command to rebuild the combined price lists from a shell.
 - `@muziris/customers`: `findCustomerGroup` and `customerGroupMembership` (an SQL select of
   every customer's group). `@muziris/platform`: `findWebsite`.
+- `@muziris/visibility` (ADR 0012): rules that make a product or a category visible or hidden
+  on a website for a customer, a customer group or the website. Levels are tried customer,
+  customer group, website, as for prices; within a level the product's own rule comes first,
+  then its category, then the categories above it. Without a rule an enabled product is
+  visible; a disabled product never is. `rebuildVisibility` writes every context's visible
+  products and categories with set-based SQL in one transaction. `visibleProductIdsForBuyer`
+  and `visibleCategoryIdsForBuyer` return SQL selects scoped to the signed-in buyer's customer
+  inside the query, for search and the storefront; they show nothing before the first build
+  and nothing to a customer with its own rules whose group changed since the build.
+  `previewVisibility` explains one product or category for a customer. Rule writes count
+  changes, so `getBuildState` shows changes waiting for a build.
+- API: admin routes under `/admin/v1/visibility`. `GET` (paged, with filters) and
+  `POST /rules`, `GET`, `PATCH` and `DELETE /rules/{ruleId}`; `GET` and `POST /build`;
+  `GET /preview`; `GET /visible-products` (paged product ids for a customer on a website).
+  Reads need `visibility.view` and changes and the build `visibility.manage`. Refusals use the
+  codes `rule_not_found`, `rule_taken`, `product_not_found`, `category_not_found`,
+  `website_not_found`, `customer_not_found` and `customer_group_not_found`.
+- `visibility:build` command to rebuild visibility from a shell.
+- `@muziris/access`: admin permissions `visibility.view` and `visibility.manage`.
+- `@muziris/catalog`: `productCategoryAndStatus` and `categoryParents`, SQL selects of every
+  product's category and status and of the category tree.
 
 ### Changed
 

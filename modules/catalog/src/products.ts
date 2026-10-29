@@ -251,6 +251,15 @@ export async function findProduct(db: Database, productId: string): Promise<Prod
   return product;
 }
 
+/**
+ * An SQL select of every product's id, category id (null for none) and status, as the columns
+ * `product_id`, `category_id` and `status`, without surrounding parentheses. Visibility builds
+ * and filters on it without reading catalog tables.
+ */
+export function productCategoryAndStatus(): SQL {
+  return sql`select id as product_id, category_id, status from ${products}`;
+}
+
 /** Finds a product by SKU in any letter case. */
 export async function findProductBySku(db: Database, sku: string): Promise<Product | undefined> {
   const parsed = skuSchema.safeParse(sku);

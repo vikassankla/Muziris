@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   CatalogError,
+  categoryParents,
   createCategory,
   createProduct,
   createProductUnit,
@@ -20,6 +21,7 @@ import {
   listProducts,
   listProductUnits,
   parseQuantity,
+  productCategoryAndStatus,
   quantityToString,
   setCategoryParent,
   setProductUnits,
@@ -147,6 +149,18 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
         'nuts',
       ]);
       expect(await ids(descendantCategoryIds(tree.hex.id), all)).toEqual([]);
+    });
+
+    it('selects every category with its parent for other modules', async () => {
+      const tree = await seedTree();
+      const rows = await handle.db.execute<{ category_id: string; parent_id: string | null }>(
+        sql`select category_id, parent_id from (${categoryParents()}) c`,
+      );
+      const byId = new Map(rows.map((r) => [r.category_id, r.parent_id]));
+      expect(byId.size).toBe(5);
+      expect(byId.get(tree.hex.id)).toBe(tree.bolts.id);
+      expect(byId.get(tree.bolts.id)).toBe(tree.fasteners.id);
+      expect(byId.get(tree.fasteners.id)).toBeNull();
     });
 
     it('refuses a code that is taken and a missing parent', async () => {
@@ -409,6 +423,32 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
         status: 'enabled',
       });
       expect(enabledUnderFasteners.products.map((p) => p.sku)).toEqual(['A-100', 'c-300']);
+    });
+
+    it('selects every product with its category and status for other modules', async () => {
+      const t = await seedTree();
+      const bolt = await createProduct(handle.db, {
+        sku: 'HB-M8',
+        name: 'Hex bolt M8',
+        status: 'enabled',
+        categoryId: t.hex.id,
+        primaryUnitCode: 'each',
+      });
+      const loose = await createProduct(handle.db, {
+        sku: 'LOOSE-1',
+        name: 'Loose part',
+        primaryUnitCode: 'each',
+      });
+      const rows = await handle.db.execute<{
+        product_id: string;
+        category_id: string | null;
+        status: string;
+      }>(sql`select product_id, category_id, status from (${productCategoryAndStatus()}) p
+        order by status desc`);
+      expect(rows).toEqual([
+        { product_id: bolt.id, category_id: t.hex.id, status: 'enabled' },
+        { product_id: loose.id, category_id: null, status: 'disabled' },
+      ]);
     });
 
     it('refuses to read stored attributes that no longer match the schema', async () => {

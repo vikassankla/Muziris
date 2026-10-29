@@ -8,20 +8,21 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 
 ## What is in this repository
 
-| Path                | What it is                                                                 |
-| ------------------- | -------------------------------------------------------------------------- |
-| `apps/api`          | The HTTP API (Hono on Node.js): health checks today, the APIs later        |
-| `apps/admin`        | The admin app (React, Vite, TanStack Router, shadcn/ui)                    |
-| `modules/platform`  | Organization, websites, and settings that resolve from customer to global  |
-| `modules/identity`  | Admin and buyer accounts, password hashing, sessions, rate limiting        |
-| `modules/access`    | Admin roles and permissions, buyer roles with access levels, query scoping |
-| `modules/workflow`  | Workflows declared in code: steps, transitions, guards, actions, log       |
-| `modules/customers` | Customer hierarchy, customer groups, buyer users, invitations, addresses   |
-| `modules/catalog`   | Simple products, product units with precision, category tree, attributes   |
-| `modules/pricing`   | Price lists, assignments, the fallback chain and the combined price build  |
-| `packages/db`       | PostgreSQL connection and the ordered migration runner                     |
-| `packages/money`    | Exact money and decimal maths, currency rules, lakh and crore formatting   |
-| `docs/`             | Glossary, architecture decision records, admin design boards               |
+| Path                 | What it is                                                                 |
+| -------------------- | -------------------------------------------------------------------------- |
+| `apps/api`           | The HTTP API (Hono on Node.js): health checks today, the APIs later        |
+| `apps/admin`         | The admin app (React, Vite, TanStack Router, shadcn/ui)                    |
+| `modules/platform`   | Organization, websites, and settings that resolve from customer to global  |
+| `modules/identity`   | Admin and buyer accounts, password hashing, sessions, rate limiting        |
+| `modules/access`     | Admin roles and permissions, buyer roles with access levels, query scoping |
+| `modules/workflow`   | Workflows declared in code: steps, transitions, guards, actions, log       |
+| `modules/customers`  | Customer hierarchy, customer groups, buyer users, invitations, addresses   |
+| `modules/catalog`    | Simple products, product units with precision, category tree, attributes   |
+| `modules/pricing`    | Price lists, assignments, the fallback chain and the combined price build  |
+| `modules/visibility` | Product and category visibility rules, the visibility build, buyer scoping |
+| `packages/db`        | PostgreSQL connection and the ordered migration runner                     |
+| `packages/money`     | Exact money and decimal maths, currency rules, lakh and crore formatting   |
+| `docs/`              | Glossary, architecture decision records, admin design boards               |
 
 ## Run it locally
 
