@@ -24,6 +24,7 @@ import {
   type CatalogErrorCode,
 } from '@muziris/catalog';
 import type { Database } from '@muziris/db';
+import { indexProducts, indexProductsInCategory } from '@muziris/search';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
@@ -94,6 +95,23 @@ const listProductsQuery = z
 
 const setParentBody = z.object({ parentId: z.uuid().nullable() });
 
+/**
+ * Brings the search index up to date after a catalog write (ADR 0013). Catalog has no hook
+ * other modules can subscribe to, so the API calls search here. The write has committed, so a
+ * failure is logged and the request still succeeds; the product waits for the next build.
+ */
+async function reindex(
+  deps: CatalogRouteDependencies,
+  requestId: string,
+  action: (db: Database) => Promise<void>,
+): Promise<void> {
+  try {
+    await action(deps.db);
+  } catch (error) {
+    deps.logger.warn({ requestId, err: error }, 'search.reindex_failed');
+  }
+}
+
 /** Products, product units and categories, mounted under /admin/v1/catalog. */
 export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> {
   const app = new Hono<CatalogEnv>();
@@ -144,6 +162,7 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, categoryId },
       'catalog.category_updated',
     );
+    await reindex(deps, c.get('requestId'), (db) => indexProductsInCategory(db, categoryId));
     return c.json({ category });
   });
 
@@ -155,6 +174,7 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, categoryId, parentId },
       'catalog.category_moved',
     );
+    await reindex(deps, c.get('requestId'), (db) => indexProductsInCategory(db, categoryId));
     return c.json({ category });
   });
 
@@ -179,6 +199,7 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, productId: product.id },
       'catalog.product_created',
     );
+    await reindex(deps, c.get('requestId'), (db) => indexProducts(db, [product.id]));
     return c.json({ product }, 201);
   });
 
@@ -197,6 +218,7 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, productId },
       'catalog.product_updated',
     );
+    await reindex(deps, c.get('requestId'), (db) => indexProducts(db, [productId]));
     return c.json({ product });
   });
 
@@ -208,6 +230,7 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, productId },
       'catalog.product_units_set',
     );
+    await reindex(deps, c.get('requestId'), (db) => indexProducts(db, [productId]));
     return c.json({ product });
   });
 

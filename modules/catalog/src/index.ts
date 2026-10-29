@@ -10,6 +10,7 @@ export {
 export {
   buildCategoryTree,
   categoryChangesSchema,
+  categoryNames,
   categoryParents,
   categorySubtreeIds,
   createCategory,
@@ -45,6 +46,7 @@ export {
   PRODUCT_STATUSES,
   PRODUCT_TYPES,
   productCategoryAndStatus,
+  productSearchSource,
   productChangesSchema,
   productUnitsSchema,
   setProductUnits,

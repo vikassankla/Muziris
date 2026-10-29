@@ -9,6 +9,7 @@
     "start": "tsx src/server.ts",
     "admin:create": "tsx --env-file-if-exists=../../.env src/cli/create-admin.ts",
     "pricing:build": "tsx --env-file-if-exists=../../.env src/cli/build-prices.ts",
+    "search:build": "tsx --env-file-if-exists=../../.env src/cli/build-search.ts",
     "visibility:build": "tsx --env-file-if-exists=../../.env src/cli/build-visibility.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
@@ -23,6 +24,7 @@
     "@muziris/money": "workspace:*",
     "@muziris/platform": "workspace:*",
     "@muziris/pricing": "workspace:*",
+    "@muziris/search": "workspace:*",
     "@muziris/visibility": "workspace:*",
     "hono": "^4.13.14",
     "pino": "^10.4.0",

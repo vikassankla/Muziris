@@ -80,6 +80,15 @@ export function categoryParents(): SQL {
   return sql`select id as category_id, parent_id from ${categories}`;
 }
 
+/**
+ * An SQL select of every category's id, parent id (null at the top) and name, as the columns
+ * `category_id`, `parent_id` and `name`, without surrounding parentheses. Search puts the names
+ * of a product's categories in its index without reading catalog tables.
+ */
+export function categoryNames(): SQL {
+  return sql`select id as category_id, parent_id, name from ${categories}`;
+}
+
 function siblingOrder(a: Category, b: Category): number {
   if (a.position !== b.position) return a.position - b.position;
   if (a.name !== b.name) return a.name < b.name ? -1 : 1;

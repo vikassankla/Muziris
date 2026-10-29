@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   CatalogError,
+  categoryNames,
   categoryParents,
   createCategory,
   createProduct,
@@ -22,6 +23,7 @@ import {
   listProductUnits,
   parseQuantity,
   productCategoryAndStatus,
+  productSearchSource,
   quantityToString,
   setCategoryParent,
   setProductUnits,
@@ -161,6 +163,22 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
       expect(byId.get(tree.hex.id)).toBe(tree.bolts.id);
       expect(byId.get(tree.bolts.id)).toBe(tree.fasteners.id);
       expect(byId.get(tree.fasteners.id)).toBeNull();
+    });
+
+    it('selects every category with its parent and name for other modules', async () => {
+      const tree = await seedTree();
+      const rows = await handle.db.execute<{
+        category_id: string;
+        parent_id: string | null;
+        name: string;
+      }>(sql`select category_id, parent_id, name from (${categoryNames()}) c`);
+      const byId = new Map(rows.map((r) => [r.category_id, r]));
+      expect(byId.size).toBe(5);
+      expect(byId.get(tree.hex.id)).toEqual({
+        category_id: tree.hex.id,
+        parent_id: tree.bolts.id,
+        name: tree.hex.name,
+      });
     });
 
     it('refuses a code that is taken and a missing parent', async () => {
@@ -449,6 +467,35 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
         { product_id: bolt.id, category_id: t.hex.id, status: 'enabled' },
         { product_id: loose.id, category_id: null, status: 'disabled' },
       ]);
+    });
+
+    it('selects what search indexes for every product, without its tables', async () => {
+      const t = await seedTree();
+      const bolt = await createProduct(handle.db, {
+        sku: 'HB-M8',
+        name: 'Hex bolt M8',
+        categoryId: t.hex.id,
+        attributes: { grade: '8.8', finishes: ['zinc', 'black'] },
+        primaryUnitCode: 'each',
+      });
+      const rows = await handle.db.execute<{
+        product_id: string;
+        sku: string;
+        name: string;
+        category_id: string | null;
+        attributes: unknown;
+        updated_at: string;
+      }>(sql`select product_id, sku, name, category_id, attributes, updated_at
+        from (${productSearchSource()}) p`);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        product_id: bolt.id,
+        sku: 'HB-M8',
+        name: 'Hex bolt M8',
+        category_id: t.hex.id,
+        attributes: { grade: '8.8', finishes: ['zinc', 'black'] },
+      });
+      expect(new Date(rows[0]!.updated_at).getTime()).toBe(bolt.updatedAt.getTime());
     });
 
     it('refuses to read stored attributes that no longer match the schema', async () => {

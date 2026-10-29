@@ -260,6 +260,17 @@ export function productCategoryAndStatus(): SQL {
   return sql`select id as product_id, category_id, status from ${products}`;
 }
 
+/**
+ * An SQL select of every product's id, SKU, name, category id (null for none), attributes and
+ * last change, as the columns `product_id`, `sku`, `name`, `category_id`, `attributes` and
+ * `updated_at`, without surrounding parentheses. Search builds its index from it without reading
+ * catalog tables.
+ */
+export function productSearchSource(): SQL {
+  return sql`select id as product_id, sku, name, category_id, attributes, updated_at
+    from ${products}`;
+}
+
 /** Finds a product by SKU in any letter case. */
 export async function findProductBySku(db: Database, sku: string): Promise<Product | undefined> {
   const parsed = skuSchema.safeParse(sku);
