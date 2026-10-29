@@ -30,7 +30,7 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 Decisions are recorded in `docs/adr/0001` to `0012`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
-ADR 0011 (pricing) and ADR 0012 (visibility) are in review with status proposed. Every admin list endpoint is paged with
+ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -46,13 +46,12 @@ emails wait for the email work in week 4.
 **Week 3 (11 to 17 Nov):** Gate check: a buyer sees only their own catalog and prices.
 
 1. Price lists with customer and group fallback and the combined price build (ADR 0011).
-   **In review** (`feature/price-lists`); pricing needs a second human reviewer (CLAUDE.md
-   rule 4). Module `modules/pricing`, admin routes under `/admin/v1/pricing`, the
+   **Merged** (PR 13, 2026-10-29, as f44fc56, with no second review recorded; pricing needs
+   one under CLAUDE.md rule 4). Module `modules/pricing`, admin routes under `/admin/v1/pricing`, the
    `pricing:build` command, and `findPriceForBuyer` for the storefront API to call. The admin
    screens (PriceLists, PriceListDetail) are designed but not built.
-2. Visibility (ADR 0012). **In review** (`feature/visibility`, cut from `feature/price-lists`
-   because PR 13 was not merged yet); visibility is access scoping and needs a second human
-   reviewer (CLAUDE.md rule 4). Module `modules/visibility`, admin routes under
+2. Visibility (ADR 0012). **Merged** (PR 14, 2026-10-29, with no second review recorded;
+   visibility is access scoping and needs one under CLAUDE.md rule 4). Module `modules/visibility`, admin routes under
    `/admin/v1/visibility`, the `visibility:build` command, new admin permissions
    `visibility.view` and `visibility.manage`, and `visibleProductIdsForBuyer` and
    `visibleCategoryIdsForBuyer` for search and the storefront to put in their queries. No
