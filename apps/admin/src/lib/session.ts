@@ -22,6 +22,8 @@ export const ADMIN_PERMISSION_KEYS = [
   'product.manage',
   'price_list.view',
   'price_list.manage',
+  'visibility.view',
+  'visibility.manage',
   'order.view',
   'order.manage',
 ] as const;

@@ -156,6 +156,9 @@ importers:
       '@muziris/pricing':
         specifier: workspace:*
         version: link:../../modules/pricing
+      '@muziris/visibility':
+        specifier: workspace:*
+        version: link:../../modules/visibility
       hono:
         specifier: ^4.13.14
         version: 4.13.14
