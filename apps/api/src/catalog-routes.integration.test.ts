@@ -33,9 +33,9 @@ describe.skipIf(!url)('catalog routes against PostgreSQL', () => {
 
   beforeEach(async () => {
     await handle.db.execute(
-      sql`truncate catalog_product_sold_in, catalog_product, catalog_category, catalog_product_unit,
-        access_admin_user_role, access_admin_role_permission, access_admin_role,
-        identity_session, identity_user, identity_rate_limit cascade`,
+      sql`truncate search_product, catalog_product_sold_in, catalog_product, catalog_category,
+        catalog_product_unit, access_admin_user_role, access_admin_role_permission,
+        access_admin_role, identity_session, identity_user, identity_rate_limit cascade`,
     );
     logs = [];
   });

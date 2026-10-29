@@ -156,6 +156,9 @@ importers:
       '@muziris/pricing':
         specifier: workspace:*
         version: link:../../modules/pricing
+      '@muziris/search':
+        specifier: workspace:*
+        version: link:../../modules/search
       '@muziris/visibility':
         specifier: workspace:*
         version: link:../../modules/visibility
