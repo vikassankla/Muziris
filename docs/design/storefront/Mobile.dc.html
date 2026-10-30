@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Bearings on a phone · Muziris storefront</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+<link rel="stylesheet" href="storefront.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="width: 390px; height: 844px; overflow: hidden; display: flex; flex-direction: column; background: var(--background)">
+  <header style="border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div class="row" style="gap: 10px">
+      <button class="btn ghost icon" type="button" aria-label="Open categories"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+      <a class="st-brand" href="Main.dc.html"><span class="sb-mark" aria-hidden="true">M</span>Muziris</a>
+      <span class="grow"></span>
+      <button class="btn ghost icon" type="button" aria-label="Account: Ravi Kulkarni, Pune Bearing House"><span class="av" aria-hidden="true">RK</span></button>
+    </div>
+    <form class="search" role="search">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14"></path></svg>
+      <label class="sr" for="mq">Search products by name or SKU</label>
+      <input class="input" id="mq" type="search" placeholder="Search by name or SKU" style="height: 44px">
+    </form>
+  </header>
+
+  <main style="flex: 1 1 auto; overflow: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+    <nav class="crumbs xs" aria-label="Breadcrumb"><a href="#">Power transmission</a><span aria-hidden="true">/</span><span aria-current="page">Bearings</span></nav>
+    <div class="row"><h1 style="margin: 0; font-size: 20px; font-weight: 650">Bearings</h1><span class="grow"></span><span class="xs muted">INR, excl. GST</span></div>
+    <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+      <sc-for list="{{rows}}" as="p" hint-placeholder-count="6">
+        <li>
+          <a class="card" href="ProductDetail.dc.html" style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; min-height: 64px; text-decoration: none; color: inherit">
+            <span class="col grow" style="gap: 2px"><span class="small strong">{{p.name}}</span><span class="mono xs muted">{{p.sku}}</span></span>
+            <span class="col" style="align-items: flex-end; gap: 0"><span class="price">{{p.price}}</span><span class="per">each</span></span>
+          </a>
+        </li>
+      </sc-for>
+    </ul>
+    <button class="btn outline full" type="button" style="height: 44px">Show more</button>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      rows: [
+        { sku: 'BRG-6203-ZZ', name: 'Ball bearing 6203-ZZ', price: '₹186.00' },
+        { sku: 'BRG-6204-2RS', name: 'Ball bearing 6204-2RS', price: '₹238.50' },
+        { sku: 'BRG-6205-2RS', name: 'Ball bearing 6205-2RS', price: '₹410.00' },
+        { sku: 'BRG-6206-2RS', name: 'Ball bearing 6206-2RS', price: '₹512.00' },
+        { sku: 'BRG-6305-ZZ', name: 'Ball bearing 6305-ZZ', price: '₹644.00' },
+        { sku: 'BRG-30205', name: 'Taper roller bearing 30205', price: '₹1,085.00' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

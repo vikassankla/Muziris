@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>States · Muziris storefront</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+<link rel="stylesheet" href="storefront.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz {{theme}}" style="min-height: 100%; background: var(--muted); padding: 48px 32px">
+  <div style="max-width: 1360px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; align-items: start">
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Loading a product list</div>
+      <div class="card" style="overflow: hidden" aria-busy="true">
+        <table class="tbl">
+          <thead><tr><th scope="col">SKU</th><th scope="col">Product</th><th scope="col" class="r">Your price</th></tr></thead>
+          <tbody>
+            <sc-for list="{{skeleton}}" as="s" hint-placeholder-count="5">
+              <tr><td><div class="skel" style="width: 96px"></div></td><td><div class="skel" style="width: {{s.w}}"></div></td><td class="r"><div class="skel" style="width: 64px; margin-left: auto"></div></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <span class="sr">Loading products</span>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Empty category</div>
+      <div class="card" style="padding: 40px 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px; color: var(--muted-foreground)"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"></path></svg>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 620">No products here yet</h2>
+        <p class="small muted" style="margin: 0; max-width: 44ch">There are no products in Chains and sprockets that you can order. Try another category, or search by SKU.</p>
+        <a class="btn outline sm" href="Main.dc.html">All products</a>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">No price for this buyer</div>
+      <div class="card" style="box-shadow: var(--shadow)">
+        <div class="card-h"><h2>Your price</h2></div>
+        <div class="card-b col" style="gap: 12px">
+          <div class="field"><label class="label" for="u4">Unit</label><select class="input" id="u4"><option>Each</option></select></div>
+          <div class="field"><label class="label" for="q4">Quantity</label><input class="input num" id="q4" value="1"></div>
+          <div class="alert warn" role="status"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span><span class="t">Price on request.</span> There is no price for this unit and quantity on your account yet. Contact your account manager for a quote.</span></div>
+        </div>
+      </div>
+      <p class="xs muted" style="margin: 0">In lists, a product without a price shows “Price on request” in the price column.</p>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Product not found (or not in your catalogue)</div>
+      <div class="card" style="padding: 40px 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px; color: var(--muted-foreground)"><path d="m21 21-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M8.5 11h5"></path></svg>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 620">We can’t find that product</h2>
+        <p class="small muted" style="margin: 0; max-width: 44ch">It may have been removed, or it isn’t in your company’s catalogue. Search for it by name or SKU.</p>
+        <a class="btn outline sm" href="Search.dc.html">Search products</a>
+      </div>
+      <p class="xs muted" style="margin: 0">The same page for a missing and a hidden product, so nobody learns what exists.</p>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">No search results</div>
+      <div class="card" style="padding: 40px 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 620">No results for “GLV-NITRILE-XXL”</h2>
+        <p class="small muted" style="margin: 0; max-width: 44ch">Check the SKU or try fewer words. Searches cover SKUs, product names and details.</p>
+      </div>
+    </section>
+
+    <section class="col" style="gap: 10px">
+      <div class="tag" style="align-self: flex-start">Something went wrong</div>
+      <div class="alert bad" role="alert"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 2px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 8v4M12 16h.01"></path></svg><span class="col" style="gap: 6px"><span><span class="t">We couldn’t load this page.</span> It’s a problem on our side, not with your account.</span><span class="xs">Reference: 7f3a9c2e</span><button class="btn outline sm" type="button" style="align-self: flex-start">Try again</button></span></div>
+      <p class="xs muted" style="margin: 0">The reference is the request id, so support can find the log entry.</p>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      skeleton: [{ w: '220px' }, { w: '180px' }, { w: '240px' }, { w: '160px' }, { w: '200px' }]
+    };
+  }
+}
+</script>
+</body>
+</html>
