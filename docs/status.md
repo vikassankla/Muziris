@@ -92,8 +92,9 @@ emails wait for the email work in week 4.
    setting, the `order_processing` workflow and buyer reads scoped by `order.view`. Migration
    `0010`. Not built yet: the tax engine (ADR 0017, so the tests use a GST test provider), tax
    codes on catalog products, and the seller's GST registration.
-7. Checkout and orders in the APIs (ADR 0016). **In review**, not merged. It exposes ordering
-   and order data to buyers and admins, so CLAUDE.md rule 4 asks for a second human review.
+7. Checkout and orders in the APIs (ADR 0016). **Merged** (PR 24, 2026-10-30, approved by
+   Vikas in chat, with no second review recorded on GitHub). It exposes ordering and order data
+   to buyers and admins, so CLAUDE.md rule 4 asks for a second human review.
    Storefront GraphQL `checkoutPreview`, `placeOrder`, `orders`, `order(number)` and the
    customer's `addresses`; admin `/admin/v1/orders` (list, view with history, transitions). The
    tax calculator is an app dependency: until ADR 0017 there is none, and checkout refuses with
