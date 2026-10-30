@@ -27,6 +27,7 @@
     "@muziris/platform": "workspace:*",
     "@muziris/pricing": "workspace:*",
     "@muziris/search": "workspace:*",
+    "@muziris/tax": "workspace:*",
     "@muziris/visibility": "workspace:*",
     "@muziris/workflow": "workspace:*",
     "graphql": "^17.0.2",

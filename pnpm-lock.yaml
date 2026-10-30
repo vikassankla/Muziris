@@ -165,6 +165,9 @@ importers:
       '@muziris/search':
         specifier: workspace:*
         version: link:../../modules/search
+      '@muziris/tax':
+        specifier: workspace:*
+        version: link:../../modules/tax
       '@muziris/visibility':
         specifier: workspace:*
         version: link:../../modules/visibility

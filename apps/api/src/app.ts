@@ -12,6 +12,7 @@ import { customerRoutes } from './customer-routes.js';
 import { orderRoutes } from './order-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
+import { taxRoutes } from './tax-routes.js';
 import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
 import { visibilityRoutes } from './visibility-routes.js';
 import { resolveClientIp } from './client-ip.js';
@@ -36,8 +37,8 @@ export interface AppDependencies {
   /** Persisted queries and whether ad hoc queries run; by default neither (ADR 0014). */
   storefront?: StorefrontOptions;
   /**
-   * The tax calculator checkout uses. There is none until the tax engine (ADR 0017) is built,
-   * and without one checkout refuses with TAX_NOT_CONFIGURED: no order is placed without tax.
+   * The tax calculator checkout uses: the server passes the tax engine's (ADR 0017). Without
+   * one checkout refuses with TAX_NOT_CONFIGURED, so no order is placed without tax.
    */
   tax?: TaxProvider;
 }
@@ -172,6 +173,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/orders', orderRoutes(authDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
+  app.route('/admin/v1/tax', taxRoutes(authDeps));
   app.route('/admin/v1/visibility', visibilityRoutes(authDeps));
 
   app.notFound((c) =>
