@@ -44,6 +44,11 @@ const PASSWORD = 'correct horse battery staple';
 
 /** One buyer search over 10,000 products must answer within this, warm, on CI hardware. */
 const SEARCH_BUDGET_MS = 250;
+/**
+ * Loading and indexing the 10,000 products takes about 5 s on CI, longer than Vitest's default
+ * test timeout. Only each search is held to SEARCH_BUDGET_MS.
+ */
+const SPEED_TEST_TIMEOUT_MS = 30_000;
 
 describe.skipIf(!url)('search against PostgreSQL', () => {
   let handle: DatabaseHandle;
@@ -425,7 +430,7 @@ describe.skipIf(!url)('search against PostgreSQL', () => {
     });
   });
 
-  describe('speed', () => {
+  describe('speed', { timeout: SPEED_TEST_TIMEOUT_MS }, () => {
     it(`searches 10,000 products within ${SEARCH_BUDGET_MS} ms`, async () => {
       const w = await world();
       // Bulk-load 10,000 enabled products in one statement each; createProduct one at a time
