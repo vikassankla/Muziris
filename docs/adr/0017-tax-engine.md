@@ -26,10 +26,12 @@ A new `tax` module owns tax registrations, rates, US exemptions and the provider
 `TaxRequest`. Rates are data an admin enters, not code: GST and US rates change by notification
 and ballot, and a release must not be needed to follow them.
 
-**What the request carries.** `TaxRequest` lines gain each product's tax code, which orders reads
-from the catalog with the product. The catalog gains `tax_code` on products: an HSN code (4, 6
-or 8 digits) or a SAC code (6 digits starting 99) for India, and a US tax category. The provider
-picks the regime from the website's country: IN is GST, US is sales tax.
+**What the request carries.** `TaxRequest` lines gain each product's tax codes, which orders reads
+from the catalog with the product, and the request gains the website's country and time zone.
+The catalog gains two optional fields on products, because one product can be sold on an Indian
+and a US website: `hsn_sac_code`, an HSN code (4, 6 or 8 digits) or a SAC code (6 digits
+starting 99), and `us_tax_category` (`general` or `exempt`). The provider picks the regime from
+the website's country: IN is GST, US is sales tax.
 
 **Refusing.** `TaxResult` gains `problems`, each with a line number (or none for the whole order)
 and a code. Orders turns them into a new checkout refusal, `tax_problems`, so a product without a
