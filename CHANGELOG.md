@@ -192,6 +192,17 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `@muziris/pricing`: `findPricesForBuyer`, the buyer price lookup for many products, units and
   quantities in one statement.
 - `@muziris/db`: an `onQuery` option on `createDatabase`, for tests that count queries.
+- `@muziris/orders` (ADR 0016): checkout as two functions, `previewCheckout` and `placeOrder`.
+  Placing re-checks the buyer's `order.place` permission, the website, the addresses, each
+  line's visibility, unit, quantity and price, and refuses with `prices_changed` when the
+  grand total differs from the one the buyer saw. It is idempotent per buyer and key, and a key
+  reused for a different order is refused. The totals pipeline runs line discounts, order
+  discounts, shipping, shipping discounts and tax as replaceable providers (the pilot has no
+  discounts and flat-rate shipping; the tax engine is ADR 0017). Orders copy their lines, taxes
+  and addresses, are numbered from a sequence (`MZ-000001`), carry payment terms from the
+  `payment.term_days` setting, and move through the `order_processing` workflow (new,
+  confirmed, processing, completed, or declined). Buyer reads are scoped by `order.view`.
+  Migration `0010`.
 - `apps/storefront` (ADR 0015): the buyer storefront, for signed-in buyers. Sign-in with the
   session-ended message, a header with search and the category bar, all products and category
   pages with a side menu, subcategories and paging, the product page with details and a price

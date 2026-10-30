@@ -27,12 +27,13 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
 | Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`          |
 | Storefront | Signed-in buyers: sign-in, catalogue and category pages, product page with a live price box, search                     | `apps/storefront`     |
+| Orders     | Checkout preview and place with re-checks and idempotency, totals pipeline, order copies, numbers, terms, workflow      | `modules/orders`      |
 
-Decisions are recorded in `docs/adr/0001` to `0015`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0016`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -83,6 +84,16 @@ emails wait for the email work in week 4.
    API loads; the app sends hashes only. Not built: the next quantity break on the product
    page (needs an additive `priceBreaks` field), product images, list totals.
 
+6. Orders and checkout (ADR 0016). **Merged** (PR 22, 2026-10-30, reviewed and approved by
+   Vikas in chat). It handles payment terms, pricing and tax, so CLAUDE.md rule 4 asks for a
+   second human review; Vikas's review is recorded in chat, not on GitHub. Module
+   `modules/orders`: `previewCheckout` and `placeOrder` with every re-check and idempotency, the
+   totals pipeline with replaceable providers, order copies, order numbers, payment terms from a
+   setting, the `order_processing` workflow and buyer reads scoped by `order.view`. Migration
+   `0010`. Not built yet: the storefront GraphQL mutations and the admin routes
+   (`/admin/v1/orders`), the tax engine (ADR 0017, so the tests use a GST test provider), tax
+   codes on catalog products, and the seller's GST registration.
+
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
 workflow, emails.
@@ -93,6 +104,17 @@ journeys, MRO demo catalog, install guide, security pass, pilot launch.
 If a week slips, cut in this order: emails, then quick order CSV upload, then US tax tables.
 
 ## Open items
+
+- Settings in `platform_config_value` read back a string that looks like JSON (such as
+  `"250.00"`) as a number, because Drizzle's jsonb column parses the driver's value again.
+  The orders settings avoid it (the flat rate is `{ amount }`, the number prefix starts with a
+  letter); the fix belongs in `@muziris/platform`.
+- Selling to all countries (requested 2026-10-30) is a later phase, after the pilot. The pilot
+  stays India and US. It needs general address formats and tax ids, a tax provider beyond the
+  India and US tables, payment providers per region, shipping by zone, a translation layer for
+  the admin app and the storefront, product names per locale, search in more languages, and
+  data protection and residency decisions. The foundations (websites with country, currency,
+  locale, time zone and units; exact money; price lists per currency) already work per country.
 
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`, and to run
