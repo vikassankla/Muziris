@@ -1,0 +1,36 @@
+# A product page, with the buyer's price for one primary unit.
+query Product($sku: String!) {
+  product(sku: $sku) {
+    id
+    sku
+    name
+    category {
+      id
+      name
+      parentId
+    }
+    attributes {
+      key
+      values
+    }
+    primaryUnit {
+      code
+      name
+      precision
+    }
+    units {
+      code
+      name
+      precision
+    }
+    price {
+      unitPrice {
+        amount
+        currency
+      }
+      unitCode
+      quantity
+      minQuantity
+    }
+  }
+}

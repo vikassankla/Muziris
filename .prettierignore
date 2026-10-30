@@ -13,3 +13,6 @@ docs/design/storefront/*.css
 docs/design/storefront/canvas.json
 # Printed by pnpm --filter @muziris/api storefront:schema; a test compares it with the schema
 apps/api/src/storefront/schema.graphql
+# Written by pnpm --filter @muziris/storefront operations
+apps/storefront/src/operations/generated.ts
+apps/storefront/persisted-queries.json

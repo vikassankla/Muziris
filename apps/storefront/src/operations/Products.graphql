@@ -1,0 +1,32 @@
+# One page of products, by SKU, with the buyer's price for one primary unit.
+query Products($categoryId: ID, $includeSubcategories: Boolean, $first: Int, $after: String) {
+  products(
+    categoryId: $categoryId
+    includeSubcategories: $includeSubcategories
+    first: $first
+    after: $after
+  ) {
+    nodes {
+      id
+      sku
+      name
+      category {
+        id
+        name
+      }
+      primaryUnit {
+        code
+        name
+        precision
+      }
+      price {
+        unitPrice {
+          amount
+          currency
+        }
+        unitCode
+      }
+    }
+    nextAfter
+  }
+}
