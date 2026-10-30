@@ -157,8 +157,18 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
         await adminSignIn('wrong password here', t0, email);
         return performance.now() - started;
       };
-      const unknown = await time('nobody@acme.example');
-      const known = await time('asha@acme.example');
+      // One timing each is at the mercy of a busy CI runner, so alternate the two paths and
+      // compare medians. Three failures for the known email stay under the lockout of five,
+      // which would skip the hash.
+      const unknowns: number[] = [];
+      const knowns: number[] = [];
+      for (let i = 0; i < 3; i += 1) {
+        unknowns.push(await time('nobody@acme.example'));
+        knowns.push(await time('asha@acme.example'));
+      }
+      const median = (values: number[]) => values.sort((a, b) => a - b)[1] ?? 0;
+      const unknown = median(unknowns);
+      const known = median(knowns);
       // Both paths run one Argon2id verification; neither may be several times faster.
       expect(unknown / known).toBeGreaterThan(0.33);
       expect(unknown / known).toBeLessThan(3);
