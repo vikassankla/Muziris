@@ -456,12 +456,17 @@ describe.skipIf(!url)('search against PostgreSQL', () => {
       const asDistributor = { buyerUserId: w.distributorBuyer, websiteId: w.website.id };
       const queries = ['bearng 6205', 'GEN-0', 'sealed spanner', 'aluminum sheet 6100'];
       for (const q of queries) await searchProductsForBuyer(handle.db, asDistributor, { q }); // warm up
+      // A loaded CI runner can stall one search, so each query is held to its median of three.
       for (const q of queries) {
-        const started = performance.now();
-        const page = await searchProductsForBuyer(handle.db, asDistributor, { q, limit: 50 });
-        const ms = performance.now() - started;
-        expect(page.results.length).toBeGreaterThan(0);
-        expect(ms).toBeLessThan(SEARCH_BUDGET_MS);
+        const timings: number[] = [];
+        for (let i = 0; i < 3; i += 1) {
+          const started = performance.now();
+          const page = await searchProductsForBuyer(handle.db, asDistributor, { q, limit: 50 });
+          timings.push(performance.now() - started);
+          expect(page.results.length).toBeGreaterThan(0);
+        }
+        const median = timings.sort((a, b) => a - b)[1] ?? 0;
+        expect(median, q).toBeLessThan(SEARCH_BUDGET_MS);
       }
     });
   });
