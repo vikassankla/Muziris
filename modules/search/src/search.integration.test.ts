@@ -49,6 +49,12 @@ const SEARCH_BUDGET_MS = 250;
  * test timeout. Only each search is held to SEARCH_BUDGET_MS.
  */
 const SPEED_TEST_TIMEOUT_MS = 30_000;
+/**
+ * SEARCH_SPEED_TEST=off skips the speed test. CI sets it while every package's tests share the
+ * runner and one PostgreSQL, then runs the speed test alone, so the budget is measured on an
+ * idle database rather than against the other suites' load.
+ */
+const skipSpeed = process.env['SEARCH_SPEED_TEST'] === 'off';
 
 describe.skipIf(!url)('search against PostgreSQL', () => {
   let handle: DatabaseHandle;
@@ -430,7 +436,7 @@ describe.skipIf(!url)('search against PostgreSQL', () => {
     });
   });
 
-  describe('speed', { timeout: SPEED_TEST_TIMEOUT_MS }, () => {
+  describe.skipIf(skipSpeed)('speed', { timeout: SPEED_TEST_TIMEOUT_MS }, () => {
     it(`searches 10,000 products within ${SEARCH_BUDGET_MS} ms`, async () => {
       const w = await world();
       // Bulk-load 10,000 enabled products in one statement each; createProduct one at a time
@@ -455,8 +461,10 @@ describe.skipIf(!url)('search against PostgreSQL', () => {
 
       const asDistributor = { buyerUserId: w.distributorBuyer, websiteId: w.website.id };
       const queries = ['bearng 6205', 'GEN-0', 'sealed spanner', 'aluminum sheet 6100'];
-      for (const q of queries) await searchProductsForBuyer(handle.db, asDistributor, { q }); // warm up
-      // A loaded CI runner can stall one search, so each query is held to its median of three.
+      // Warm up with the same options the timed runs use, so each runs a cached plan.
+      for (const q of queries)
+        await searchProductsForBuyer(handle.db, asDistributor, { q, limit: 50 });
+      // A runner can still stall one search, so each query is held to its median of three.
       for (const q of queries) {
         const timings: number[] = [];
         for (let i = 0; i < 3; i += 1) {
