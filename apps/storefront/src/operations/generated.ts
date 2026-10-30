@@ -83,7 +83,7 @@ export interface ProductsVariables {
 
 export interface ProductsResult {
   products: {
-    nodes: readonly ({
+    nodes: readonly {
       id: string;
       sku: string;
       name: string;
@@ -103,7 +103,7 @@ export interface ProductsResult {
         };
         unitCode: string;
       } | null;
-    })[];
+    }[];
     nextAfter: string | null;
   };
 }
@@ -121,7 +121,7 @@ export interface SearchVariables {
 
 export interface SearchResult {
   search: {
-    nodes: readonly ({
+    nodes: readonly {
       match: 'SKU_EXACT' | 'SKU_PREFIX' | 'TEXT' | 'CLOSE';
       product: {
         id: string;
@@ -144,7 +144,7 @@ export interface SearchResult {
           unitCode: string;
         } | null;
       };
-    })[];
+    }[];
     nextOffset: number | null;
   };
 }
@@ -172,12 +172,12 @@ export interface ShellResult {
     currency: string;
     locale: string;
   };
-  categories: readonly ({
+  categories: readonly {
     id: string;
     name: string;
     parentId: string | null;
     position: number;
-  })[];
+  }[];
 }
 
 export const Shell: Operation<ShellResult, ShellVariables> = {

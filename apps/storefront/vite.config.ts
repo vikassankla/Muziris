@@ -24,6 +24,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
+    env: { VITE_STOREFRONT_WEBSITE: 'main' },
     restoreMocks: true,
     unstubGlobals: true,
     unstubEnvs: true,

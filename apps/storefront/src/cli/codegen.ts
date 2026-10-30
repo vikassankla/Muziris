@@ -88,7 +88,9 @@ function nonNull(
   if (isNonNullType(type)) return nonNull(type.ofType, selection, depth, where);
   if (isListType(type)) {
     const item = outputType(type.ofType, selection, depth, where);
-    return item.includes('|') ? `readonly (${item})[]` : `readonly ${item}[]`;
+    // Brackets only when the item itself is a union; an object type's own fields don't count.
+    const object = item.startsWith('{') && item.endsWith('}');
+    return !object && item.includes('|') ? `readonly (${item})[]` : `readonly ${item}[]`;
   }
   if (isObjectType(type)) {
     if (!selection) throw new Error(`${where}: ${type.name} needs a selection`);
