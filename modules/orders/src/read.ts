@@ -93,6 +93,10 @@ export interface Order extends OrderSummary {
   dueOn: string;
   shippingMethod: string;
   taxProvider: string;
+  /** The seller's registration the tax was charged under (GSTIN or US permit), if any. */
+  sellerTaxId: string | null;
+  /** The buyer's exemption certificate that made the order tax free, if one did. */
+  taxExemptionCertificate: string | null;
   subtotal: Money;
   discount: Money;
   shipping: Money;
@@ -178,6 +182,8 @@ async function withDetails(db: Database, row: OrderRow): Promise<Order> {
     dueOn: row.dueOn,
     shippingMethod: row.shippingMethod,
     taxProvider: row.taxProvider,
+    sellerTaxId: row.sellerTaxId,
+    taxExemptionCertificate: row.taxExemptionCertificate,
     subtotal: m(row.subtotalMinor),
     discount: m(row.discountMinor),
     shipping: m(row.shippingMinor),

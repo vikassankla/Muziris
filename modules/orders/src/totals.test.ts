@@ -21,6 +21,8 @@ const KERALA = { countryCode: 'IN', regionCode: '32', postalCode: '682001', gsti
 function context(shipTo = MAHARASHTRA): TotalsContext {
   return {
     websiteId: '00000000-0000-4000-8000-000000000001',
+    websiteCountryCode: 'IN',
+    websiteTimeZone: 'Asia/Kolkata',
     customerId: '00000000-0000-4000-8000-000000000002',
     currency: 'INR',
     billTo: MAHARASHTRA,
@@ -40,7 +42,16 @@ function line(lineNo: number, unitPrice: string, quantity: string): PricedLine {
     quantity: parseDecimal(quantity),
     unitPrice: rupees(unitPrice),
     priceListId: '00000000-0000-4000-8000-000000000200',
+    hsnSacCode: '8482',
+    usTaxCategory: null,
   };
+}
+
+/** The totals of a result that must have them. */
+async function totalsOf(result: ReturnType<typeof computeTotals>) {
+  const r = await result;
+  if (!r.ok) throw new Error(`Expected totals, got ${JSON.stringify(r.taxProblems)}`);
+  return r.totals;
 }
 
 function providers(overrides: Partial<TotalsProviders> = {}): TotalsProviders {
@@ -124,13 +135,15 @@ describe('computeTotals', () => {
     ],
   ])('%s', async (_name, lines, shipping, shipTo, subtotal, tax, grandTotal) => {
     const priced = lines.map(([price, qty], i) => line(i + 1, price, qty));
-    const totals = await computeTotals(
-      priced,
-      context(shipTo),
-      providers({
-        shipping: flatRateShipping(rupees(shipping)),
-        tax: gstTestProvider({ sellerState: '27', rate: '0.18' }),
-      }),
+    const totals = await totalsOf(
+      computeTotals(
+        priced,
+        context(shipTo),
+        providers({
+          shipping: flatRateShipping(rupees(shipping)),
+          tax: gstTestProvider({ sellerState: '27', rate: '0.18' }),
+        }),
+      ),
     );
     expect(text(totals.subtotal)).toBe(subtotal);
     expect(text(totals.tax)).toBe(tax);
@@ -141,46 +154,48 @@ describe('computeTotals', () => {
   });
 
   it('applies line, order and shipping discounts before tax, in that order', async () => {
-    const totals = await computeTotals(
-      [line(1, '100.00', '10'), line(2, '50.00', '2')],
-      context(),
-      providers({
-        lineDiscounts: {
-          name: 'test',
-          lineDiscounts: () =>
-            Promise.resolve([
-              { lineNo: 1, adjustment: { reason: '10% off', amount: rupees('100.00') } },
-            ]),
-        },
-        orderDiscounts: {
-          name: 'test',
-          orderDiscounts: (net) => {
-            expect(text(net)).toBe('1000.00');
-            return Promise.resolve([{ reason: 'Loyalty', amount: rupees('50.00') }]);
+    const totals = await totalsOf(
+      computeTotals(
+        [line(1, '100.00', '10'), line(2, '50.00', '2')],
+        context(),
+        providers({
+          lineDiscounts: {
+            name: 'test',
+            lineDiscounts: () =>
+              Promise.resolve([
+                { lineNo: 1, adjustment: { reason: '10% off', amount: rupees('100.00') } },
+              ]),
           },
-        },
-        shipping: {
-          name: 'test',
-          quote: (goods) => {
-            expect(text(goods)).toBe('950.00');
-            return Promise.resolve({ method: 'courier', amount: rupees('80.00') });
+          orderDiscounts: {
+            name: 'test',
+            orderDiscounts: (net) => {
+              expect(text(net)).toBe('1000.00');
+              return Promise.resolve([{ reason: 'Loyalty', amount: rupees('50.00') }]);
+            },
           },
-        },
-        shippingDiscounts: {
-          name: 'test',
-          shippingDiscounts: () =>
-            Promise.resolve([{ reason: 'Free over 900', amount: rupees('80.00') }]),
-        },
-        tax: {
-          name: 'check',
-          calculate: (request) => {
-            expect(request.lines.map((l) => text(l.net))).toEqual(['900.00', '100.00']);
-            expect(text(request.orderDiscount)).toBe('50.00');
-            expect(text(request.shipping)).toBe('0.00');
-            return Promise.resolve({ lines: [], taxCodes: new Map() });
+          shipping: {
+            name: 'test',
+            quote: (goods) => {
+              expect(text(goods)).toBe('950.00');
+              return Promise.resolve({ method: 'courier', amount: rupees('80.00') });
+            },
           },
-        },
-      }),
+          shippingDiscounts: {
+            name: 'test',
+            shippingDiscounts: () =>
+              Promise.resolve([{ reason: 'Free over 900', amount: rupees('80.00') }]),
+          },
+          tax: {
+            name: 'check',
+            calculate: (request) => {
+              expect(request.lines.map((l) => text(l.net))).toEqual(['900.00', '100.00']);
+              expect(text(request.orderDiscount)).toBe('50.00');
+              expect(text(request.shipping)).toBe('0.00');
+              return Promise.resolve({ lines: [], taxCodes: new Map() });
+            },
+          },
+        }),
+      ),
     );
     expect(text(totals.subtotal)).toBe('1100.00');
     expect(text(totals.discount)).toBe('150.00');
@@ -192,10 +207,12 @@ describe('computeTotals', () => {
   });
 
   it('records the tax code the provider used per line', async () => {
-    const totals = await computeTotals(
-      [line(1, '10.00', '1')],
-      context(),
-      providers({ tax: gstTestProvider({ sellerState: '27', rate: '0.18' }) }),
+    const totals = await totalsOf(
+      computeTotals(
+        [line(1, '10.00', '1')],
+        context(),
+        providers({ tax: gstTestProvider({ sellerState: '27', rate: '0.18' }) }),
+      ),
     );
     expect(totals.lines[0]?.taxCode).toBe('8482');
     expect(totals.taxProvider).toBe('gst_test');
@@ -257,6 +274,46 @@ describe('computeTotals', () => {
     await expect(
       computeTotals([line(1, '10.00', '1')], context(), providers(overrides)),
     ).rejects.toThrow();
+  });
+
+  it("returns the tax provider's problems instead of totals", async () => {
+    const problems = [
+      { lineNo: 1, code: 'no_tax_code' as const, message: 'SKU-1 has no HSN or SAC code' },
+      { lineNo: null, code: 'no_registration' as const, message: 'No GSTIN' },
+    ];
+    const result = await computeTotals(
+      [line(1, '10.00', '1')],
+      context(),
+      providers({
+        tax: {
+          name: 'refusing',
+          calculate: () => Promise.resolve({ lines: [], taxCodes: new Map(), problems }),
+        },
+      }),
+    );
+    expect(result).toEqual({ ok: false, taxProblems: problems });
+  });
+
+  it('passes the tax codes and the website to the tax provider', async () => {
+    let seen: unknown;
+    await computeTotals(
+      [{ ...line(1, '10.00', '1'), hsnSacCode: null, usTaxCategory: 'exempt' }],
+      context(),
+      providers({
+        tax: {
+          name: 'spy',
+          calculate: (request) => {
+            seen = request;
+            return Promise.resolve({ lines: [], taxCodes: new Map() });
+          },
+        },
+      }),
+    );
+    expect(seen).toMatchObject({
+      websiteCountryCode: 'IN',
+      websiteTimeZone: 'Asia/Kolkata',
+      lines: [{ lineNo: 1, hsnSacCode: null, usTaxCategory: 'exempt' }],
+    });
   });
 
   it('refuses lines in another currency, or the same line twice', async () => {

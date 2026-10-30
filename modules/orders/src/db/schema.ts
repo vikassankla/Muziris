@@ -53,6 +53,10 @@ export const orders = pgTable(
     dueOn: date('due_on', { mode: 'string' }).notNull(),
     shippingMethod: text('shipping_method').notNull(),
     taxProvider: text('tax_provider').notNull(),
+    /** The seller's registration the tax was charged under: a GSTIN, or a US permit number. */
+    sellerTaxId: text('seller_tax_id'),
+    /** The buyer's exemption certificate that made the order tax free, if one did. */
+    taxExemptionCertificate: text('tax_exemption_certificate'),
     subtotalMinor: bigint('subtotal_minor', { mode: 'bigint' }).notNull(),
     discountMinor: bigint('discount_minor', { mode: 'bigint' }).notNull(),
     shippingMinor: bigint('shipping_minor', { mode: 'bigint' }).notNull(),

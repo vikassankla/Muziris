@@ -283,6 +283,11 @@ type CheckoutRefusal {
   """For LINE_PROBLEMS: each line that cannot be ordered, and why."""
   lines: [LineProblem!]!
 
+  """
+  For TAX_PROBLEMS: what stops tax being worked out, by line or for the order.
+  """
+  taxProblems: [TaxProblem!]!
+
   """For PRICES_CHANGED: the total the buyer sent."""
   expectedGrandTotal: Money
 
@@ -297,6 +302,7 @@ enum CheckoutRefusalCode {
   LINE_PROBLEMS
   PRICES_CHANGED
   IDEMPOTENCY_KEY_REUSED
+  TAX_PROBLEMS
   TAX_NOT_CONFIGURED
 }
 
@@ -316,6 +322,20 @@ enum LineProblemCode {
   UNIT_NOT_SOLD
   INVALID_QUANTITY
   NO_PRICE
+}
+
+type TaxProblem {
+  """Null when the problem is the whole order."""
+  lineNo: Int
+  code: TaxProblemCode!
+  message: String!
+}
+
+enum TaxProblemCode {
+  NO_TAX_CODE
+  NO_RATE
+  NO_REGISTRATION
+  CROSS_BORDER
 }
 
 input CheckoutInput {
@@ -394,6 +414,16 @@ type Order {
 
   """YYYY-MM-DD."""
   dueOn: String!
+
+  """
+  The seller's registration the tax was charged under: a GSTIN or US permit.
+  """
+  sellerTaxId: String
+
+  """
+  The buyer's exemption certificate that made the order tax free, if one did.
+  """
+  taxExemptionCertificate: String
   billingAddress: OrderAddress!
   shippingAddress: OrderAddress!
 }

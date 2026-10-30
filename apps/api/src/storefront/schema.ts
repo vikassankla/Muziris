@@ -30,6 +30,7 @@ import {
   type Totals,
   type TotalsLine,
   type TaxLine,
+  type TaxProblem,
 } from '@muziris/orders';
 import type { Website } from '@muziris/platform';
 import { findPricesForBuyer, type PriceLookup } from '@muziris/pricing';
@@ -608,8 +609,20 @@ const REFUSAL_CODES = [
   'line_problems',
   'prices_changed',
   'idempotency_key_reused',
+  'tax_problems',
   'tax_not_configured',
 ] as const satisfies readonly Refusal['code'][];
+
+const TAX_PROBLEMS = ['no_tax_code', 'no_rate', 'no_registration', 'cross_border'] as const;
+
+const TaxProblemType = new GraphQLObjectType<TaxProblem, StorefrontContext>({
+  name: 'TaxProblem',
+  fields: {
+    lineNo: { type: GraphQLInt, description: 'Null when the problem is the whole order.' },
+    code: { type: nonNull(enumOf('TaxProblemCode', TAX_PROBLEMS)) },
+    message: { type: nonNull(GraphQLString) },
+  },
+});
 
 function refusalMessage(refusal: Refusal): string {
   switch (refusal.code) {
@@ -625,6 +638,8 @@ function refusalMessage(refusal: Refusal): string {
       return 'The total changed since you last saw it; review the new total';
     case 'idempotency_key_reused':
       return 'This order key was already used for a different order';
+    case 'tax_problems':
+      return 'Tax cannot be worked out for this order, so it cannot be placed yet';
     case 'tax_not_configured':
       return 'Checkout is not available yet: tax is not set up for this storefront';
   }
@@ -646,6 +661,12 @@ const CheckoutRefusalType = new GraphQLObjectType<Refusal, StorefrontContext>({
       description: 'For LINE_PROBLEMS: each line that cannot be ordered, and why.',
       extensions: { listSize: 50 } satisfies FieldCostExtensions,
       resolve: (r) => (r.code === 'line_problems' ? r.lines : []),
+    },
+    taxProblems: {
+      type: listOf(TaxProblemType),
+      description: 'For TAX_PROBLEMS: what stops tax being worked out, by line or for the order.',
+      extensions: { listSize: 50 } satisfies FieldCostExtensions,
+      resolve: (r) => (r.code === 'tax_problems' ? r.problems : []),
     },
     expectedGrandTotal: {
       type: MoneyType,
@@ -716,6 +737,14 @@ const OrderType = new GraphQLObjectType<Order, StorefrontContext>({
     paymentMethod: { type: nonNull(GraphQLString), description: 'TERMS: pay on invoice.' },
     paymentTermDays: { type: nonNull(GraphQLInt) },
     dueOn: { type: nonNull(GraphQLString), description: 'YYYY-MM-DD.' },
+    sellerTaxId: {
+      type: GraphQLString,
+      description: "The seller's registration the tax was charged under: a GSTIN or US permit.",
+    },
+    taxExemptionCertificate: {
+      type: GraphQLString,
+      description: "The buyer's exemption certificate that made the order tax free, if one did.",
+    },
     billingAddress: { type: nonNull(OrderAddressType) },
     shippingAddress: { type: nonNull(OrderAddressType) },
   }),
