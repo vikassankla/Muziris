@@ -70,6 +70,10 @@ with the website code in a `Muziris-Website` header. Outside production it takes
 queries; in production only persisted queries, from the file `STOREFRONT_PERSISTED_QUERIES`
 names. The schema is in `apps/api/src/storefront/schema.graphql`.
 
+Checkout (`checkoutPreview`, `placeOrder`) needs a tax calculator. Until the tax engine (ADR 0017) is built there is none, so checkout answers with the refusal `TAX_NOT_CONFIGURED` and no
+order is placed without tax. Orders are listed and moved through their workflow under
+`/admin/v1/orders`.
+
 ### The storefront app
 
 The storefront (ADR 0015) is for signed-in buyers. In `.env`, set `VITE_STOREFRONT_WEBSITE` to
