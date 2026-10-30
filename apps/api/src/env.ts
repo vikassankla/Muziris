@@ -31,9 +31,18 @@ const envSchema = z.object({
    * X-Forwarded-For entries are trusted for the client IP; leave 0 when the API faces clients.
    */
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  /**
+   * Whether the storefront GraphQL API runs query text as well as persisted queries (ADR 0014).
+   * Defaults to allow outside production and deny in production, where allow is refused.
+   */
+  STOREFRONT_ADHOC_QUERIES: z.enum(['allow', 'deny']).optional(),
+  /** A JSON file of persisted storefront queries, hash to document, from the storefront build. */
+  STOREFRONT_PERSISTED_QUERIES: z.string().min(1).optional(),
 });
 
-export type Env = z.infer<typeof envSchema>;
+export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES'> & {
+  STOREFRONT_ADHOC_QUERIES: 'allow' | 'deny';
+};
 
 /**
  * Reads and validates configuration once at startup. On failure it reports which variables
@@ -47,9 +56,21 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       .join('\n');
     throw new Error(`Invalid configuration:\n${problems}`);
   }
-  const env = result.data;
-  if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.some((o) => o.startsWith('http://'))) {
+  const parsed = result.data;
+  if (
+    parsed.NODE_ENV === 'production' &&
+    parsed.CORS_ORIGINS.some((o) => o.startsWith('http://'))
+  ) {
     throw new Error('Invalid configuration:\n  CORS_ORIGINS: production origins must use https');
   }
-  return env;
+  if (parsed.NODE_ENV === 'production' && parsed.STOREFRONT_ADHOC_QUERIES === 'allow') {
+    throw new Error(
+      'Invalid configuration:\n  STOREFRONT_ADHOC_QUERIES: production runs persisted queries only',
+    );
+  }
+  return {
+    ...parsed,
+    STOREFRONT_ADHOC_QUERIES:
+      parsed.STOREFRONT_ADHOC_QUERIES ?? (parsed.NODE_ENV === 'production' ? 'deny' : 'allow'),
+  };
 }

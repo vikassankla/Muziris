@@ -8,3 +8,5 @@ LICENSE
 docs/design/admin/*.dc.html
 docs/design/admin/*.css
 docs/design/admin/canvas.json
+# Printed by pnpm --filter @muziris/api storefront:schema; a test compares it with the schema
+apps/api/src/storefront/schema.graphql

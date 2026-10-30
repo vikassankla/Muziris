@@ -23,7 +23,16 @@ export {
   type BuildState,
 } from './build.js';
 export { PricingError, type PricingErrorCode } from './errors.js';
-export { findPrice, findPriceForBuyer, type PriceLookup, type PriceRequest } from './lookup.js';
+export {
+  findPrice,
+  findPriceForBuyer,
+  findPricesForBuyer,
+  MAX_PRICE_ITEMS,
+  type PriceItem,
+  type PriceLookup,
+  type PriceRequest,
+  type PricesRequest,
+} from './lookup.js';
 export { PAGE_LIMIT_DEFAULT, PAGE_LIMIT_MAX } from './page.js';
 export {
   createPriceList,
