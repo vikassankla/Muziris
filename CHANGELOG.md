@@ -192,6 +192,16 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `@muziris/pricing`: `findPricesForBuyer`, the buyer price lookup for many products, units and
   quantities in one statement.
 - `@muziris/db`: an `onQuery` option on `createDatabase`, for tests that count queries.
+- `apps/storefront` (ADR 0015): the buyer storefront, for signed-in buyers. Sign-in with the
+  session-ended message, a header with search and the category bar, all products and category
+  pages with a side menu, subcategories and paging, the product page with details and a price
+  box that prices any unit and quantity the buyer enters, and search with match labels and a
+  close-spellings notice. Prices show in the website's locale and currency, with "Price on
+  request" when there is none. Light and dark follow the system. Design boards in
+  `docs/design/storefront/`.
+- `pnpm --filter @muziris/storefront operations`: compiles the storefront's operations into
+  TypeScript types and the persisted query registry (`persisted-queries.json`) the API loads.
+- `packages/ui-tokens`: the design tokens, shared by the admin app and the storefront.
 
 ### Changed
 

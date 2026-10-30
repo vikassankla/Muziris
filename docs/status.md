@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-29
+Last updated: 2026-10-30
 
 ## Goal
 
@@ -26,12 +26,13 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes    | `modules/access`      |
 | Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
 | Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`          |
+| Storefront | Signed-in buyers: sign-in, catalogue and category pages, product page with a live price box, search (in review)         | `apps/storefront`     |
 
-Decisions are recorded in `docs/adr/0001` to `0014`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0015`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is proposed, in review with item 5. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -73,7 +74,13 @@ emails wait for the email work in week 4.
    and per-request batching. Catalog gains `findProductsWithin`, `findProductBySkuWithin`,
    `listProductsWithin` and `listCategoriesWithin`; pricing gains `findPricesForBuyer`. The
    schema is committed as `apps/api/src/storefront/schema.graphql`.
-5. Storefront browsing.
+5. Storefront browsing (ADR 0015). **In review** (branch `feature/storefront-browsing`). No
+   pricing or scoping change in the API; the app shows what the API already scopes.
+   `apps/storefront` on the admin app's stack, signed-in buyers only (guests are later work).
+   Design boards in `docs/design/storefront/`. Tokens moved to `packages/ui-tokens`. The
+   operations are `.graphql` files compiled into types and the persisted query registry the
+   API loads; the app sends hashes only. Not built: the next quantity break on the product
+   page (needs an additive `priceBreaks` field), product images, list totals.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
