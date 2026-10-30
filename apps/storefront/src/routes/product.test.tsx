@@ -62,7 +62,9 @@ function setup(product: ProductResult['product'] = PRODUCT) {
 }
 
 const priceBox = () =>
-  screen.getByRole('heading', { name: 'Your price' }).closest('[aria-labelledby="price-title"]')!;
+  screen
+    .getByRole('heading', { name: 'Your price' })
+    .closest<HTMLElement>('[aria-labelledby="price-title"]')!;
 
 describe('the product page', () => {
   it('shows the details, the units and the loaded price without asking again', async () => {
