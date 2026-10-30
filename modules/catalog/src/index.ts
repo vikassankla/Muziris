@@ -48,6 +48,7 @@ export {
   MAX_PRODUCT_UNITS,
   newProductSchema,
   PRODUCT_STATUSES,
+  US_TAX_CATEGORIES,
   PRODUCT_TYPES,
   productCategoryAndStatus,
   productSearchSource,
@@ -62,6 +63,7 @@ export {
   type ProductChanges,
   type ProductPage,
   type ProductStatus,
+  type UsTaxCategory,
   type ProductType,
   type ProductUnitsInput,
 } from './products.js';

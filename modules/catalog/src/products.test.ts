@@ -31,6 +31,8 @@ describe('new product', () => {
       status: 'disabled',
       categoryId: null,
       attributes: {},
+      hsnSacCode: null,
+      usTaxCategory: null,
       primaryUnitCode: 'each',
       additionalUnitCodes: [],
     });
@@ -51,6 +53,40 @@ describe('new product', () => {
     expect(issues(newProductSchema, { sku: 'A1', name: 'A' })).toEqual([
       expect.stringContaining('primaryUnitCode'),
     ]);
+  });
+});
+
+describe('tax codes', () => {
+  it.each([
+    ['8482', true],
+    ['848210', true],
+    ['84821011', true],
+    ['998719', true],
+    [' 8482 ', true],
+    ['848', false],
+    ['84821', false],
+    ['8482101', false],
+    ['848210111', false],
+    ['8482.10', false],
+    ['HSN8482', false],
+  ])('HSN or SAC code %j is valid: %s', (hsnSacCode, valid) => {
+    expect(issues(newProductSchema, { ...minimal, hsnSacCode })).toHaveLength(valid ? 0 : 1);
+  });
+
+  it.each([
+    ['general', true],
+    ['exempt', true],
+    ['taxable', false],
+    ['EXEMPT', false],
+  ])('US tax category %j is valid: %s', (usTaxCategory, valid) => {
+    expect(issues(newProductSchema, { ...minimal, usTaxCategory })).toHaveLength(valid ? 0 : 1);
+  });
+
+  it('lets an admin set and clear the codes later', () => {
+    expect(productChangesSchema.parse({ hsnSacCode: '8482', usTaxCategory: null })).toEqual({
+      hsnSacCode: '8482',
+      usTaxCategory: null,
+    });
   });
 });
 

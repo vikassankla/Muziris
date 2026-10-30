@@ -78,6 +78,13 @@
       "when": 1793354092811,
       "tag": "0010_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793357859235,
+      "tag": "0011_catalog_tax_codes",
+      "breakpoints": true
     }
   ]
 }
