@@ -55,6 +55,12 @@ jobs:
             exit 1
           fi
       - run: pnpm test
+        env:
+          SEARCH_SPEED_TEST: 'off'
+      # The search speed budget (ADR 0013) is timed alone, after the other suites have finished
+      # with the shared PostgreSQL; run in parallel with them it measured the runner's load.
+      - name: Search speed test
+        run: pnpm --filter @muziris/search exec vitest run src/search.integration.test.ts -t speed
 
   audit:
     name: Dependency audit
