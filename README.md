@@ -62,6 +62,11 @@ Sign-in endpoints: `POST /admin/v1/auth/sign-in` and `POST /storefront/v1/auth/s
 `{"email": "...", "password": "..."}`. Requests must come from an origin listed in
 `CORS_ORIGINS`.
 
+The storefront API is GraphQL at `/storefront/v1/graphql` (ADR 0014), for a signed-in buyer,
+with the website code in a `Muziris-Website` header. Outside production it takes ad hoc
+queries; in production only persisted queries, from the file `STOREFRONT_PERSISTED_QUERIES`
+names. The schema is in `apps/api/src/storefront/schema.graphql`.
+
 ## Checks
 
 ```sh

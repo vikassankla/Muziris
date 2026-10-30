@@ -177,6 +177,21 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `@muziris/catalog`: `productSearchSource` and `categoryNames`, SQL selects of what search
   indexes.
 - Migrations create the `pg_trgm` extension, if it is not there yet, and the search tables.
+- API: the storefront GraphQL endpoint, `/storefront/v1/graphql` (ADR 0014), for signed-in
+  buyers. The website comes from the `Muziris-Website` header. Queries: `viewer`, `website`,
+  `categories`, `category`, `product` (by id or SKU), `products` (paged by SKU) and `search`,
+  with each product's price for a unit and quantity. Every read is scoped to the buyer inside
+  its SQL. Persisted queries from a registry (`STOREFRONT_PERSISTED_QUERIES`); ad hoc queries
+  and introspection only when `STOREFRONT_ADHOC_QUERIES=allow`, the default outside
+  production and refused in production. Depth, cost and document size limits are checked
+  before execution, internal errors are masked, and reads are batched per request. The
+  schema is committed as `schema.graphql`; `pnpm --filter @muziris/api storefront:schema`
+  rewrites it.
+- `@muziris/catalog`: `findProductsWithin`, `findProductBySkuWithin`, `listProductsWithin` and
+  `listCategoriesWithin`, reads within a set of ids given as an SQL select.
+- `@muziris/pricing`: `findPricesForBuyer`, the buyer price lookup for many products, units and
+  quantities in one statement.
+- `@muziris/db`: an `onQuery` option on `createDatabase`, for tests that count queries.
 
 ### Changed
 
