@@ -62,6 +62,9 @@ importers:
       '@muziris/money':
         specifier: workspace:*
         version: link:../../packages/money
+      '@muziris/ui-tokens':
+        specifier: workspace:*
+        version: link:../../packages/ui-tokens
       '@tanstack/react-router':
         specifier: ^1.170.46
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -357,6 +360,8 @@ importers:
         version: 3.4.9
 
   packages/money: {}
+
+  packages/ui-tokens: {}
 
 packages:
 
