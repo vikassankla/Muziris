@@ -3,6 +3,7 @@ import { createDatabase } from '@muziris/db';
 import { createApp } from './app.js';
 import { loadEnv } from './env.js';
 import { createLogger } from './logger.js';
+import { loadPersistedQueries } from './storefront/persisted.js';
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
@@ -13,6 +14,9 @@ const database = createDatabase({
   applicationName: 'muziris-api',
 });
 
+// A registry whose entries do not match their hashes stops the API here (ADR 0014).
+const persistedQueries = await loadPersistedQueries(env.STOREFRONT_PERSISTED_QUERIES);
+
 const app = createApp({
   logger,
   db: database.db,
@@ -20,6 +24,10 @@ const app = createApp({
   corsOrigins: env.CORS_ORIGINS,
   maxBodyBytes: env.MAX_BODY_BYTES,
   trustedProxyHops: env.TRUSTED_PROXY_HOPS,
+  storefront: {
+    persistedQueries,
+    allowAdhocQueries: env.STOREFRONT_ADHOC_QUERIES === 'allow',
+  },
 });
 
 const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (info) => {

@@ -10,6 +10,7 @@ import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
+import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
 import { visibilityRoutes } from './visibility-routes.js';
 import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
@@ -30,6 +31,8 @@ export interface AppDependencies {
   now?: () => Date;
   /** Client IP resolver, injectable for tests. */
   clientIp?: (c: Context) => string | undefined;
+  /** Persisted queries and whether ad hoc queries run; by default neither (ADR 0014). */
+  storefront?: StorefrontOptions;
 }
 
 export interface AppEnv {
@@ -103,7 +106,13 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     cors({
       origin: (origin) => (allowedOrigins.has(origin) ? origin : null),
       allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-Id'],
+      allowHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Idempotency-Key',
+        'X-Request-Id',
+        WEBSITE_HEADER,
+      ],
       exposeHeaders: ['X-Request-Id', 'Retry-After'],
       credentials: true,
       maxAge: 600,
@@ -142,6 +151,13 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   };
   app.route('/admin/v1/auth', authRoutes('admin', authDeps));
   app.route('/storefront/v1/auth', authRoutes('buyer', authDeps));
+  app.route(
+    '/storefront/v1/graphql',
+    storefrontRoutes({
+      ...authDeps,
+      storefront: deps.storefront ?? { persistedQueries: new Map(), allowAdhocQueries: false },
+    }),
+  );
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(authDeps));

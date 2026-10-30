@@ -15,6 +15,11 @@ export interface DatabaseOptions {
   applicationName?: string;
   /** Statement timeout in milliseconds; protects the pool from runaway queries. */
   statementTimeoutMs?: number;
+  /**
+   * Called once per statement sent, with nothing about it, so tests can count queries (the
+   * storefront's batching, ADR 0014). It cannot leak query text or parameters into logs.
+   */
+  onQuery?: () => void;
 }
 
 export interface DatabaseHandle {
@@ -37,7 +42,16 @@ export function createDatabase(options: DatabaseOptions): DatabaseHandle {
     // Never print connection details or query parameters in driver notices.
     onnotice: () => undefined,
   });
-  const db = drizzle(sql);
+  const onQuery = options.onQuery;
+  const db = onQuery
+    ? drizzle(sql, {
+        logger: {
+          logQuery: () => {
+            onQuery();
+          },
+        },
+      })
+    : drizzle(sql);
   return {
     db,
     ping: async () => {

@@ -199,4 +199,15 @@ describe('loadEnv', () => {
       loadEnv({ ...valid, NODE_ENV: 'production', CORS_ORIGINS: 'http://shop.example.com' }),
     ).toThrow(/https/);
   });
+
+  it('runs storefront query text outside production only', () => {
+    expect(loadEnv(valid).STOREFRONT_ADHOC_QUERIES).toBe('allow');
+    expect(loadEnv({ ...valid, NODE_ENV: 'production' }).STOREFRONT_ADHOC_QUERIES).toBe('deny');
+    expect(loadEnv({ ...valid, STOREFRONT_ADHOC_QUERIES: 'deny' }).STOREFRONT_ADHOC_QUERIES).toBe(
+      'deny',
+    );
+    expect(() =>
+      loadEnv({ ...valid, NODE_ENV: 'production', STOREFRONT_ADHOC_QUERIES: 'allow' }),
+    ).toThrow(/STOREFRONT_ADHOC_QUERIES/);
+  });
 });

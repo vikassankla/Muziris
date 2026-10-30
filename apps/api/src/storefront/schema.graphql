@@ -1,0 +1,165 @@
+type Query {
+  viewer: Viewer!
+  website: Website!
+
+  """Every category the buyer may see, flat; build the tree from parentId."""
+  categories: [Category!]!
+  category(id: ID!): Category
+
+  """
+  One product by id or by SKU (in any letter case), if the buyer may see it.
+  """
+  product(id: ID, sku: String): Product
+
+  """The products the buyer may see, by SKU, a page at a time."""
+  products(
+    categoryId: ID
+    includeSubcategories: Boolean = false
+
+    """How many to return, at most 50."""
+    first: Int = 20
+
+    """The previous page's nextAfter."""
+    after: String
+  ): ProductPage!
+
+  """
+  Products the buyer may see, ranked: exact SKU, SKU prefix, text, close match.
+  """
+  search(
+    query: String!
+
+    """How many to return, at most 50."""
+    first: Int = 20
+    offset: Int = 0
+  ): SearchResults!
+}
+
+"""The signed-in buyer user."""
+type Viewer {
+  id: ID!
+  email: String!
+  displayName: String!
+  customer: Customer!
+}
+
+"""The company the buyer user buys for."""
+type Customer {
+  id: ID!
+  name: String!
+}
+
+"""
+The storefront this request is for, named by the Muziris-Website header.
+"""
+type Website {
+  code: String!
+  name: String!
+  countryCode: String!
+  currency: String!
+  locale: String!
+  timeZone: String!
+  unitSystem: String!
+}
+
+type Category {
+  id: ID!
+  code: String!
+  name: String!
+
+  """Null at the top, and when the buyer may not see the parent."""
+  parentId: ID
+
+  """Order among siblings, lowest first."""
+  position: Int!
+}
+
+type Product {
+  id: ID!
+  sku: String!
+  name: String!
+
+  """Null when the product has none, or the buyer may not see it."""
+  category: Category
+  attributes: [Attribute!]!
+  primaryUnit: ProductUnit!
+
+  """Every product unit the product is sold in, the primary one first."""
+  units: [ProductUnit!]!
+
+  """
+  The price for a quantity in a product unit, or null when the buyer has no price for it.
+  """
+  price(
+    """Defaults to the primary unit."""
+    unitCode: String
+
+    """A decimal string at the unit's precision."""
+    quantity: String = "1"
+  ): Price
+}
+
+type Attribute {
+  key: String!
+
+  """
+  One value, or several for a list; true and false are "true" and "false".
+  """
+  values: [String!]!
+}
+
+type ProductUnit {
+  code: String!
+  name: String!
+
+  """Digits a quantity in this unit may have after the decimal point."""
+  precision: Int!
+}
+
+"""The buyer's price from their combined price list."""
+type Price {
+  unitPrice: Money!
+  unitCode: String!
+
+  """The quantity the price is for."""
+  quantity: String!
+
+  """The smallest quantity the price applies to (its tier)."""
+  minQuantity: String!
+}
+
+type Money {
+  """A decimal string in major units, for example "4.86"."""
+  amount: String!
+
+  """The amount in minor units (paise, cents), as a string of digits."""
+  minorUnits: String!
+  currency: String!
+}
+
+type ProductPage {
+  nodes: [Product!]!
+
+  """Pass as after to read the next page; null on the last page."""
+  nextAfter: String
+}
+
+type SearchResults {
+  nodes: [SearchHit!]!
+
+  """Pass as offset to read the next page; null on the last page."""
+  nextOffset: Int
+}
+
+type SearchHit {
+  match: SearchMatch!
+  product: Product!
+}
+
+"""How a product matched, best first."""
+enum SearchMatch {
+  SKU_EXACT
+  SKU_PREFIX
+  TEXT
+  CLOSE
+}
