@@ -105,10 +105,6 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 
 ## Open items
 
-- Settings in `platform_config_value` read back a string that looks like JSON (such as
-  `"250.00"`) as a number, because Drizzle's jsonb column parses the driver's value again.
-  The orders settings avoid it (the flat rate is `{ amount }`, the number prefix starts with a
-  letter); the fix belongs in `@muziris/platform`.
 - Selling to all countries (requested 2026-10-30) is a later phase, after the pilot. The pilot
   stays India and US. It needs general address formats and tax ids, a tax provider beyond the
   India and US tables, payment providers per region, shipping by zone, a translation layer for

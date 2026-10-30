@@ -105,6 +105,22 @@ describe.skipIf(!url)('platform module against PostgreSQL', () => {
     ).rejects.toThrow();
   });
 
+  it('reads a string setting back as the string stored, even when it looks like JSON', async () => {
+    const { org, site } = await seedWebsite();
+    const label = defineSetting({
+      key: 'test.label',
+      description: 'A free-text label',
+      schema: z.string(),
+      defaultValue: '',
+      allowedScopes: ['website', 'global'],
+    });
+    const context = { organizationId: org.id, websiteId: site.id };
+    for (const value of ['250.00', '123', 'true', 'null', '{"a":1}', '[1]', '"quoted"', 'MZ']) {
+      await setSetting(handle.db, label, { type: 'website', id: site.id }, value);
+      expect(await getSetting(handle.db, label, context)).toEqual({ value, source: 'website' });
+    }
+  });
+
   it('stores, overrides, inherits and clears a setting across scopes', async () => {
     const { org, site } = await seedWebsite();
     const context = { organizationId: org.id, websiteId: site.id };

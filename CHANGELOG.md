@@ -221,3 +221,9 @@ All notable changes are listed here. The project follows semantic versioning fro
   `@muziris/access`: so does `listBuyerRoles`.
 - API: the `user_not_found` problem title is now "No such user", since buyer role assignment
   uses it too.
+
+### Fixed
+
+- `@muziris/platform`: a string setting that looks like JSON (such as `"250.00"` or `"123"`)
+  is read back as the string stored. Drizzle's jsonb column parsed the driver's already decoded
+  value again, so it came back as a number and failed its schema.
