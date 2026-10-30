@@ -108,6 +108,7 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
       status: 'enabled',
       attributes: {},
       primaryUnitCode: 'each',
+      hsnSacCode: '8482',
     });
     const glove = await createProduct(handle.db, {
       sku: 'GLV-NITRILE-L',
@@ -116,6 +117,7 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
       attributes: {},
       primaryUnitCode: 'each',
       additionalUnitCodes: ['kg'],
+      hsnSacCode: '8482',
     });
     const cable = await createProduct(handle.db, {
       sku: 'CBL-2.5',
@@ -389,6 +391,21 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
       ]);
     });
 
+    it('refuses with tax problems rather than selling a line without tax', async () => {
+      const w = await world();
+      await updateProduct(handle.db, w.glove.id, { hsnSacCode: null });
+      const r = await placeOrder(
+        handle.db,
+        { buyerUserId: w.ravi, request: request(w), now: NOW },
+        deps,
+      );
+      expect(r).toMatchObject({
+        ok: false,
+        refusal: { code: 'tax_problems', problems: [{ lineNo: 2, code: 'no_tax_code' }] },
+      });
+      expect((await listOrders(handle.db, {})).orders).toHaveLength(0);
+    });
+
     it('refuses when the total is not the one the buyer saw, and shows the new totals', async () => {
       const w = await world();
       const [tier] = (await listPrices(handle.db, w.list.id, {})).prices.filter(
@@ -429,6 +446,8 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
         dueOn: '2026-12-20',
         shippingMethod: 'flat_rate',
         taxProvider: 'gst_test',
+        sellerTaxId: '27AAPFU0939F1ZV',
+        taxExemptionCertificate: null,
       });
       expect(toDecimalString(order.grandTotal)).toBe('15635.00');
       expect(

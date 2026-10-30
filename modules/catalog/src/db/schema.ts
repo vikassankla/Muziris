@@ -80,6 +80,10 @@ export const products = pgTable(
     categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'restrict' }),
     /** Free-form attributes, validated in code (attributes.ts). Always a JSON object. */
     attributes: jsonb('attributes').notNull().default({}),
+    /** India: the HSN code (goods, 4, 6 or 8 digits) or SAC code (services, 99 and 4 digits). */
+    hsnSacCode: text('hsn_sac_code'),
+    /** US: the sales tax category (ADR 0017); null is taxable. */
+    usTaxCategory: text('us_tax_category'),
     ...timestamps,
   },
   (t) => [
@@ -91,6 +95,11 @@ export const products = pgTable(
     check('catalog_product_type', sql`${t.type} in ('simple')`),
     check('catalog_product_status', sql`${t.status} in ('enabled', 'disabled')`),
     check('catalog_product_attributes_object', sql`jsonb_typeof(${t.attributes}) = 'object'`),
+    check(
+      'catalog_product_hsn_sac_format',
+      sql`${t.hsnSacCode} ~ '^([0-9]{4}|[0-9]{6}|[0-9]{8})$'`,
+    ),
+    check('catalog_product_us_tax_category', sql`${t.usTaxCategory} in ('general', 'exempt')`),
   ],
 );
 

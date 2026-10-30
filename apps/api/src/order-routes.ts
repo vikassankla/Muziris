@@ -91,6 +91,8 @@ function orderJson(order: Order) {
     dueOn: order.dueOn,
     shippingMethod: order.shippingMethod,
     taxProvider: order.taxProvider,
+    sellerTaxId: order.sellerTaxId,
+    taxExemptionCertificate: order.taxExemptionCertificate,
     subtotal: toDecimalString(order.subtotal),
     discount: toDecimalString(order.discount),
     shipping: toDecimalString(order.shipping),

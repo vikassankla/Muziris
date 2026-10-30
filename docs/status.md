@@ -29,11 +29,11 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Storefront | Signed-in buyers: sign-in, catalogue and category pages, product page with a live price box, search                     | `apps/storefront`     |
 | Orders     | Checkout preview and place with re-checks and idempotency, totals pipeline, order copies, numbers, terms, workflow      | `modules/orders`      |
 
-Decisions are recorded in `docs/adr/0001` to `0016`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0017`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is proposed, in review. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -96,10 +96,17 @@ emails wait for the email work in week 4.
    Vikas in chat, with no second review recorded on GitHub). It exposes ordering and order data
    to buyers and admins, so CLAUDE.md rule 4 asks for a second human review.
    Storefront GraphQL `checkoutPreview`, `placeOrder`, `orders`, `order(number)` and the
-   customer's `addresses`; admin `/admin/v1/orders` (list, view with history, transitions). The
-   tax calculator is an app dependency: until ADR 0017 there is none, and checkout refuses with
-   `TAX_NOT_CONFIGURED`. Not built yet: the checkout and order screens in the storefront and the
-   admin app.
+   customer's `addresses`; admin `/admin/v1/orders` (list, view with history, transitions). Not
+   built yet: the checkout and order screens in the storefront and the admin app.
+8. Tax engine (ADR 0017). **In review**, not merged. This is tax, so CLAUDE.md rule 4 asks for
+   a second human review. Module `modules/tax`: registrations per website (GSTIN, US permits),
+   dated GST rates by HSN or SAC prefix, dated US rates by state and ZIP prefix with a CSV
+   import, US exemption certificates, and `tableTaxProvider`, which the server now passes to
+   checkout. Products gain `hsnSacCode` and `usTaxCategory`; orders copy the seller's
+   registration and any exemption certificate. Admin routes under `/admin/v1/tax` with new
+   permissions `tax.view` and `tax.manage`. Migrations `0011` to `0013`. Five choices in the
+   ADR are marked for a tax adviser to confirm before go-live. Not built yet: the tax admin
+   screens, and the product tax code fields in the admin app.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

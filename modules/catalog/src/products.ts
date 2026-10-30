@@ -30,6 +30,10 @@ export type ProductType = (typeof PRODUCT_TYPES)[number];
 export const PRODUCT_STATUSES = ['enabled', 'disabled'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
+/** US sales tax categories (ADR 0017). `general` is taxable at the rate; `exempt` is not. */
+export const US_TAX_CATEGORIES = ['general', 'exempt'] as const;
+export type UsTaxCategory = (typeof US_TAX_CATEGORIES)[number];
+
 export interface Product {
   id: string;
   sku: string;
@@ -38,6 +42,10 @@ export interface Product {
   status: ProductStatus;
   categoryId: string | null;
   attributes: ProductAttributes;
+  /** India: HSN (goods) or SAC (services, starting 99); null until set. */
+  hsnSacCode: string | null;
+  /** US: the sales tax category; null is taxable, like `general`. */
+  usTaxCategory: UsTaxCategory | null;
   /** The product unit quantities and prices default to. */
   primaryUnitCode: string;
   /** Every product unit the product is sold in, the primary one first, then by code. */
@@ -88,6 +96,15 @@ const productFields = z.object({
   status: z.enum(PRODUCT_STATUSES),
   categoryId: z.uuid().nullable(),
   attributes: productAttributesSchema,
+  hsnSacCode: z
+    .string()
+    .trim()
+    .regex(
+      /^(\d{4}|\d{6}|\d{8})$/,
+      'Use an HSN code of 4, 6 or 8 digits, or a SAC code of 6 digits starting 99',
+    )
+    .nullable(),
+  usTaxCategory: z.enum(US_TAX_CATEGORIES).nullable(),
 });
 
 export const newProductSchema = z
@@ -98,6 +115,8 @@ export const newProductSchema = z
     status: productFields.shape.status.default('disabled'),
     categoryId: productFields.shape.categoryId.default(null),
     attributes: productFields.shape.attributes.default({}),
+    hsnSacCode: productFields.shape.hsnSacCode.default(null),
+    usTaxCategory: productFields.shape.usTaxCategory.default(null),
   })
   .and(productUnitsSchema);
 
@@ -152,6 +171,10 @@ function isProductStatus(value: string): value is ProductStatus {
 }
 
 /** Loads the product units of each product, and assembles the products in the rows' order. */
+function isUsTaxCategory(value: string | null): value is UsTaxCategory {
+  return (US_TAX_CATEGORIES as readonly (string | null)[]).includes(value);
+}
+
 async function withUnits(db: Reader, rows: readonly ProductRow[]): Promise<Product[]> {
   if (rows.length === 0) return [];
   const units = await db
@@ -198,6 +221,8 @@ async function withUnits(db: Reader, rows: readonly ProductRow[]): Promise<Produ
       status: row.status,
       categoryId: row.categoryId,
       attributes: readStoredAttributes(row.attributes),
+      hsnSacCode: row.hsnSacCode,
+      usTaxCategory: isUsTaxCategory(row.usTaxCategory) ? row.usTaxCategory : null,
       primaryUnitCode: entry.primary,
       units: entry.units,
       createdAt: row.createdAt,
@@ -227,6 +252,8 @@ export async function createProduct(db: Database, input: NewProduct): Promise<Pr
           status: values.status,
           categoryId: values.categoryId,
           attributes: values.attributes,
+          hsnSacCode: values.hsnSacCode,
+          usTaxCategory: values.usTaxCategory,
         })
         .returning();
       if (!row) throw new Error('Product insert returned no row');

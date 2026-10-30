@@ -210,6 +210,19 @@ All notable changes are listed here. The project follows semantic versioning fro
 - API: `GET /admin/v1/orders`, `GET /admin/v1/orders/:orderId` (with its history, version and
   open transitions) with `order.view`, and `POST /admin/v1/orders/:orderId/transitions` with
   `order.manage`, refusing a stale version with 409.
+- `@muziris/tax` (ADR 0017): India GST and US sales tax from dated rate tables. GST: CGST and
+  SGST (UTGST in union territories without a legislature) within the seller's state, IGST
+  across states, the longest HSN or SAC prefix wins, each tax rounded half up per line, and
+  shipping at the highest line rate. US: destination rates by state and ZIP prefix, only in
+  states with a permit, `exempt` products and exemption certificates tax free. Overlapping rate
+  periods are refused. Migration `0013`.
+- `@muziris/catalog`: `hsnSacCode` and `usTaxCategory` on products. Migration `0011`.
+- `@muziris/orders`: tax providers can refuse with problems (`no_tax_code`, `no_rate`,
+  `no_registration`, `cross_border`), which refuse checkout as `tax_problems`; orders copy the
+  seller's tax registration and any exemption certificate. Migration `0012`.
+- API: `/admin/v1/tax` (registrations, GST and US rates with a CSV import, exemption
+  certificates) with the new admin permissions `tax.view` and `tax.manage`. Checkout uses the
+  tax engine; the storefront shows `TAX_PROBLEMS` refusals and orders' `sellerTaxId`.
 - `apps/storefront` (ADR 0015): the buyer storefront, for signed-in buyers. Sign-in with the
   session-ended message, a header with search and the category bar, all products and category
   pages with a side menu, subcategories and paging, the product page with details and a price

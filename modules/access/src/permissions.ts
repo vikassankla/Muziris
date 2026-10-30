@@ -24,6 +24,8 @@ export const ADMIN_PERMISSIONS = {
   'visibility.manage': 'Show or hide products and categories for buyers, and run the build',
   'order.view': 'See orders',
   'order.manage': 'Change and cancel orders',
+  'tax.view': 'See tax registrations, rates and exemption certificates',
+  'tax.manage': 'Change tax registrations, rates and exemption certificates',
 } as const;
 
 export type AdminPermission = keyof typeof ADMIN_PERMISSIONS;

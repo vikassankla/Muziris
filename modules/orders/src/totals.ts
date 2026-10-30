@@ -29,6 +29,10 @@ export interface PricedLine {
   unitPrice: Money;
   /** The price list the unit price came from. */
   priceListId: string;
+  /** India: the product's HSN or SAC code, if it has one. */
+  hsnSacCode: string | null;
+  /** US: the product's sales tax category, if it has one. */
+  usTaxCategory: string | null;
 }
 
 /** A reduction with the reason a buyer sees, such as "Spring promotion". Never negative. */
@@ -47,6 +51,10 @@ export interface TaxAddress {
 
 export interface TotalsContext {
   websiteId: string;
+  /** The website's country, which picks the tax regime (IN: GST, US: sales tax). */
+  websiteCountryCode: string;
+  /** The website's time zone, which decides the day a rate is looked up for. */
+  websiteTimeZone: string;
   customerId: string;
   currency: CurrencyCode;
   billTo: TaxAddress;
@@ -80,8 +88,14 @@ export interface ShippingDiscountProvider {
 }
 
 export interface TaxRequest extends TotalsContext {
-  /** Each line's amount after its line discounts. */
-  lines: readonly { lineNo: number; productId: string; net: Money }[];
+  /** Each line's amount after its line discounts, with the product's tax codes. */
+  lines: readonly {
+    lineNo: number;
+    productId: string;
+    net: Money;
+    hsnSacCode: string | null;
+    usTaxCategory: string | null;
+  }[];
   /** Order discounts, not spread over the lines; the provider decides how they reduce tax. */
   orderDiscount: Money;
   /** Shipping after shipping discounts. */
@@ -98,10 +112,33 @@ export interface TaxLine {
   amount: Money;
 }
 
+export type TaxProblemCode =
+  /** The product has no tax code for the website's tax. */
+  | 'no_tax_code'
+  /** No rate covers the product's tax code on the day. */
+  | 'no_rate'
+  /** The website has no tax registration it needs (India: its GSTIN). */
+  | 'no_registration'
+  /** The order ships to another country; exports are not in the pilot. */
+  | 'cross_border';
+
+/** Why tax cannot be computed: for a line, or for the whole order when `lineNo` is null. */
+export interface TaxProblem {
+  lineNo: number | null;
+  code: TaxProblemCode;
+  message: string;
+}
+
 export interface TaxResult {
   lines: readonly TaxLine[];
   /** The tax code used for each line, where the provider has one. */
   taxCodes: ReadonlyMap<number, string>;
+  /** Any problem refuses the checkout, so nothing is sold with too little tax. */
+  problems?: readonly TaxProblem[];
+  /** The seller's registration the tax was charged under (a GSTIN, a US permit number). */
+  sellerTaxId?: string | null;
+  /** The buyer's exemption certificate that made the order tax free, if one did. */
+  exemptionCertificate?: string | null;
 }
 
 export interface TaxProvider {
@@ -133,6 +170,8 @@ export interface Totals {
   shippingDiscounts: readonly Adjustment[];
   taxes: readonly TaxLine[];
   taxProvider: string;
+  sellerTaxId: string | null;
+  exemptionCertificate: string | null;
   /** The sum of line subtotals. */
   subtotal: Money;
   /** Line discounts and order discounts together. */
@@ -188,12 +227,18 @@ function checkAdjustment(provider: string, adjustment: Adjustment, currency: Cur
   }
 }
 
-/** Runs the totals pipeline over priced lines. Lines must be in the context's currency. */
+export type TotalsResult =
+  { ok: true; totals: Totals } | { ok: false; taxProblems: readonly TaxProblem[] };
+
+/**
+ * Runs the totals pipeline over priced lines. Lines must be in the context's currency. When the
+ * tax provider cannot compute tax, the result is its problems, never totals with too little tax.
+ */
 export async function computeTotals(
   priced: readonly PricedLine[],
   context: TotalsContext,
   providers: TotalsProviders,
-): Promise<Totals> {
+): Promise<TotalsResult> {
   const { currency } = context;
   const lineNos = new Set<number>();
   for (const line of priced) {
@@ -279,10 +324,24 @@ export async function computeTotals(
   // 6. Tax.
   const tax = await providers.tax.calculate({
     ...context,
-    lines: lines.map((l) => ({ lineNo: l.lineNo, productId: l.productId, net: l.net })),
+    lines: lines.map((l) => ({
+      lineNo: l.lineNo,
+      productId: l.productId,
+      net: l.net,
+      hsnSacCode: l.hsnSacCode,
+      usTaxCategory: l.usTaxCategory,
+    })),
     orderDiscount,
     shipping: shippingNet,
   });
+  if (tax.problems !== undefined && tax.problems.length > 0) {
+    for (const p of tax.problems) {
+      if (p.lineNo !== null && !lineNos.has(p.lineNo)) {
+        throw new ProviderError(providers.tax.name, `a problem is on missing line ${p.lineNo}`);
+      }
+    }
+    return { ok: false, taxProblems: tax.problems };
+  }
   for (const t of tax.lines) {
     if (t.lineNo !== null && !lineNos.has(t.lineNo)) {
       throw new ProviderError(providers.tax.name, `a tax is on missing line ${t.lineNo}`);
@@ -299,7 +358,7 @@ export async function computeTotals(
   // 7. Grand total.
   const grandTotal = add(add(goods, shippingNet), taxTotal);
 
-  return {
+  const totals: Totals = {
     currency,
     lines: lines.map((l) => ({ ...l, taxCode: tax.taxCodes.get(l.lineNo) ?? null })),
     orderDiscounts,
@@ -307,6 +366,8 @@ export async function computeTotals(
     shippingDiscounts,
     taxes: tax.lines,
     taxProvider: providers.tax.name,
+    sellerTaxId: tax.sellerTaxId ?? null,
+    exemptionCertificate: tax.exemptionCertificate ?? null,
     subtotal,
     discount: add(
       sum(
@@ -320,4 +381,5 @@ export async function computeTotals(
     tax: taxTotal,
     grandTotal,
   };
+  return { ok: true, totals };
 }

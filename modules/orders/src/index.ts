@@ -54,6 +54,8 @@ export {
   type ShippingProvider,
   type TaxAddress,
   type TaxLine,
+  type TaxProblem,
+  type TaxProblemCode,
   type TaxProvider,
   type TaxRequest,
   type TaxResult,
@@ -61,6 +63,7 @@ export {
   type TotalsContext,
   type TotalsLine,
   type TotalsProviders,
+  type TotalsResult,
 } from './totals.js';
 export {
   ORDER_STEPS,

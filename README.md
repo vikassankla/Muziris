@@ -22,6 +22,7 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 | `modules/pricing`    | Price lists, assignments, the fallback chain and the combined price build    |
 | `modules/visibility` | Product and category visibility rules, the visibility build, buyer scoping   |
 | `modules/search`     | Product search: full-text and trigram index, ranking, buyer-scoped search    |
+| `modules/tax`        | GST and US sales tax: registrations, dated rates, exemptions, the provider   |
 | `modules/orders`     | Checkout (preview and place), the totals pipeline, orders and their workflow |
 | `packages/db`        | PostgreSQL connection and the ordered migration runner                       |
 | `packages/money`     | Exact money and decimal maths, currency rules, lakh and crore formatting     |
@@ -70,9 +71,12 @@ with the website code in a `Muziris-Website` header. Outside production it takes
 queries; in production only persisted queries, from the file `STOREFRONT_PERSISTED_QUERIES`
 names. The schema is in `apps/api/src/storefront/schema.graphql`.
 
-Checkout (`checkoutPreview`, `placeOrder`) needs a tax calculator. Until the tax engine (ADR 0017) is built there is none, so checkout answers with the refusal `TAX_NOT_CONFIGURED` and no
-order is placed without tax. Orders are listed and moved through their workflow under
-`/admin/v1/orders`.
+Checkout (`checkoutPreview`, `placeOrder`) charges GST or US sales tax from the tax tables
+(ADR 0017). Before a website can take orders, an admin with `tax.manage` enters its
+registration (a GSTIN, or US permits per state) and rates under `/admin/v1/tax`, and each
+product needs its HSN or SAC code (India). A missing code, rate or registration refuses checkout
+with `TAX_PROBLEMS`, naming the lines; nothing is sold without tax. Orders are listed and moved
+through their workflow under `/admin/v1/orders`.
 
 ### The storefront app
 

@@ -43,6 +43,7 @@ import {
   type TaxProvider,
   type Totals,
   type TotalsProviders,
+  type TaxProblem,
 } from './totals.js';
 import { orderWorkflow } from './workflow.js';
 
@@ -116,7 +117,9 @@ export type CheckoutRefusal =
   /** The total changed since the buyer saw it; they should review the new totals. */
   | { code: 'prices_changed'; expected: Money; totals: Totals }
   /** The idempotency key was used before for a different order. */
-  | { code: 'idempotency_key_reused' };
+  | { code: 'idempotency_key_reused' }
+  /** Tax cannot be computed, for the lines named or the whole order; nothing is sold untaxed. */
+  | { code: 'tax_problems'; problems: readonly TaxProblem[] };
 
 export interface CheckoutPreview {
   totals: Totals;
@@ -281,6 +284,8 @@ async function prepare(
       quantity: c.quantity,
       unitPrice: price.unitPrice,
       priceListId: price.priceListId,
+      hsnSacCode: c.product.hsnSacCode,
+      usTaxCategory: c.product.usTaxCategory,
     });
   });
   if (problems.length > 0) {
@@ -297,10 +302,12 @@ async function prepare(
     getSetting(db, PAYMENT_TERM_DAYS, scope),
     getSetting(db, SHIPPING_FLAT_RATE, scope),
   ]);
-  const totals = await computeTotals(
+  const computed = await computeTotals(
     priced,
     {
       websiteId: website.id,
+      websiteCountryCode: website.countryCode,
+      websiteTimeZone: website.timeZone,
       customerId: customer.id,
       currency,
       billTo: taxAddress(billing),
@@ -316,6 +323,8 @@ async function prepare(
       tax: deps.tax,
     },
   );
+  if (!computed.ok) return refuse({ code: 'tax_problems', problems: computed.taxProblems });
+  const { totals } = computed;
   return {
     ok: true,
     prepared: {
@@ -424,6 +433,8 @@ export async function placeOrder(
           dueOn: p.dueOn,
           shippingMethod: t.shippingMethod,
           taxProvider: t.taxProvider,
+          sellerTaxId: t.sellerTaxId,
+          taxExemptionCertificate: t.exemptionCertificate,
           subtotalMinor: t.subtotal.minor,
           discountMinor: t.discount.minor,
           shippingMinor: t.shipping.minor,

@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { createDatabase } from '@muziris/db';
+import { tableTaxProvider } from '@muziris/tax';
 import { createApp } from './app.js';
 import { loadEnv } from './env.js';
 import { createLogger } from './logger.js';
@@ -24,6 +25,8 @@ const app = createApp({
   corsOrigins: env.CORS_ORIGINS,
   maxBodyBytes: env.MAX_BODY_BYTES,
   trustedProxyHops: env.TRUSTED_PROXY_HOPS,
+  // GST and US sales tax from the tax tables; a missing code, rate or registration refuses.
+  tax: tableTaxProvider(database.db),
   storefront: {
     persistedQueries,
     allowAdhocQueries: env.STOREFRONT_ADHOC_QUERIES === 'allow',
