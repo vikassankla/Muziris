@@ -2,7 +2,9 @@ type Query {
   viewer: Viewer!
   website: Website!
 
-  """Every category the buyer may see, flat; build the tree from parentId."""
+  """
+  Every category the buyer may see, flat; build the tree from parentId.
+  """
   categories: [Category!]!
   category(id: ID!): Category
 
@@ -11,15 +13,21 @@ type Query {
   """
   product(id: ID, sku: String): Product
 
-  """The products the buyer may see, by SKU, a page at a time."""
+  """
+  The products the buyer may see, by SKU, a page at a time.
+  """
   products(
     categoryId: ID
     includeSubcategories: Boolean = false
 
-    """How many to return, at most 50."""
+    """
+    How many to return, at most 50.
+    """
     first: Int = 20
 
-    """The previous page's nextAfter."""
+    """
+    The previous page's nextAfter.
+    """
     after: String
   ): ProductPage!
 
@@ -29,7 +37,9 @@ type Query {
   search(
     query: String!
 
-    """How many to return, at most 50."""
+    """
+    How many to return, at most 50.
+    """
     first: Int = 20
     offset: Int = 0
   ): SearchResults!
@@ -39,20 +49,30 @@ type Query {
   """
   checkoutPreview(input: CheckoutInput!): CheckoutPreviewResult!
 
-  """Orders the buyer may see on this website, newest first."""
+  """
+  Orders the buyer may see on this website, newest first.
+  """
   orders(
-    """How many to return, at most 50."""
+    """
+    How many to return, at most 50.
+    """
     first: Int = 20
 
-    """The previous page's nextAfter."""
+    """
+    The previous page's nextAfter.
+    """
     after: String
   ): OrderPage!
 
-  """One order by its number, if the buyer may see it."""
+  """
+  One order by its number, if the buyer may see it.
+  """
   order(number: String!): Order
 }
 
-"""The signed-in buyer user."""
+"""
+The signed-in buyer user.
+"""
 type Viewer {
   id: ID!
   email: String!
@@ -60,16 +80,22 @@ type Viewer {
   customer: Customer!
 }
 
-"""The company the buyer user buys for."""
+"""
+The company the buyer user buys for.
+"""
 type Customer {
   id: ID!
   name: String!
 
-  """Its addresses, to bill and ship an order to."""
+  """
+  Its addresses, to bill and ship an order to.
+  """
   addresses: [Address!]!
 }
 
-"""One of the customer's billing or shipping addresses."""
+"""
+One of the customer's billing or shipping addresses.
+"""
 type Address {
   id: ID!
   label: String!
@@ -78,7 +104,9 @@ type Address {
   line2: String
   city: String!
 
-  """India: the two-digit GST state code. US: the two-letter state code."""
+  """
+  India: the two-digit GST state code. US: the two-letter state code.
+  """
   regionCode: String!
   postalCode: String!
   gstin: String
@@ -104,10 +132,14 @@ type Category {
   code: String!
   name: String!
 
-  """Null at the top, and when the buyer may not see the parent."""
+  """
+  Null at the top, and when the buyer may not see the parent.
+  """
   parentId: ID
 
-  """Order among siblings, lowest first."""
+  """
+  Order among siblings, lowest first.
+  """
   position: Int!
 }
 
@@ -116,22 +148,30 @@ type Product {
   sku: String!
   name: String!
 
-  """Null when the product has none, or the buyer may not see it."""
+  """
+  Null when the product has none, or the buyer may not see it.
+  """
   category: Category
   attributes: [Attribute!]!
   primaryUnit: ProductUnit!
 
-  """Every product unit the product is sold in, the primary one first."""
+  """
+  Every product unit the product is sold in, the primary one first.
+  """
   units: [ProductUnit!]!
 
   """
   The price for a quantity in a product unit, or null when the buyer has no price for it.
   """
   price(
-    """Defaults to the primary unit."""
+    """
+    Defaults to the primary unit.
+    """
     unitCode: String
 
-    """A decimal string at the unit's precision."""
+    """
+    A decimal string at the unit's precision.
+    """
     quantity: String = "1"
   ): Price
 }
@@ -149,27 +189,39 @@ type ProductUnit {
   code: String!
   name: String!
 
-  """Digits a quantity in this unit may have after the decimal point."""
+  """
+  Digits a quantity in this unit may have after the decimal point.
+  """
   precision: Int!
 }
 
-"""The buyer's price from their combined price list."""
+"""
+The buyer's price from their combined price list.
+"""
 type Price {
   unitPrice: Money!
   unitCode: String!
 
-  """The quantity the price is for."""
+  """
+  The quantity the price is for.
+  """
   quantity: String!
 
-  """The smallest quantity the price applies to (its tier)."""
+  """
+  The smallest quantity the price applies to (its tier).
+  """
   minQuantity: String!
 }
 
 type Money {
-  """A decimal string in major units, for example "4.86"."""
+  """
+  A decimal string in major units, for example "4.86".
+  """
   amount: String!
 
-  """The amount in minor units (paise, cents), as a string of digits."""
+  """
+  The amount in minor units (paise, cents), as a string of digits.
+  """
   minorUnits: String!
   currency: String!
 }
@@ -177,14 +229,18 @@ type Money {
 type ProductPage {
   nodes: [Product!]!
 
-  """Pass as after to read the next page; null on the last page."""
+  """
+  Pass as after to read the next page; null on the last page.
+  """
   nextAfter: String
 }
 
 type SearchResults {
   nodes: [SearchHit!]!
 
-  """Pass as offset to read the next page; null on the last page."""
+  """
+  Pass as offset to read the next page; null on the last page.
+  """
   nextOffset: Int
 }
 
@@ -193,7 +249,9 @@ type SearchHit {
   product: Product!
 }
 
-"""How a product matched, best first."""
+"""
+How a product matched, best first.
+"""
 enum SearchMatch {
   SKU_EXACT
   SKU_PREFIX
@@ -201,7 +259,9 @@ enum SearchMatch {
   CLOSE
 }
 
-"""Exactly one of preview and refusal is set."""
+"""
+Exactly one of preview and refusal is set.
+"""
 type CheckoutPreviewResult {
   preview: CheckoutPreview
   refusal: CheckoutRefusal
@@ -210,7 +270,9 @@ type CheckoutPreviewResult {
 type CheckoutPreview {
   totals: Totals!
 
-  """Days to pay: 30 is net 30."""
+  """
+  Days to pay: 30 is net 30.
+  """
   paymentTermDays: Int!
 
   """
@@ -225,10 +287,14 @@ type Totals {
   taxes: [Tax!]!
   shippingMethod: String!
 
-  """The sum of line subtotals."""
+  """
+  The sum of line subtotals.
+  """
   subtotal: Money!
 
-  """Line and order discounts together."""
+  """
+  Line and order discounts together.
+  """
   discount: Money!
   shipping: Money!
   shippingDiscount: Money!
@@ -236,9 +302,13 @@ type Totals {
   grandTotal: Money!
 }
 
-"""A line of a checkout or an order: what was bought and its price."""
+"""
+A line of a checkout or an order: what was bought and its price.
+"""
 type OrderLine {
-  """1, 2, 3 in the order the buyer listed."""
+  """
+  1, 2, 3 in the order the buyer listed.
+  """
   lineNo: Int!
   productId: ID!
   sku: String!
@@ -248,45 +318,67 @@ type OrderLine {
   quantity: String!
   unitPrice: Money!
 
-  """Unit price times quantity."""
+  """
+  Unit price times quantity.
+  """
   subtotal: Money!
   discount: Money!
 
-  """Subtotal less discount, before tax."""
+  """
+  Subtotal less discount, before tax.
+  """
   net: Money!
 
-  """HSN or SAC in India."""
+  """
+  HSN or SAC in India.
+  """
   taxCode: String
 }
 
-"""One tax charged: on a line, or on shipping when lineNo is null."""
+"""
+One tax charged: on a line, or on shipping when lineNo is null.
+"""
 type Tax {
   lineNo: Int
 
-  """For example CGST, SGST or IGST."""
+  """
+  For example CGST, SGST or IGST.
+  """
   name: String!
 
-  """A decimal fraction: "0.09" is 9%."""
+  """
+  A decimal fraction: "0.09" is 9%.
+  """
   rate: String!
   taxable: Money!
   amount: Money!
 }
 
-"""Why a checkout cannot go on. The message is safe to show the buyer."""
+"""
+Why a checkout cannot go on. The message is safe to show the buyer.
+"""
 type CheckoutRefusal {
   code: CheckoutRefusalCode!
   message: String!
 
-  """For ADDRESS_NOT_FOUND: which address."""
+  """
+  For ADDRESS_NOT_FOUND: which address.
+  """
   addressRole: AddressRole
 
-  """For LINE_PROBLEMS: each line that cannot be ordered, and why."""
+  """
+  For LINE_PROBLEMS: each line that cannot be ordered, and why.
+  """
   lines: [LineProblem!]!
 
-  """For PRICES_CHANGED: the total the buyer sent."""
+  """
+  For PRICES_CHANGED: the total the buyer sent.
+  """
   expectedGrandTotal: Money
 
-  """For PRICES_CHANGED: the totals now."""
+  """
+  For PRICES_CHANGED: the totals now.
+  """
   totals: Totals
 }
 
@@ -329,30 +421,40 @@ input CheckoutLineInput {
   productId: ID!
   unitCode: String!
 
-  """A decimal string at the unit's precision."""
+  """
+  A decimal string at the unit's precision.
+  """
   quantity: String!
 }
 
 type OrderPage {
   nodes: [OrderSummary!]!
 
-  """Pass as after to read the next page; null on the last page."""
+  """
+  Pass as after to read the next page; null on the last page.
+  """
   nextAfter: String
 }
 
 type OrderSummary {
-  """For example MZ-000123."""
+  """
+  For example MZ-000123.
+  """
   number: String!
   step: OrderStep!
 
-  """An ISO 8601 timestamp in UTC."""
+  """
+  An ISO 8601 timestamp in UTC.
+  """
   placedAt: String!
   customerName: String!
   purchaseOrderNumber: String
   grandTotal: Money!
 }
 
-"""Where an order is in its workflow."""
+"""
+Where an order is in its workflow.
+"""
 enum OrderStep {
   NEW
   CONFIRMED
@@ -365,11 +467,15 @@ enum OrderStep {
 A placed order. It keeps its own copy of lines, prices, tax and addresses.
 """
 type Order {
-  """For example MZ-000123."""
+  """
+  For example MZ-000123.
+  """
   number: String!
   step: OrderStep!
 
-  """An ISO 8601 timestamp in UTC."""
+  """
+  An ISO 8601 timestamp in UTC.
+  """
   placedAt: String!
   customerName: String!
   purchaseOrderNumber: String
@@ -379,26 +485,36 @@ type Order {
   taxes: [Tax!]!
   shippingMethod: String!
 
-  """The sum of line subtotals."""
+  """
+  The sum of line subtotals.
+  """
   subtotal: Money!
 
-  """Line and order discounts together."""
+  """
+  Line and order discounts together.
+  """
   discount: Money!
   shipping: Money!
   shippingDiscount: Money!
   tax: Money!
 
-  """TERMS: pay on invoice."""
+  """
+  TERMS: pay on invoice.
+  """
   paymentMethod: String!
   paymentTermDays: Int!
 
-  """YYYY-MM-DD."""
+  """
+  YYYY-MM-DD.
+  """
   dueOn: String!
   billingAddress: OrderAddress!
   shippingAddress: OrderAddress!
 }
 
-"""An address as it was when the order was placed."""
+"""
+An address as it was when the order was placed.
+"""
 type OrderAddress {
   label: String!
   countryCode: String!
@@ -417,7 +533,9 @@ type Mutation {
   placeOrder(input: PlaceOrderInput!): PlaceOrderResult!
 }
 
-"""Exactly one of order and refusal is set."""
+"""
+Exactly one of order and refusal is set.
+"""
 type PlaceOrderResult {
   order: Order
 

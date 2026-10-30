@@ -439,8 +439,8 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
           l.taxCode,
         ]),
       ).toEqual([
-        ['BRG-6205-2RS', '10.000000', '4100.00', '8482'],
-        ['GLV-NITRILE-L', '100.000000', '8900.00', '8482'],
+        ['BRG-6205-2RS', '10', '4100.00', '8482'],
+        ['GLV-NITRILE-L', '100', '8900.00', '8482'],
       ]);
       expect(
         order.taxes.filter((t) => t.lineNo === null).map((t) => toDecimalString(t.amount)),
