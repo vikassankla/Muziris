@@ -14,22 +14,30 @@ export const PAYMENT_TERM_DAYS = defineSetting({
 });
 
 /**
- * The flat shipping charge per order, in major units of the website's currency ("250.00").
- * "0" ships free.
+ * The flat shipping charge per order, in major units of the website's currency
+ * ({ amount: "250.00" }); "0" ships free. An object, not a bare string: the jsonb column reads a
+ * string that looks like a number back as a number.
  */
 export const SHIPPING_FLAT_RATE = defineSetting({
   key: 'shipping.flat_rate',
   description: 'Flat shipping charge per order, in the website currency',
-  schema: z.string().regex(/^\d{1,12}(\.\d{1,6})?$/, 'Use a decimal amount such as 250.00'),
-  defaultValue: '0',
+  schema: z.object({
+    amount: z.string().regex(/^\d{1,12}(\.\d{1,6})?$/, 'Use a decimal amount such as 250.00'),
+  }),
+  defaultValue: { amount: '0' },
   allowedScopes: ['website', 'organization', 'global'],
 });
 
-/** The prefix of order numbers, for example MZ in MZ-000123. */
+/**
+ * The prefix of order numbers, for example MZ in MZ-000123. It starts with a letter, so the jsonb
+ * column can never read it back as a number.
+ */
 export const ORDER_NUMBER_PREFIX = defineSetting({
   key: 'orders.number_prefix',
   description: 'Prefix of order numbers, such as MZ in MZ-000123',
-  schema: z.string().regex(/^[A-Z0-9]{1,10}$/, 'Use 1 to 10 capital letters or digits'),
+  schema: z
+    .string()
+    .regex(/^[A-Z][A-Z0-9]{0,9}$/, 'Use 1 to 10 capital letters or digits, starting with a letter'),
   defaultValue: 'MZ',
   allowedScopes: ['website', 'organization', 'global'],
 });

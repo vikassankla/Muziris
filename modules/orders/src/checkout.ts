@@ -311,7 +311,7 @@ async function prepare(
       lineDiscounts: deps.lineDiscounts ?? noLineDiscounts,
       orderDiscounts: deps.orderDiscounts ?? noOrderDiscounts,
       // The flat rate is rounded half up to the currency's minor unit, once, here.
-      shipping: flatRateShipping(moneyFromDecimal(rate.value, currency, 'half-up')),
+      shipping: flatRateShipping(moneyFromDecimal(rate.value.amount, currency, 'half-up')),
       shippingDiscounts: deps.shippingDiscounts ?? noShippingDiscounts,
       tax: deps.tax,
     },
