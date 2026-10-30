@@ -28,11 +28,11 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`          |
 | Storefront | Signed-in buyers: sign-in, catalogue and category pages, product page with a live price box, search                     | `apps/storefront`     |
 
-Decisions are recorded in `docs/adr/0001` to `0015`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0016`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is proposed, not merged. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -93,6 +93,13 @@ journeys, MRO demo catalog, install guide, security pass, pilot launch.
 If a week slips, cut in this order: emails, then quick order CSV upload, then US tax tables.
 
 ## Open items
+
+- Selling to all countries (requested 2026-10-30) is a later phase, after the pilot. The pilot
+  stays India and US. It needs general address formats and tax ids, a tax provider beyond the
+  India and US tables, payment providers per region, shipping by zone, a translation layer for
+  the admin app and the storefront, product names per locale, search in more languages, and
+  data protection and residency decisions. The foundations (websites with country, currency,
+  locale, time zone and units; exact money; price lists per currency) already work per country.
 
 - Admin two-factor sign-in before the first production install (ADR 0005).
 - A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`, and to run
