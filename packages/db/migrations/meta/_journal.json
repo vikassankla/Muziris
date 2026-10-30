@@ -71,6 +71,13 @@
       "when": 1793290571003,
       "tag": "0009_search",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793354092811,
+      "tag": "0010_orders",
+      "breakpoints": true
     }
   ]
 }
