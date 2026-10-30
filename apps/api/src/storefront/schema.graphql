@@ -33,6 +33,23 @@ type Query {
     first: Int = 20
     offset: Int = 0
   ): SearchResults!
+
+  """
+  The totals the buyer would pay for these lines, with their prices and tax. Saves nothing.
+  """
+  checkoutPreview(input: CheckoutInput!): CheckoutPreviewResult!
+
+  """Orders the buyer may see on this website, newest first."""
+  orders(
+    """How many to return, at most 50."""
+    first: Int = 20
+
+    """The previous page's nextAfter."""
+    after: String
+  ): OrderPage!
+
+  """One order by its number, if the buyer may see it."""
+  order(number: String!): Order
 }
 
 """The signed-in buyer user."""
@@ -47,6 +64,26 @@ type Viewer {
 type Customer {
   id: ID!
   name: String!
+
+  """Its addresses, to bill and ship an order to."""
+  addresses: [Address!]!
+}
+
+"""One of the customer's billing or shipping addresses."""
+type Address {
+  id: ID!
+  label: String!
+  countryCode: String!
+  line1: String!
+  line2: String
+  city: String!
+
+  """India: the two-digit GST state code. US: the two-letter state code."""
+  regionCode: String!
+  postalCode: String!
+  gstin: String
+  isDefaultBilling: Boolean!
+  isDefaultShipping: Boolean!
 }
 
 """
@@ -162,4 +199,248 @@ enum SearchMatch {
   SKU_PREFIX
   TEXT
   CLOSE
+}
+
+"""Exactly one of preview and refusal is set."""
+type CheckoutPreviewResult {
+  preview: CheckoutPreview
+  refusal: CheckoutRefusal
+}
+
+type CheckoutPreview {
+  totals: Totals!
+
+  """Days to pay: 30 is net 30."""
+  paymentTermDays: Int!
+
+  """
+  The day payment would be due if placed now (YYYY-MM-DD, the website's time zone).
+  """
+  dueOn: String!
+}
+
+type Totals {
+  currency: String!
+  lines: [OrderLine!]!
+  taxes: [Tax!]!
+  shippingMethod: String!
+
+  """The sum of line subtotals."""
+  subtotal: Money!
+
+  """Line and order discounts together."""
+  discount: Money!
+  shipping: Money!
+  shippingDiscount: Money!
+  tax: Money!
+  grandTotal: Money!
+}
+
+"""A line of a checkout or an order: what was bought and its price."""
+type OrderLine {
+  """1, 2, 3 in the order the buyer listed."""
+  lineNo: Int!
+  productId: ID!
+  sku: String!
+  productName: String!
+  unitCode: String!
+  unitName: String!
+  quantity: String!
+  unitPrice: Money!
+
+  """Unit price times quantity."""
+  subtotal: Money!
+  discount: Money!
+
+  """Subtotal less discount, before tax."""
+  net: Money!
+
+  """HSN or SAC in India."""
+  taxCode: String
+}
+
+"""One tax charged: on a line, or on shipping when lineNo is null."""
+type Tax {
+  lineNo: Int
+
+  """For example CGST, SGST or IGST."""
+  name: String!
+
+  """A decimal fraction: "0.09" is 9%."""
+  rate: String!
+  taxable: Money!
+  amount: Money!
+}
+
+"""Why a checkout cannot go on. The message is safe to show the buyer."""
+type CheckoutRefusal {
+  code: CheckoutRefusalCode!
+  message: String!
+
+  """For ADDRESS_NOT_FOUND: which address."""
+  addressRole: AddressRole
+
+  """For LINE_PROBLEMS: each line that cannot be ordered, and why."""
+  lines: [LineProblem!]!
+
+  """For PRICES_CHANGED: the total the buyer sent."""
+  expectedGrandTotal: Money
+
+  """For PRICES_CHANGED: the totals now."""
+  totals: Totals
+}
+
+enum CheckoutRefusalCode {
+  NOT_ALLOWED
+  WEBSITE_NOT_FOUND
+  ADDRESS_NOT_FOUND
+  LINE_PROBLEMS
+  PRICES_CHANGED
+  IDEMPOTENCY_KEY_REUSED
+  TAX_NOT_CONFIGURED
+}
+
+enum AddressRole {
+  BILLING
+  SHIPPING
+}
+
+type LineProblem {
+  lineNo: Int!
+  code: LineProblemCode!
+  message: String!
+}
+
+enum LineProblemCode {
+  PRODUCT_NOT_AVAILABLE
+  UNIT_NOT_SOLD
+  INVALID_QUANTITY
+  NO_PRICE
+}
+
+input CheckoutInput {
+  lines: [CheckoutLineInput!]!
+  billingAddressId: ID!
+  shippingAddressId: ID!
+  purchaseOrderNumber: String
+}
+
+input CheckoutLineInput {
+  productId: ID!
+  unitCode: String!
+
+  """A decimal string at the unit's precision."""
+  quantity: String!
+}
+
+type OrderPage {
+  nodes: [OrderSummary!]!
+
+  """Pass as after to read the next page; null on the last page."""
+  nextAfter: String
+}
+
+type OrderSummary {
+  """For example MZ-000123."""
+  number: String!
+  step: OrderStep!
+
+  """An ISO 8601 timestamp in UTC."""
+  placedAt: String!
+  customerName: String!
+  purchaseOrderNumber: String
+  grandTotal: Money!
+}
+
+"""Where an order is in its workflow."""
+enum OrderStep {
+  NEW
+  CONFIRMED
+  PROCESSING
+  COMPLETED
+  DECLINED
+}
+
+"""
+A placed order. It keeps its own copy of lines, prices, tax and addresses.
+"""
+type Order {
+  """For example MZ-000123."""
+  number: String!
+  step: OrderStep!
+
+  """An ISO 8601 timestamp in UTC."""
+  placedAt: String!
+  customerName: String!
+  purchaseOrderNumber: String
+  grandTotal: Money!
+  currency: String!
+  lines: [OrderLine!]!
+  taxes: [Tax!]!
+  shippingMethod: String!
+
+  """The sum of line subtotals."""
+  subtotal: Money!
+
+  """Line and order discounts together."""
+  discount: Money!
+  shipping: Money!
+  shippingDiscount: Money!
+  tax: Money!
+
+  """TERMS: pay on invoice."""
+  paymentMethod: String!
+  paymentTermDays: Int!
+
+  """YYYY-MM-DD."""
+  dueOn: String!
+  billingAddress: OrderAddress!
+  shippingAddress: OrderAddress!
+}
+
+"""An address as it was when the order was placed."""
+type OrderAddress {
+  label: String!
+  countryCode: String!
+  line1: String!
+  line2: String
+  city: String!
+  regionCode: String!
+  postalCode: String!
+  gstin: String
+}
+
+type Mutation {
+  """
+  Places an order on payment terms. Everything is checked again; sending the same idempotency key again returns the same order.
+  """
+  placeOrder(input: PlaceOrderInput!): PlaceOrderResult!
+}
+
+"""Exactly one of order and refusal is set."""
+type PlaceOrderResult {
+  order: Order
+
+  """
+  True when the idempotency key placed this order before, and it is returned again.
+  """
+  replayed: Boolean!
+  refusal: CheckoutRefusal
+}
+
+input PlaceOrderInput {
+  lines: [CheckoutLineInput!]!
+  billingAddressId: ID!
+  shippingAddressId: ID!
+  purchaseOrderNumber: String
+
+  """
+  A UUID the client makes once per order attempt, and sends again on a retry.
+  """
+  idempotencyKey: ID!
+
+  """
+  The preview's grand total, as a decimal string; a different total refuses.
+  """
+  expectedGrandTotal: String!
 }

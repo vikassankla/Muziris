@@ -90,9 +90,16 @@ emails wait for the email work in week 4.
    `modules/orders`: `previewCheckout` and `placeOrder` with every re-check and idempotency, the
    totals pipeline with replaceable providers, order copies, order numbers, payment terms from a
    setting, the `order_processing` workflow and buyer reads scoped by `order.view`. Migration
-   `0010`. Not built yet: the storefront GraphQL mutations and the admin routes
-   (`/admin/v1/orders`), the tax engine (ADR 0017, so the tests use a GST test provider), tax
+   `0010`. Not built yet: the tax engine (ADR 0017, so the tests use a GST test provider), tax
    codes on catalog products, and the seller's GST registration.
+7. Checkout and orders in the APIs (ADR 0016). **Merged** (PR 24, 2026-10-30, approved by
+   Vikas in chat, with no second review recorded on GitHub). It exposes ordering and order data
+   to buyers and admins, so CLAUDE.md rule 4 asks for a second human review.
+   Storefront GraphQL `checkoutPreview`, `placeOrder`, `orders`, `order(number)` and the
+   customer's `addresses`; admin `/admin/v1/orders` (list, view with history, transitions). The
+   tax calculator is an app dependency: until ADR 0017 there is none, and checkout refuses with
+   `TAX_NOT_CONFIGURED`. Not built yet: the checkout and order screens in the storefront and the
+   admin app.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

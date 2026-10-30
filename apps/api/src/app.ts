@@ -1,4 +1,5 @@
 import type { Database } from '@muziris/db';
+import type { TaxProvider } from '@muziris/orders';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
@@ -8,6 +9,7 @@ import { accessRoutes } from './access-routes.js';
 import { authRoutes } from './auth-routes.js';
 import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
+import { orderRoutes } from './order-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
 import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
@@ -33,6 +35,11 @@ export interface AppDependencies {
   clientIp?: (c: Context) => string | undefined;
   /** Persisted queries and whether ad hoc queries run; by default neither (ADR 0014). */
   storefront?: StorefrontOptions;
+  /**
+   * The tax calculator checkout uses. There is none until the tax engine (ADR 0017) is built,
+   * and without one checkout refuses with TAX_NOT_CONFIGURED: no order is placed without tax.
+   */
+  tax?: TaxProvider;
 }
 
 export interface AppEnv {
@@ -156,11 +163,13 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     storefrontRoutes({
       ...authDeps,
       storefront: deps.storefront ?? { persistedQueries: new Map(), allowAdhocQueries: false },
+      checkout: deps.tax === undefined ? null : { tax: deps.tax },
     }),
   );
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(authDeps));
+  app.route('/admin/v1/orders', orderRoutes(authDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
   app.route('/admin/v1/visibility', visibilityRoutes(authDeps));

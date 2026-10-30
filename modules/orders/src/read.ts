@@ -25,6 +25,14 @@ import { ORDER_STEPS, orderWorkflow, type OrderStep, type OrderTransition } from
 // Reads of placed orders (ADR 0016). Buyer reads are scoped in the query with buyerScope and
 // order.view (ADR 0006); admin reads assume the admin API has checked order.view.
 
+/**
+ * A quantity as the column returns it ("10.000000"), without the column's trailing zeros ("10").
+ * Checkout checked it against the unit's precision, so no digit that matters is dropped.
+ */
+function storedQuantity(text: string) {
+  return parseDecimal(text.includes('.') ? text.replace(/\.?0+$/, '') : text);
+}
+
 export const PAGE_LIMIT_DEFAULT = 50;
 export const PAGE_LIMIT_MAX = 200;
 
@@ -183,7 +191,7 @@ async function withDetails(db: Database, row: OrderRow): Promise<Order> {
       unitCode: l.unitCode,
       unitName: l.unitName,
       // numeric(18, 6) comes back with six decimals; trailing zeros do not change the value.
-      quantity: parseDecimal(l.quantity),
+      quantity: storedQuantity(l.quantity),
       unitPrice: m(l.unitPriceMinor),
       subtotal: m(l.subtotalMinor),
       discount: m(l.discountMinor),

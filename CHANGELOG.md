@@ -203,6 +203,13 @@ All notable changes are listed here. The project follows semantic versioning fro
   `payment.term_days` setting, and move through the `order_processing` workflow (new,
   confirmed, processing, completed, or declined). Buyer reads are scoped by `order.view`.
   Migration `0010`.
+- Storefront API: `checkoutPreview`, `orders` and `order(number)`, `addresses` on the viewer's
+  customer, and the first mutation, `placeOrder`. Refusals are data with a stable code
+  (`PRICES_CHANGED` carries the new totals). Without a tax calculator, checkout refuses with
+  `TAX_NOT_CONFIGURED`.
+- API: `GET /admin/v1/orders`, `GET /admin/v1/orders/:orderId` (with its history, version and
+  open transitions) with `order.view`, and `POST /admin/v1/orders/:orderId/transitions` with
+  `order.manage`, refusing a stale version with 409.
 - `apps/storefront` (ADR 0015): the buyer storefront, for signed-in buyers. Sign-in with the
   session-ended message, a header with search and the category bar, all products and category
   pages with a side menu, subcategories and paging, the product page with details and a price
@@ -227,3 +234,5 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `@muziris/platform`: a string setting that looks like JSON (such as `"250.00"` or `"123"`)
   is read back as the string stored. Drizzle's jsonb column parsed the driver's already decoded
   value again, so it came back as a number and failed its schema.
+- `@muziris/orders`: order line quantities read without the column's trailing zeros (`10`, not
+  `10.000000`).
