@@ -30,8 +30,8 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 Decisions are recorded in `docs/adr/0001` to `0014`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
-ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is in
-review. Every admin list endpoint is paged with
+ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
+with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -63,8 +63,9 @@ emails wait for the email work in week 4.
    (`product.view`, and `product.manage` for the build), the `search:build` command, and
    `searchProductsForBuyer` for the storefront API to call. The catalog routes reindex after
    each write. Migrations `0008` (creates `pg_trgm`) and `0009`. No admin screen yet.
-4. GraphQL storefront API (ADR 0014). **In review** on `feature/storefront-api`; it changes
-   pricing and returns buyer data, so it needs the second human review of CLAUDE.md rule 4.
+4. GraphQL storefront API (ADR 0014). **Merged** (PR 16, 2026-10-30, as 69dbd70, approved by
+   Vikas in chat, with no second review recorded on GitHub; it changes pricing and returns
+   buyer data, so CLAUDE.md rule 4 asks for one).
    One endpoint, `/storefront/v1/graphql`, built with `graphql` (graphql-js) alone: buyer
    sessions only, the website from the `Muziris-Website` header, persisted queries from a
    registry (`STOREFRONT_PERSISTED_QUERIES`) with ad hoc queries only outside production
