@@ -5,9 +5,11 @@ describe('createLoader', () => {
   it('reads keys asked for in the same tick in one batch, once each', async () => {
     const batches: string[][] = [];
     const loader = createLoader<string, string | null>(
-      async (keys) => {
+      (keys) => {
         batches.push([...keys]);
-        return new Map(keys.filter((k) => k !== 'missing').map((k) => [k, k.toUpperCase()]));
+        return Promise.resolve(
+          new Map(keys.filter((k) => k !== 'missing').map((k) => [k, k.toUpperCase()])),
+        );
       },
       (k) => k,
       null,
@@ -28,9 +30,9 @@ describe('createLoader', () => {
   it('uses primed values without reading them', async () => {
     let calls = 0;
     const loader = createLoader<string, number>(
-      async (keys) => {
+      (keys) => {
         calls += 1;
-        return new Map(keys.map((k) => [k, 1]));
+        return Promise.resolve(new Map(keys.map((k) => [k, 1])));
       },
       (k) => k,
       0,
