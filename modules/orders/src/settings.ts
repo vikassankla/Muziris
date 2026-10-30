@@ -15,8 +15,7 @@ export const PAYMENT_TERM_DAYS = defineSetting({
 
 /**
  * The flat shipping charge per order, in major units of the website's currency
- * ({ amount: "250.00" }); "0" ships free. An object, not a bare string: the jsonb column reads a
- * string that looks like a number back as a number.
+ * ({ amount: "250.00" }); "0" ships free.
  */
 export const SHIPPING_FLAT_RATE = defineSetting({
   key: 'shipping.flat_rate',
@@ -28,10 +27,7 @@ export const SHIPPING_FLAT_RATE = defineSetting({
   allowedScopes: ['website', 'organization', 'global'],
 });
 
-/**
- * The prefix of order numbers, for example MZ in MZ-000123. It starts with a letter, so the jsonb
- * column can never read it back as a number.
- */
+/** The prefix of order numbers, for example MZ in MZ-000123. */
 export const ORDER_NUMBER_PREFIX = defineSetting({
   key: 'orders.number_prefix',
   description: 'Prefix of order numbers, such as MZ in MZ-000123',

@@ -2,8 +2,8 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
+  customType,
   index,
-  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -64,6 +64,17 @@ export const websites = pgTable(
 );
 
 /**
+ * jsonb for a value that may be a bare string. postgres-js already decodes jsonb, and Drizzle's
+ * own jsonb column parses again any string it gets back, so "250.00" would come back as 250.
+ * This column keeps what the driver decoded. Writing is unchanged: JSON text cast to jsonb.
+ */
+const decodedJsonb = customType<{ data: unknown; driverData: unknown }>({
+  dataType: () => 'jsonb',
+  toDriver: (value) => JSON.stringify(value),
+  fromDriver: (value) => value,
+});
+
+/**
  * A setting value stored at one scope. Resolution walks from the most specific scope
  * (customer) to the least (global) and takes the first value found.
  */
@@ -75,7 +86,7 @@ export const configValues = pgTable(
     // Null only for the global scope (enforced by the check below).
     scopeId: uuid('scope_id'),
     key: text('key').notNull(),
-    value: jsonb('value').notNull(),
+    value: decodedJsonb('value').notNull(),
     ...timestamps,
   },
   (t) => [
