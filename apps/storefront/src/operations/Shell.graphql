@@ -1,0 +1,25 @@
+# Who is signed in, the website and its categories: loaded once per session for the header,
+# the category bar and money formatting.
+query Shell {
+  viewer {
+    id
+    displayName
+    email
+    customer {
+      id
+      name
+    }
+  }
+  website {
+    code
+    name
+    currency
+    locale
+  }
+  categories {
+    id
+    name
+    parentId
+    position
+  }
+}

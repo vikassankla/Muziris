@@ -51,8 +51,8 @@ export default tseslint.config(
     },
   },
   {
-    // The admin app runs in the browser and is built with React.
-    files: ['apps/admin/**/*.{ts,tsx}'],
+    // The admin and storefront apps run in the browser and are built with React.
+    files: ['apps/admin/**/*.{ts,tsx}', 'apps/storefront/**/*.{ts,tsx}'],
     ...reactHooks.configs.flat['recommended-latest'],
     languageOptions: {
       globals: { ...globals.browser },

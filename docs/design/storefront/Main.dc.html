@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Bearings · Muziris storefront</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+<link rel="stylesheet" href="storefront.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz st {{theme}}">
+  <header class="st-h">
+    <div class="st-h-in">
+      <a class="st-brand" href="Main.dc.html"><span class="sb-mark" aria-hidden="true">M</span>Muziris</a>
+      <form class="st-search search" role="search" action="Search.dc.html">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14"></path></svg>
+        <label class="sr" for="q">Search products by name or SKU</label>
+        <input class="input" id="q" type="search" placeholder="Search by name or SKU">
+      </form>
+      <div class="st-who">
+        <span class="av" aria-hidden="true">RK</span>
+        <span class="who"><span class="small strong">Ravi Kulkarni</span><span class="xs muted">Pune Bearing House</span></span>
+        <button class="btn ghost sm" type="button">Sign out</button>
+      </div>
+    </div>
+    <nav class="st-cats" aria-label="Categories">
+      <div class="st-cats-in">
+        <a href="#">Fasteners</a>
+        <a href="#" aria-current="page">Power transmission</a>
+        <a href="#">Safety</a>
+        <a href="#">Hand tools</a>
+        <a href="#">Metals</a>
+        <a href="#">Electrical</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="st-wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="#">All products</a><span aria-hidden="true">/</span><a href="#">Power transmission</a><span aria-hidden="true">/</span><span aria-current="page">Bearings</span>
+    </nav>
+    <div class="st-layout">
+      <nav class="st-side" aria-label="Power transmission">
+        <div class="h">Power transmission</div>
+        <a href="#">All power transmission</a>
+        <a href="#" aria-current="page">Bearings</a>
+        <a class="sub" href="#">Ball bearings</a>
+        <a class="sub" href="#">Taper roller bearings</a>
+        <a href="#">Belts and pulleys</a>
+        <a href="#">Chains and sprockets</a>
+      </nav>
+
+      <section class="st-main" aria-labelledby="h1">
+        <div class="ph">
+          <div>
+            <h1 id="h1">Bearings</h1>
+            <p>Prices are your prices for Pune Bearing House, in INR, excluding GST.</p>
+          </div>
+          <div class="ph-actions">
+            <label class="row small" for="sub"><input class="cb" id="sub" type="checkbox" checked>Include subcategories</label>
+          </div>
+        </div>
+
+        <div class="card" style="overflow: hidden">
+          <div class="tbl-wrap" style="overflow-x: auto">
+            <table class="tbl">
+              <thead><tr>
+                <th scope="col">SKU</th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col">Unit</th>
+                <th scope="col" class="r">Your price</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="p" hint-placeholder-count="10">
+                  <tr>
+                    <td><a class="rl mono" href="ProductDetail.dc.html">{{p.sku}}</a></td>
+                    <td style="white-space: normal; min-width: 240px"><a class="rl" href="ProductDetail.dc.html">{{p.name}}</a></td>
+                    <td class="muted">{{p.cat}}</td>
+                    <td class="muted">{{p.unit}}</td>
+                    <td class="r"><span class="price">{{p.price}}</span> <span class="per">/ {{p.per}}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="pager">
+          <span>Showing 10 products, by SKU</span>
+          <span class="grow"></span>
+          <button class="btn outline sm" type="button" disabled>Previous</button>
+          <button class="btn outline sm" type="button">Next</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="st-foot">
+    <div class="st-foot-in"><span>Muziris India</span><span>Prices in INR, excluding GST</span><span class="grow"></span><a class="link" href="#">Help</a></div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      rows: [
+        { sku: 'BRG-6203-ZZ', name: 'Ball bearing 6203-ZZ, metal shields', cat: 'Ball bearings', unit: 'Each', price: '₹186.00', per: 'each' },
+        { sku: 'BRG-6204-2RS', name: 'Ball bearing 6204-2RS, rubber seals', cat: 'Ball bearings', unit: 'Each', price: '₹238.50', per: 'each' },
+        { sku: 'BRG-6205-2RS', name: 'Ball bearing 6205-2RS', cat: 'Ball bearings', unit: 'Each', price: '₹410.00', per: 'each' },
+        { sku: 'BRG-6206-2RS', name: 'Ball bearing 6206-2RS, 30 mm bore', cat: 'Ball bearings', unit: 'Each', price: '₹512.00', per: 'each' },
+        { sku: 'BRG-6305-ZZ', name: 'Ball bearing 6305-ZZ, heavy series', cat: 'Ball bearings', unit: 'Each', price: '₹644.00', per: 'each' },
+        { sku: 'BRG-30205', name: 'Taper roller bearing 30205', cat: 'Taper roller bearings', unit: 'Each', price: '₹1,085.00', per: 'each' },
+        { sku: 'BRG-30206', name: 'Taper roller bearing 30206', cat: 'Taper roller bearings', unit: 'Each', price: '₹1,240.00', per: 'each' },
+        { sku: 'BRG-UCP205', name: 'Pillow block bearing UCP205, cast iron housing', cat: 'Bearings', unit: 'Each', price: '₹1,960.00', per: 'each' },
+        { sku: 'BRG-UCF206', name: 'Flange bearing UCF206, four bolt', cat: 'Bearings', unit: 'Each', price: '₹2,315.00', per: 'each' },
+        { sku: 'BRG-GREASE-1', name: 'Bearing grease, lithium complex', cat: 'Bearings', unit: 'Kilogram', price: '₹1,125.00', per: 'kg' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

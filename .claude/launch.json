@@ -8,6 +8,12 @@
       "port": 5173
     },
     {
+      "name": "storefront",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@muziris/storefront", "dev"],
+      "port": 5174
+    },
+    {
       "name": "api",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@muziris/api", "dev"],

@@ -1,0 +1,30 @@
+# Search results, best match first, with the buyer's price for one primary unit.
+query Search($query: String!, $first: Int, $offset: Int) {
+  search(query: $query, first: $first, offset: $offset) {
+    nodes {
+      match
+      product {
+        id
+        sku
+        name
+        category {
+          id
+          name
+        }
+        primaryUnit {
+          code
+          name
+          precision
+        }
+        price {
+          unitPrice {
+            amount
+            currency
+          }
+          unitCode
+        }
+      }
+    }
+    nextOffset
+  }
+}

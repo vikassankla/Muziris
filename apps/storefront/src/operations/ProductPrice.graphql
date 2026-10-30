@@ -1,0 +1,15 @@
+# The buyer's price for a quantity in one of the product's units.
+query ProductPrice($sku: String!, $unitCode: String!, $quantity: String!) {
+  product(sku: $sku) {
+    id
+    price(unitCode: $unitCode, quantity: $quantity) {
+      unitPrice {
+        amount
+        currency
+      }
+      unitCode
+      quantity
+      minQuantity
+    }
+  }
+}

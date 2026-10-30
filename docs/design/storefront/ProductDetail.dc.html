@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Nitrile gloves, large · Muziris storefront</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="muziris.css">
+<link rel="stylesheet" href="storefront.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="mz st {{theme}}">
+  <header class="st-h">
+    <div class="st-h-in">
+      <a class="st-brand" href="Main.dc.html"><span class="sb-mark" aria-hidden="true">M</span>Muziris</a>
+      <form class="st-search search" role="search" action="Search.dc.html">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14"></path></svg>
+        <label class="sr" for="q">Search products by name or SKU</label>
+        <input class="input" id="q" type="search" placeholder="Search by name or SKU">
+      </form>
+      <div class="st-who">
+        <span class="av" aria-hidden="true">LM</span>
+        <span class="who"><span class="small strong">Lena Mathew</span><span class="xs muted">Kochi Hardware</span></span>
+        <button class="btn ghost sm" type="button">Sign out</button>
+      </div>
+    </div>
+    <nav class="st-cats" aria-label="Categories">
+      <div class="st-cats-in">
+        <a href="Main.dc.html">Fasteners</a>
+        <a href="#" aria-current="page">Safety</a>
+        <a href="#">Hand tools</a>
+        <a href="#">Metals</a>
+        <a href="#">Electrical</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="st-wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="Main.dc.html">All products</a><span aria-hidden="true">/</span><a href="#">Safety</a><span aria-hidden="true">/</span><a href="#">Gloves</a><span aria-hidden="true">/</span><span aria-current="page">GLV-NITRILE-L</span>
+    </nav>
+
+    <div class="st-layout">
+      <section class="st-main" aria-labelledby="h1" style="flex: 999 1 520px">
+        <div class="col" style="gap: 6px">
+          <span class="mono muted">GLV-NITRILE-L</span>
+          <h1 id="h1" style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 650; letter-spacing: -0.015em">Nitrile gloves, large</h1>
+          <span class="small muted">in <a class="link" href="#">Gloves</a></span>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>Details</h2></div>
+          <div class="card-b">
+            <dl class="dl">
+              <dt>Colours</dt><dd>Blue, black</dd>
+              <dt>Thickness</dt><dd>5 mil</dd>
+              <dt>Powder</dt><dd>Powder-free</dd>
+              <dt>Standard</dt><dd>EN 455, EN 374</dd>
+              <dt>Sold in</dt><dd>Box of 100 (primary), Carton of 10 boxes</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card" aria-labelledby="price-h" style="flex: 1 1 340px; max-width: 420px; box-shadow: var(--shadow)">
+        <div class="card-h"><h2 id="price-h">Your price</h2><span class="grow"></span><span class="tag">Kochi Hardware</span></div>
+        <div class="card-b col" style="gap: 16px">
+          <div class="field">
+            <label class="label" for="unit">Unit</label>
+            <select class="input" id="unit" onChange="{{pickUnit}}">
+              <option value="box">Box of 100</option>
+              <option value="carton">Carton of 10 boxes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="qty">Quantity</label>
+            <input class="input num {{qtyClass}}" id="qty" inputmode="numeric" value="{{qty}}" onChange="{{setQty}}" aria-describedby="qty-hint">
+            <sc-if value="{{bad}}" hint-placeholder-val="{{false}}">
+              <span class="err" id="qty-hint" role="alert">Enter a whole number of {{unitPlural}}, 1 or more.</span>
+            </sc-if>
+            <sc-if value="{{ok}}" hint-placeholder-val="{{true}}">
+              <span class="hint" id="qty-hint">Whole {{unitPlural}} only.</span>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ok}}" hint-placeholder-val="{{true}}">
+            <div class="col" style="gap: 4px">
+              <div class="row" style="align-items: baseline; gap: 6px"><span class="price-lg">{{unitPrice}}</span><span class="per">per {{unitName}}</span></div>
+              <span class="small muted">{{tierNote}}</span>
+            </div>
+            <hr class="hr">
+            <div class="row"><span class="muted">{{qty}} × {{unitPrice}}</span><span class="grow"></span><span class="price">{{total}}</span></div>
+          </sc-if>
+
+          <p class="xs muted" style="margin: 0">INR, excluding GST. Quantity breaks apply per order line.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="st-foot">
+    <div class="st-foot-in"><span>Muziris India</span><span>Prices in INR, excluding GST</span><span class="grow"></span><a class="link" href="#">Help</a></div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { unit: 'box', qty: '120' };
+  }
+  renderVals() {
+    const units = {
+      box: { name: 'box', plural: 'boxes', tiers: [[1, 95.5], [100, 89]] },
+      carton: { name: 'carton', plural: 'cartons', tiers: [[1, 940], [20, 875]] }
+    };
+    const u = units[this.state.unit];
+    const raw = String(this.state.qty).trim();
+    const ok = /^[1-9][0-9]{0,6}$/.test(raw);
+    const q = ok ? Number(raw) : 0;
+    let tier = u.tiers[0];
+    for (const t of u.tiers) if (q >= t[0]) tier = t;
+    const inr = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n);
+    const next = u.tiers.find((t) => t[0] > q);
+    return {
+      theme: this.props.dark ? 'dark' : '',
+      qty: this.state.qty,
+      ok: ok,
+      bad: !ok,
+      qtyClass: ok ? '' : 'invalid',
+      unitName: u.name,
+      unitPlural: u.plural,
+      unitPrice: inr(tier[1]),
+      total: inr(tier[1] * q),
+      tierNote: next
+        ? 'From ' + next[0] + ' ' + u.plural + ': ' + inr(next[1]) + ' per ' + u.name + '.'
+        : 'Price for ' + tier[0] + ' ' + u.plural + ' or more.',
+      setQty: (e) => this.setState({ qty: e.target.value }),
+      pickUnit: (e) => this.setState({ unit: e.target.value, qty: '1' })
+    };
+  }
+}
+</script>
+</body>
+</html>

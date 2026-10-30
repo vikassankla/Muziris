@@ -1,0 +1,21 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-30T07:01:02Z" },
+  "title": "Muziris Storefront",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 1040, "title": "Category · product list with buyer prices", "expand": "fill" },
+    "ProductDetail.dc.html": { "x": 1520, "y": 0, "w": 1440, "h": 1040, "title": "Product detail · price for unit and quantity", "expand": "fill", "is_interactive": true },
+    "Search.dc.html": { "x": 3040, "y": 0, "w": 1440, "h": 1040, "title": "Search results", "expand": "fill" },
+    "SignIn.dc.html": { "x": 0, "y": 1400, "w": 1440, "h": 900, "title": "Buyer sign-in · default, error, signed out", "expand": "fill" },
+    "States.dc.html": { "x": 1520, "y": 1400, "w": 1440, "h": 900, "title": "States · loading, empty, no price, not found, error", "expand": "fill" },
+    "Mobile.dc.html": { "x": 3040, "y": 1400, "w": 390, "h": 844, "title": "Phone · category list" }
+  },
+  "order": ["Main.dc.html", "ProductDetail.dc.html", "Search.dc.html", "SignIn.dc.html", "States.dc.html", "Mobile.dc.html"],
+  "notes": {
+    "browse": { "x": 0, "y": -300, "text": "Browse: signed-in buyer, one website", "kind": "title1", "maxW": 4480 },
+    "edges": { "x": 0, "y": 1100, "text": "Sign-in, states and phone", "kind": "title1", "maxW": 3430 }
+  },
+  "designSystems": []
+}
