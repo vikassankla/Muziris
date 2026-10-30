@@ -9,8 +9,10 @@ describe('storefront schema', () => {
     expect(committed).toBe(`${printSchema(storefrontSchema)}\n`);
   });
 
-  it('has no mutations or subscriptions yet', () => {
-    expect(storefrontSchema.getMutationType()).toBeUndefined();
+  it('has one mutation, placeOrder, and no subscriptions', () => {
+    expect(Object.keys(storefrontSchema.getMutationType()?.getFields() ?? {})).toEqual([
+      'placeOrder',
+    ]);
     expect(storefrontSchema.getSubscriptionType()).toBeUndefined();
   });
 });

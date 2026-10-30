@@ -1,4 +1,5 @@
 import type { Database } from '@muziris/db';
+import type { CheckoutDependencies } from '@muziris/orders';
 import { findWebsiteByCode } from '@muziris/platform';
 import {
   execute,
@@ -38,6 +39,8 @@ export interface StorefrontRouteDependencies {
   now: () => Date;
   trustedOrigins: ReadonlySet<string>;
   storefront: StorefrontOptions;
+  /** Checkout's tax and other providers; null refuses checkout with TAX_NOT_CONFIGURED. */
+  checkout: CheckoutDependencies | null;
 }
 
 interface StorefrontEnv {
@@ -253,7 +256,13 @@ export function storefrontRoutes(deps: StorefrontRouteDependencies): Hono<Storef
         document,
         operationName: request.operationName ?? null,
         variableValues: variables,
-        contextValue: createContext({ db: deps.db, now: deps.now(), user, website }),
+        contextValue: createContext({
+          db: deps.db,
+          now: deps.now(),
+          user,
+          website,
+          checkout: deps.checkout,
+        }),
       });
       const errors = (result.errors ?? []).map((e) =>
         masked(e, (err) => {

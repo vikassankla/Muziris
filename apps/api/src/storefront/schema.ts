@@ -9,10 +9,28 @@ import {
   type Product,
   type ProductUnit,
 } from '@muziris/catalog';
-import { listCustomersForBuyer } from '@muziris/customers';
+import { listAddressesForBuyer, listCustomersForBuyer, type Address } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import type { AuthenticatedUser } from '@muziris/identity';
-import { toDecimalString, type CurrencyCode, type Decimal } from '@muziris/money';
+import { toDecimalString, type CurrencyCode, type Decimal, type Money } from '@muziris/money';
+import {
+  findOrderForBuyer,
+  listOrdersForBuyer,
+  ORDER_STEPS,
+  placeOrder,
+  placeOrderRequestSchema,
+  previewCheckout,
+  checkoutRequestSchema,
+  type CheckoutDependencies,
+  type CheckoutRefusal,
+  type LineProblem,
+  type Order,
+  type OrderAddress,
+  type OrderSummary,
+  type Totals,
+  type TotalsLine,
+  type TaxLine,
+} from '@muziris/orders';
 import type { Website } from '@muziris/platform';
 import { findPricesForBuyer, type PriceLookup } from '@muziris/pricing';
 import { MATCHES, searchProductsForBuyer, type SearchHit } from '@muziris/search';
@@ -26,6 +44,7 @@ import {
   GraphQLEnumType,
   GraphQLError,
   GraphQLID,
+  GraphQLInputObjectType,
   GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
@@ -33,6 +52,7 @@ import {
   GraphQLSchema,
   GraphQLString,
   type GraphQLFieldConfig,
+  type GraphQLNullableInputType,
   type GraphQLNamedOutputType,
   type GraphQLNullableOutputType,
 } from 'graphql';
@@ -60,6 +80,8 @@ export interface StorefrontContext {
   user: AuthenticatedUser;
   website: Website;
   buyer: BuyerOnWebsite;
+  /** Tax and the other checkout providers; null until a tax calculator is set up (ADR 0017). */
+  checkout: CheckoutDependencies | null;
   loaders: {
     product: Loader<string, Product | null>;
     /** Every category the buyer may see, read once per request. */
@@ -74,8 +96,9 @@ export function createContext(input: {
   now: Date;
   user: AuthenticatedUser;
   website: Website;
+  checkout: CheckoutDependencies | null;
 }): StorefrontContext {
-  const { db, now, user, website } = input;
+  const { db, now, user, website, checkout } = input;
   const buyer: BuyerOnWebsite = { buyerUserId: user.id, websiteId: website.id };
   let categories: Promise<ReadonlyMap<string, Category>> | undefined;
   return {
@@ -84,6 +107,7 @@ export function createContext(input: {
     user,
     website,
     buyer,
+    checkout,
     loaders: {
       product: createLoader<string, Product | null>(
         async (ids) => {
@@ -170,12 +194,44 @@ const WebsiteType = new GraphQLObjectType<Website, StorefrontContext>({
   },
 });
 
+const AddressType = new GraphQLObjectType<Address, StorefrontContext>({
+  name: 'Address',
+  description: "One of the customer's billing or shipping addresses.",
+  fields: {
+    id: { type: nonNull(GraphQLID) },
+    label: { type: nonNull(GraphQLString) },
+    countryCode: { type: nonNull(GraphQLString) },
+    line1: { type: nonNull(GraphQLString) },
+    line2: { type: GraphQLString },
+    city: { type: nonNull(GraphQLString) },
+    regionCode: {
+      type: nonNull(GraphQLString),
+      description: 'India: the two-digit GST state code. US: the two-letter state code.',
+    },
+    postalCode: { type: nonNull(GraphQLString) },
+    gstin: { type: GraphQLString },
+    isDefaultBilling: { type: nonNull(GraphQLBoolean) },
+    isDefaultShipping: { type: nonNull(GraphQLBoolean) },
+  },
+});
+
 const CustomerType = new GraphQLObjectType<{ id: string; name: string }, StorefrontContext>({
   name: 'Customer',
   description: 'The company the buyer user buys for.',
   fields: {
     id: { type: nonNull(GraphQLID) },
     name: { type: nonNull(GraphQLString) },
+    addresses: {
+      type: listOf(AddressType),
+      description: 'Its addresses, to bill and ship an order to.',
+      extensions: { listSize: 20 } satisfies FieldCostExtensions,
+      resolve: (customer, _args, ctx) =>
+        listAddressesForBuyer(
+          ctx.db,
+          { buyerUserId: ctx.user.id, reach: 'my_customer' },
+          customer.id,
+        ),
+    },
   },
 });
 
@@ -409,6 +465,393 @@ const SearchResultsType = new GraphQLObjectType<
   },
 });
 
+// Checkout and orders (ADR 0016). Refusals are data, not errors: each has a stable code and a
+// message the buyer may see, and prices_changed carries the new totals to show.
+
+function enumOf(name: string, values: readonly string[], description?: string) {
+  return new GraphQLEnumType({
+    name,
+    ...(description === undefined ? {} : { description }),
+    values: Object.fromEntries(values.map((v) => [v.toUpperCase(), { value: v }])),
+  });
+}
+
+const OrderStepType = enumOf('OrderStep', ORDER_STEPS, 'Where an order is in its workflow.');
+
+/** A line as checkout priced it, or as the order keeps it: the two have the same fields. */
+type LineSource = Pick<
+  TotalsLine,
+  | 'lineNo'
+  | 'productId'
+  | 'sku'
+  | 'productName'
+  | 'unitCode'
+  | 'unitName'
+  | 'quantity'
+  | 'unitPrice'
+  | 'subtotal'
+  | 'discount'
+  | 'net'
+  | 'taxCode'
+>;
+
+const OrderLineType = new GraphQLObjectType<LineSource, StorefrontContext>({
+  name: 'OrderLine',
+  description: 'A line of a checkout or an order: what was bought and its price.',
+  fields: {
+    lineNo: { type: nonNull(GraphQLInt), description: '1, 2, 3 in the order the buyer listed.' },
+    productId: { type: nonNull(GraphQLID) },
+    sku: { type: nonNull(GraphQLString) },
+    productName: { type: nonNull(GraphQLString) },
+    unitCode: { type: nonNull(GraphQLString) },
+    unitName: { type: nonNull(GraphQLString) },
+    quantity: { type: nonNull(GraphQLString), resolve: (l) => quantityToString(l.quantity) },
+    unitPrice: { type: nonNull(MoneyType) },
+    subtotal: { type: nonNull(MoneyType), description: 'Unit price times quantity.' },
+    discount: { type: nonNull(MoneyType) },
+    net: { type: nonNull(MoneyType), description: 'Subtotal less discount, before tax.' },
+    taxCode: { type: GraphQLString, description: 'HSN or SAC in India.' },
+  },
+});
+
+const TaxType = new GraphQLObjectType<
+  Pick<TaxLine, 'lineNo' | 'name' | 'rate' | 'taxable' | 'amount'>,
+  StorefrontContext
+>({
+  name: 'Tax',
+  description: 'One tax charged: on a line, or on shipping when lineNo is null.',
+  fields: {
+    lineNo: { type: GraphQLInt },
+    name: { type: nonNull(GraphQLString), description: 'For example CGST, SGST or IGST.' },
+    rate: { type: nonNull(GraphQLString), description: 'A decimal fraction: "0.09" is 9%.' },
+    taxable: { type: nonNull(MoneyType) },
+    amount: { type: nonNull(MoneyType) },
+  },
+});
+
+/** The totals fields a checkout and an order share. */
+interface TotalsSource {
+  currency: CurrencyCode;
+  lines: readonly LineSource[];
+  taxes: readonly Pick<TaxLine, 'lineNo' | 'name' | 'rate' | 'taxable' | 'amount'>[];
+  shippingMethod: string;
+  subtotal: Money;
+  discount: Money;
+  shipping: Money;
+  shippingDiscount: Money;
+  tax: Money;
+  grandTotal: Money;
+}
+
+function totalsFields(): Record<string, Field<TotalsSource>> {
+  return {
+    currency: { type: nonNull(GraphQLString) },
+    lines: {
+      type: listOf(OrderLineType),
+      extensions: { listSize: 50 } satisfies FieldCostExtensions,
+    },
+    taxes: { type: listOf(TaxType), extensions: { listSize: 50 } satisfies FieldCostExtensions },
+    shippingMethod: { type: nonNull(GraphQLString) },
+    subtotal: { type: nonNull(MoneyType), description: 'The sum of line subtotals.' },
+    discount: { type: nonNull(MoneyType), description: 'Line and order discounts together.' },
+    shipping: { type: nonNull(MoneyType) },
+    shippingDiscount: { type: nonNull(MoneyType) },
+    tax: { type: nonNull(MoneyType) },
+    grandTotal: { type: nonNull(MoneyType) },
+  };
+}
+
+const TotalsType = new GraphQLObjectType<Totals, StorefrontContext>({
+  name: 'Totals',
+  fields: totalsFields,
+});
+
+const CheckoutPreviewType = new GraphQLObjectType<
+  { totals: Totals; paymentTermDays: number; dueOn: string },
+  StorefrontContext
+>({
+  name: 'CheckoutPreview',
+  fields: {
+    totals: { type: nonNull(TotalsType) },
+    paymentTermDays: { type: nonNull(GraphQLInt), description: 'Days to pay: 30 is net 30.' },
+    dueOn: {
+      type: nonNull(GraphQLString),
+      description:
+        "The day payment would be due if placed now (YYYY-MM-DD, the website's time zone).",
+    },
+  },
+});
+
+const LINE_PROBLEMS = [
+  'product_not_available',
+  'unit_not_sold',
+  'invalid_quantity',
+  'no_price',
+] as const;
+
+const LineProblemType = new GraphQLObjectType<LineProblem, StorefrontContext>({
+  name: 'LineProblem',
+  fields: {
+    lineNo: { type: nonNull(GraphQLInt) },
+    code: { type: nonNull(enumOf('LineProblemCode', LINE_PROBLEMS)) },
+    message: { type: nonNull(GraphQLString) },
+  },
+});
+
+/** A module refusal, or the API's own when no tax calculator is set up. */
+export type Refusal = CheckoutRefusal | { code: 'tax_not_configured' };
+
+const REFUSAL_CODES = [
+  'not_allowed',
+  'website_not_found',
+  'address_not_found',
+  'line_problems',
+  'prices_changed',
+  'idempotency_key_reused',
+  'tax_not_configured',
+] as const satisfies readonly Refusal['code'][];
+
+function refusalMessage(refusal: Refusal): string {
+  switch (refusal.code) {
+    case 'not_allowed':
+      return 'You may not place orders for your company';
+    case 'website_not_found':
+      return 'This storefront is not taking orders';
+    case 'address_not_found':
+      return `The ${refusal.role} address is not one of your company's addresses`;
+    case 'line_problems':
+      return 'Some lines cannot be ordered';
+    case 'prices_changed':
+      return 'The total changed since you last saw it; review the new total';
+    case 'idempotency_key_reused':
+      return 'This order key was already used for a different order';
+    case 'tax_not_configured':
+      return 'Checkout is not available yet: tax is not set up for this storefront';
+  }
+}
+
+const CheckoutRefusalType = new GraphQLObjectType<Refusal, StorefrontContext>({
+  name: 'CheckoutRefusal',
+  description: 'Why a checkout cannot go on. The message is safe to show the buyer.',
+  fields: {
+    code: { type: nonNull(enumOf('CheckoutRefusalCode', REFUSAL_CODES)) },
+    message: { type: nonNull(GraphQLString), resolve: refusalMessage },
+    addressRole: {
+      type: enumOf('AddressRole', ['billing', 'shipping']),
+      description: 'For ADDRESS_NOT_FOUND: which address.',
+      resolve: (r) => (r.code === 'address_not_found' ? r.role : null),
+    },
+    lines: {
+      type: listOf(LineProblemType),
+      description: 'For LINE_PROBLEMS: each line that cannot be ordered, and why.',
+      extensions: { listSize: 50 } satisfies FieldCostExtensions,
+      resolve: (r) => (r.code === 'line_problems' ? r.lines : []),
+    },
+    expectedGrandTotal: {
+      type: MoneyType,
+      description: 'For PRICES_CHANGED: the total the buyer sent.',
+      resolve: (r) => (r.code === 'prices_changed' ? r.expected : null),
+    },
+    totals: {
+      type: TotalsType,
+      description: 'For PRICES_CHANGED: the totals now.',
+      resolve: (r) => (r.code === 'prices_changed' ? r.totals : null),
+    },
+  },
+});
+
+const CheckoutPreviewResultType = new GraphQLObjectType<
+  { preview: unknown; refusal: Refusal | null },
+  StorefrontContext
+>({
+  name: 'CheckoutPreviewResult',
+  description: 'Exactly one of preview and refusal is set.',
+  fields: {
+    preview: { type: CheckoutPreviewType },
+    refusal: { type: CheckoutRefusalType },
+  },
+});
+
+const OrderAddressType = new GraphQLObjectType<OrderAddress, StorefrontContext>({
+  name: 'OrderAddress',
+  description: 'An address as it was when the order was placed.',
+  fields: {
+    label: { type: nonNull(GraphQLString) },
+    countryCode: { type: nonNull(GraphQLString) },
+    line1: { type: nonNull(GraphQLString) },
+    line2: { type: GraphQLString },
+    city: { type: nonNull(GraphQLString) },
+    regionCode: { type: nonNull(GraphQLString) },
+    postalCode: { type: nonNull(GraphQLString) },
+    gstin: { type: GraphQLString },
+  },
+});
+
+function summaryFields(): Record<string, Field<OrderSummary>> {
+  return {
+    number: { type: nonNull(GraphQLString), description: 'For example MZ-000123.' },
+    step: { type: nonNull(OrderStepType) },
+    placedAt: {
+      type: nonNull(GraphQLString),
+      description: 'An ISO 8601 timestamp in UTC.',
+      resolve: (o) => o.placedAt.toISOString(),
+    },
+    customerName: { type: nonNull(GraphQLString) },
+    purchaseOrderNumber: { type: GraphQLString },
+    grandTotal: { type: nonNull(MoneyType) },
+  };
+}
+
+const OrderSummaryType = new GraphQLObjectType<OrderSummary, StorefrontContext>({
+  name: 'OrderSummary',
+  fields: summaryFields,
+});
+
+const OrderType = new GraphQLObjectType<Order, StorefrontContext>({
+  name: 'Order',
+  description: 'A placed order. It keeps its own copy of lines, prices, tax and addresses.',
+  fields: () => ({
+    ...summaryFields(),
+    ...(totalsFields() as Record<string, Field<Order>>),
+    paymentMethod: { type: nonNull(GraphQLString), description: 'TERMS: pay on invoice.' },
+    paymentTermDays: { type: nonNull(GraphQLInt) },
+    dueOn: { type: nonNull(GraphQLString), description: 'YYYY-MM-DD.' },
+    billingAddress: { type: nonNull(OrderAddressType) },
+    shippingAddress: { type: nonNull(OrderAddressType) },
+  }),
+});
+
+const OrderPageType = new GraphQLObjectType<
+  { nodes: OrderSummary[]; nextAfter: string | null },
+  StorefrontContext
+>({
+  name: 'OrderPage',
+  fields: {
+    nodes: { type: listOf(OrderSummaryType) },
+    nextAfter: {
+      type: GraphQLString,
+      description: 'Pass as after to read the next page; null on the last page.',
+    },
+  },
+});
+
+const PlaceOrderResultType = new GraphQLObjectType<
+  { order: Order | null; replayed: boolean; refusal: Refusal | null },
+  StorefrontContext
+>({
+  name: 'PlaceOrderResult',
+  description: 'Exactly one of order and refusal is set.',
+  fields: {
+    order: { type: OrderType },
+    replayed: {
+      type: nonNull(GraphQLBoolean),
+      description:
+        'True when the idempotency key placed this order before, and it is returned again.',
+    },
+    refusal: { type: CheckoutRefusalType },
+  },
+});
+
+function inputOf<T extends GraphQLNullableInputType>(type: T): GraphQLNonNull<T> {
+  return new GraphQLNonNull(type);
+}
+
+const checkoutLineInput = new GraphQLInputObjectType({
+  name: 'CheckoutLineInput',
+  fields: {
+    productId: { type: inputOf(GraphQLID) },
+    unitCode: { type: inputOf(GraphQLString) },
+    quantity: {
+      type: inputOf(GraphQLString),
+      description: "A decimal string at the unit's precision.",
+    },
+  },
+});
+
+const checkoutInputFields = {
+  lines: { type: inputOf(new GraphQLList(inputOf(checkoutLineInput))) },
+  billingAddressId: { type: inputOf(GraphQLID) },
+  shippingAddressId: { type: inputOf(GraphQLID) },
+  purchaseOrderNumber: { type: GraphQLString },
+};
+
+const CheckoutInput = new GraphQLInputObjectType({
+  name: 'CheckoutInput',
+  fields: checkoutInputFields,
+});
+
+const PlaceOrderInput = new GraphQLInputObjectType({
+  name: 'PlaceOrderInput',
+  fields: {
+    ...checkoutInputFields,
+    idempotencyKey: {
+      type: inputOf(GraphQLID),
+      description: 'A UUID the client makes once per order attempt, and sends again on a retry.',
+    },
+    expectedGrandTotal: {
+      type: inputOf(GraphQLString),
+      description: "The preview's grand total, as a decimal string; a different total refuses.",
+    },
+  },
+});
+
+interface CheckoutArgs {
+  input: {
+    lines: { productId: string; unitCode: string; quantity: string }[];
+    billingAddressId: string;
+    shippingAddressId: string;
+    purchaseOrderNumber?: string | null;
+    idempotencyKey?: string;
+    expectedGrandTotal?: string;
+  };
+}
+
+/** The module's request from GraphQL input, or a BAD_USER_INPUT error naming the field. */
+function checkoutRequest<T extends z.ZodType>(
+  schema: T,
+  args: CheckoutArgs,
+  ctx: StorefrontContext,
+): z.output<T> {
+  const { purchaseOrderNumber, ...rest } = args.input;
+  const parsed = schema.safeParse({
+    ...rest,
+    websiteId: ctx.website.id,
+    ...(purchaseOrderNumber === null || purchaseOrderNumber === undefined
+      ? {}
+      : { purchaseOrderNumber }),
+  });
+  if (!parsed.success) {
+    const [issue] = parsed.error.issues;
+    throw badInput(
+      issue ? `${['input', ...issue.path].join('.')}: ${issue.message}` : 'The input is not valid',
+    );
+  }
+  return parsed.data;
+}
+
+const notConfigured = { code: 'tax_not_configured' } as const;
+
+const mutation: Record<string, Field<unknown>> = {
+  placeOrder: {
+    type: nonNull(PlaceOrderResultType),
+    description:
+      'Places an order on payment terms. Everything is checked again; sending the same idempotency key again returns the same order.',
+    args: { input: { type: inputOf(PlaceOrderInput) } },
+    resolve: async (_root, args: CheckoutArgs, ctx) => {
+      const request = checkoutRequest(placeOrderRequestSchema, args, ctx);
+      if (!ctx.checkout) return { order: null, replayed: false, refusal: notConfigured };
+      const result = await placeOrder(
+        ctx.db,
+        { buyerUserId: ctx.user.id, request, now: ctx.now },
+        ctx.checkout,
+      );
+      return result.ok
+        ? { order: result.order, replayed: result.replayed, refusal: null }
+        : { order: null, replayed: false, refusal: result.refusal };
+    },
+  },
+};
+
 const query: Record<string, Field<unknown>> = {
   viewer: { type: nonNull(ViewerType), resolve: (_root, _args, ctx) => ctx.user },
   website: { type: nonNull(WebsiteType), resolve: (_root, _args, ctx) => ctx.website },
@@ -498,8 +941,61 @@ const query: Record<string, Field<unknown>> = {
       return { nodes: page.results, nextOffset: page.nextOffset };
     },
   },
+  checkoutPreview: {
+    type: nonNull(CheckoutPreviewResultType),
+    description:
+      'The totals the buyer would pay for these lines, with their prices and tax. Saves nothing.',
+    args: { input: { type: inputOf(CheckoutInput) } },
+    resolve: async (_root, args: CheckoutArgs, ctx) => {
+      const request = checkoutRequest(checkoutRequestSchema, args, ctx);
+      if (!ctx.checkout) return { preview: null, refusal: notConfigured };
+      const result = await previewCheckout(
+        ctx.db,
+        { buyerUserId: ctx.user.id, request, now: ctx.now },
+        ctx.checkout,
+      );
+      return result.ok
+        ? { preview: result.preview, refusal: null }
+        : { preview: null, refusal: result.refusal };
+    },
+  },
+  orders: {
+    type: nonNull(OrderPageType),
+    description: 'Orders the buyer may see on this website, newest first.',
+    args: {
+      first: firstArg,
+      after: { type: GraphQLString, description: "The previous page's nextAfter." },
+    },
+    resolve: async (_root, args: { first: number; after?: string | null }, ctx) => {
+      const limit = pageSize(args.first);
+      const after = args.after ?? undefined;
+      if (after !== undefined && !uuid.safeParse(after).success) {
+        throw badInput("after must be a page's nextAfter");
+      }
+      const page = await listOrdersForBuyer(ctx.db, ctx.user.id, {
+        websiteId: ctx.website.id,
+        limit,
+        ...(after === undefined ? {} : { after }),
+      });
+      return { nodes: page.orders, nextAfter: page.nextAfter };
+    },
+  },
+  order: {
+    type: OrderType,
+    description: 'One order by its number, if the buyer may see it.',
+    args: { number: { type: nonNull(GraphQLString) } },
+    resolve: async (_root, args: { number: string }, ctx) =>
+      (await findOrderForBuyer(ctx.db, ctx.user.id, {
+        websiteId: ctx.website.id,
+        number: args.number,
+      })) ?? null,
+  },
 };
 
 export const storefrontSchema = new GraphQLSchema({
   query: new GraphQLObjectType<unknown, StorefrontContext>({ name: 'Query', fields: query }),
+  mutation: new GraphQLObjectType<unknown, StorefrontContext>({
+    name: 'Mutation',
+    fields: mutation,
+  }),
 });

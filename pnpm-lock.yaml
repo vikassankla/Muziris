@@ -153,6 +153,9 @@ importers:
       '@muziris/money':
         specifier: workspace:*
         version: link:../../packages/money
+      '@muziris/orders':
+        specifier: workspace:*
+        version: link:../../modules/orders
       '@muziris/platform':
         specifier: workspace:*
         version: link:../../modules/platform
@@ -165,6 +168,9 @@ importers:
       '@muziris/visibility':
         specifier: workspace:*
         version: link:../../modules/visibility
+      '@muziris/workflow':
+        specifier: workspace:*
+        version: link:../../modules/workflow
       graphql:
         specifier: ^17.0.2
         version: 17.0.2
