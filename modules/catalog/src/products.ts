@@ -290,8 +290,16 @@ export async function listProducts(
   db: Database,
   query: ListProductsQuery = {},
 ): Promise<ProductPage> {
+  return listProductsWhere(db, query, []);
+}
+
+async function listProductsWhere(
+  db: Database,
+  query: ListProductsQuery,
+  scope: readonly SQL[],
+): Promise<ProductPage> {
   const q = listProductsQuerySchema.parse(query);
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [...scope];
   if (q.categoryId !== undefined) {
     conditions.push(
       q.includeSubcategories
@@ -314,6 +322,56 @@ export async function listProducts(
     products: await withUnits(db, page),
     nextAfter: rows.length > q.limit && last ? last.sku : null,
   };
+}
+
+// Reads within a set of products. `within` is an SQL select of one column `product_id`, such
+// as visibility's visibleProductIdsForBuyer; it is part of each query, so a product outside it is
+// never read. The storefront API uses these for buyers (ADR 0014).
+
+function inSet(within: SQL): SQL {
+  return sql`${products.id} in (select product_id from (${within}) w)`;
+}
+
+/** The products with these ids that are within the set, in no particular order. */
+export async function findProductsWithin(
+  db: Database,
+  within: SQL,
+  productIds: readonly string[],
+): Promise<Product[]> {
+  const ids = z.array(idSchema).max(1000).parse(productIds);
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(products)
+    .where(and(inArray(products.id, ids), inSet(within)));
+  return withUnits(db, rows);
+}
+
+/** Finds a product by SKU in any letter case, if it is within the set. */
+export async function findProductBySkuWithin(
+  db: Database,
+  within: SQL,
+  sku: string,
+): Promise<Product | undefined> {
+  const parsed = skuSchema.safeParse(sku);
+  if (!parsed.success) return undefined;
+  const [row] = await db
+    .select()
+    .from(products)
+    .where(and(sql`lower(${products.sku}) = lower(${parsed.data})`, inSet(within)))
+    .limit(1);
+  if (!row) return undefined;
+  const [product] = await withUnits(db, [row]);
+  return product;
+}
+
+/** As listProducts, for the products within the set only. */
+export async function listProductsWithin(
+  db: Database,
+  within: SQL,
+  query: ListProductsQuery = {},
+): Promise<ProductPage> {
+  return listProductsWhere(db, query, [inSet(within)]);
 }
 
 /** Changes a product's SKU, name, status, category or attributes. Attributes are replaced. */

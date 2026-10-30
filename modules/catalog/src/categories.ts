@@ -141,6 +141,19 @@ export async function listCategories(db: Database): Promise<Category[]> {
     .orderBy(asc(categories.position), asc(categories.name), asc(categories.id));
 }
 
+/**
+ * The categories within a set, in the order of listCategories. `within` is an SQL select of one
+ * column `category_id`, such as visibility's visibleCategoryIdsForBuyer; it is part of the query
+ * (ADR 0014).
+ */
+export async function listCategoriesWithin(db: Database, within: SQL): Promise<Category[]> {
+  return db
+    .select()
+    .from(categories)
+    .where(sql`${categories.id} in (select category_id from (${within}) w)`)
+    .orderBy(asc(categories.position), asc(categories.name), asc(categories.id));
+}
+
 export async function findCategory(
   db: Database,
   categoryId: string,

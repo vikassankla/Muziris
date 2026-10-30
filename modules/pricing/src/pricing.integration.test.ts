@@ -25,6 +25,8 @@ import {
   deletePriceList,
   findPrice,
   findPriceForBuyer,
+  findPricesForBuyer,
+  MAX_PRICE_ITEMS,
   getBuildState,
   listAssignments,
   listPriceLists,
@@ -374,6 +376,102 @@ describe.skipIf(!url)('pricing module against PostgreSQL', () => {
       expect(amountOf(await buyerPrice(asha.id))).toBe('70.00');
       expect(amountOf(await buyerPrice(ravi.id))).toBe('80.00');
       expect(await buyerPrice(MISSING_ID)).toEqual({ found: false, reason: 'customer_not_found' });
+    });
+
+    it('prices many items for a buyer in one call, the same as one at a time', async () => {
+      const w = await contractWorld();
+      await addPrice(handle.db, w.contract.id, {
+        productId: w.product.id,
+        unitCode: 'each',
+        minQuantity: '100',
+        amount: '65.00',
+      });
+      await rebuildCombinedPrices(handle.db);
+      const rival = await createCustomer(handle.db, { name: 'Rival', groupId: w.group.id });
+      const asha = await createUser(handle.db, {
+        realm: 'buyer',
+        email: 'asha@gulfcoast.example',
+        displayName: 'Asha',
+        password: 'correct horse battery staple',
+      });
+      const ravi = await createUser(handle.db, {
+        realm: 'buyer',
+        email: 'ravi@rival.example',
+        displayName: 'Ravi',
+        password: 'correct horse battery staple',
+      });
+      await linkBuyerUser(handle.db, w.customer.id, 'asha@gulfcoast.example');
+      await linkBuyerUser(handle.db, rival.id, 'ravi@rival.example');
+      const items = [
+        { productId: w.product.id, unitCode: 'each', quantity: parseDecimal('1') },
+        { productId: w.product.id, unitCode: 'each', quantity: parseDecimal('150') },
+        { productId: w.product.id, unitCode: 'kg', quantity: parseDecimal('1') },
+        { productId: MISSING_ID, unitCode: 'each', quantity: parseDecimal('1') },
+        { productId: w.product.id, unitCode: 'each', quantity: parseDecimal('99') },
+      ];
+      const batch = (buyerUserId: string) =>
+        findPricesForBuyer(handle.db, {
+          buyerUserId,
+          websiteId: w.website.id,
+          currency: 'INR',
+          now: NOW,
+          items,
+        });
+      for (const buyerUserId of [asha.id, ravi.id, MISSING_ID]) {
+        const one = await Promise.all(
+          items.map((item) =>
+            findPriceForBuyer(handle.db, {
+              buyerUserId,
+              websiteId: w.website.id,
+              currency: 'INR',
+              now: NOW,
+              ...item,
+            }),
+          ),
+        );
+        expect(await batch(buyerUserId)).toEqual(one);
+      }
+      expect((await batch(asha.id)).map(amountOf)).toEqual([
+        '70.00',
+        '65.00',
+        'no_price',
+        'no_price',
+        '70.00',
+      ]);
+      expect((await batch(ravi.id)).map(amountOf)).toEqual([
+        '80.00',
+        '80.00',
+        'no_price',
+        'no_price',
+        '80.00',
+      ]);
+      expect(
+        await findPricesForBuyer(handle.db, {
+          buyerUserId: asha.id,
+          websiteId: w.website.id,
+          currency: 'INR',
+          now: NOW,
+          items: [],
+        }),
+      ).toEqual([]);
+      await expect(
+        findPricesForBuyer(handle.db, {
+          buyerUserId: asha.id,
+          websiteId: w.website.id,
+          currency: 'INR',
+          now: NOW,
+          items: Array.from({ length: MAX_PRICE_ITEMS + 1 }, () => items[0]!),
+        }),
+      ).rejects.toThrow(RangeError);
+      await expect(
+        findPricesForBuyer(handle.db, {
+          buyerUserId: asha.id,
+          websiteId: w.website.id,
+          currency: 'INR',
+          now: NOW,
+          items: [{ ...items[0]!, quantity: parseDecimal('0') }],
+        }),
+      ).rejects.toThrow(RangeError);
     });
   });
 

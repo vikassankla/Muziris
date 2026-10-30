@@ -17,9 +17,13 @@ import {
   descendantCategoryIds,
   findProduct,
   findProductBySku,
+  findProductBySkuWithin,
+  findProductsWithin,
   findProductUnit,
   listCategories,
+  listCategoriesWithin,
   listProducts,
+  listProductsWithin,
   listProductUnits,
   parseQuantity,
   productCategoryAndStatus,
@@ -496,6 +500,52 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
         attributes: { grade: '8.8', finishes: ['zinc', 'black'] },
       });
       expect(new Date(rows[0]!.updated_at).getTime()).toBe(bolt.updatedAt.getTime());
+    });
+
+    it('reads only the products within a set it is given', async () => {
+      const t = await seedTree();
+      const make = (sku: string, categoryId: string | null) =>
+        createProduct(handle.db, {
+          sku,
+          name: sku,
+          categoryId,
+          status: 'enabled',
+          primaryUnitCode: 'each',
+        });
+      const a = await make('A-100', t.bolts.id);
+      const b = await make('B-200', t.bolts.id);
+      const c = await make('C-300', t.hex.id);
+      const shown = sql`select id as product_id from catalog_product where sku in ('A-100', 'C-300')`;
+
+      const page = await listProductsWithin(handle.db, shown, { limit: 1 });
+      expect(page.products.map((p) => p.sku)).toEqual(['A-100']);
+      expect(page.nextAfter).toBe('A-100');
+      const next = await listProductsWithin(handle.db, shown, { after: 'A-100' });
+      expect(next.products.map((p) => p.sku)).toEqual(['C-300']);
+      const inBolts = await listProductsWithin(handle.db, shown, {
+        categoryId: t.bolts.id,
+        includeSubcategories: true,
+      });
+      expect(inBolts.products.map((p) => p.sku)).toEqual(['A-100', 'C-300']);
+
+      const found = await findProductsWithin(handle.db, shown, [a.id, b.id, c.id]);
+      expect(found.map((p) => p.sku).sort()).toEqual(['A-100', 'C-300']);
+      expect(found[0]?.units.map((u) => u.code)).toEqual(['each']);
+      expect(await findProductsWithin(handle.db, shown, [])).toEqual([]);
+      expect((await findProductBySkuWithin(handle.db, shown, 'c-300'))?.id).toBe(c.id);
+      expect(await findProductBySkuWithin(handle.db, shown, 'B-200')).toBeUndefined();
+      expect(await findProductBySkuWithin(handle.db, shown, 'not a sku!')).toBeUndefined();
+
+      const none = sql`select null::uuid as product_id where false`;
+      expect((await listProductsWithin(handle.db, none)).products).toEqual([]);
+    });
+
+    it('reads only the categories within a set it is given', async () => {
+      const t = await seedTree();
+      const shown = sql`select id as category_id from catalog_category
+        where code in ('fasteners', 'hex_bolts')`;
+      const rows = await listCategoriesWithin(handle.db, shown);
+      expect(rows.map((c) => c.id).sort()).toEqual([t.fasteners.id, t.hex.id].sort());
     });
 
     it('refuses to read stored attributes that no longer match the schema', async () => {
