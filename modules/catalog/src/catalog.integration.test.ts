@@ -18,6 +18,7 @@ import {
   findProduct,
   findProductBySku,
   findProductBySkuWithin,
+  findProductsBySkusWithin,
   findProductsWithin,
   findProductUnit,
   listCategories,
@@ -535,6 +536,15 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
       expect((await findProductBySkuWithin(handle.db, shown, 'c-300'))?.id).toBe(c.id);
       expect(await findProductBySkuWithin(handle.db, shown, 'B-200')).toBeUndefined();
       expect(await findProductBySkuWithin(handle.db, shown, 'not a sku!')).toBeUndefined();
+      const bySku = await findProductsBySkusWithin(handle.db, shown, [
+        'a-100',
+        'A-100',
+        'B-200',
+        'C-300',
+        'not a sku!',
+      ]);
+      expect(bySku.map((p) => p.sku).sort()).toEqual(['A-100', 'C-300']);
+      expect(await findProductsBySkusWithin(handle.db, shown, [])).toEqual([]);
 
       const none = sql`select null::uuid as product_id where false`;
       expect((await listProductsWithin(handle.db, none)).products).toEqual([]);
