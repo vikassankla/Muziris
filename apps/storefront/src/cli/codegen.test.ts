@@ -19,7 +19,7 @@ describe('the committed operations', () => {
 
   it('key every document by the SHA-256 of its exact text', async () => {
     const registry = JSON.parse(await readFile(REGISTRY_FILE, 'utf8')) as Record<string, string>;
-    expect(Object.keys(registry)).toHaveLength(5);
+    expect(Object.keys(registry)).toHaveLength(7);
     for (const [hash, text] of Object.entries(registry)) expect(sha256(text)).toBe(hash);
   });
 

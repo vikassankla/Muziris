@@ -1,0 +1,17 @@
+# The buyer's orders on this website, newest first, one page at a time.
+query Orders($first: Int, $after: String) {
+  orders(first: $first, after: $after) {
+    nodes {
+      number
+      step
+      placedAt
+      customerName
+      purchaseOrderNumber
+      grandTotal {
+        amount
+        currency
+      }
+    }
+    nextAfter
+  }
+}

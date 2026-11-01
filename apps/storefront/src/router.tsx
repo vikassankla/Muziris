@@ -2,6 +2,7 @@ import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import { PendingList, RouteError } from './components/states.js';
 import { authedRoute } from './routes/authed.js';
 import { categoryRoute, homeRoute } from './routes/catalog.js';
+import { orderRoute, ordersRoute } from './routes/orders.js';
 import { productRoute } from './routes/product.js';
 import { rootRoute } from './routes/root.js';
 import { searchRoute } from './routes/search.js';
@@ -9,7 +10,14 @@ import { signInRoute } from './routes/sign-in.js';
 
 const routeTree = rootRoute.addChildren([
   signInRoute,
-  authedRoute.addChildren([homeRoute, categoryRoute, productRoute, searchRoute]),
+  authedRoute.addChildren([
+    homeRoute,
+    categoryRoute,
+    productRoute,
+    searchRoute,
+    ordersRoute,
+    orderRoute,
+  ]),
 ]);
 
 /** The storefront router. Tests pass a memory history. */

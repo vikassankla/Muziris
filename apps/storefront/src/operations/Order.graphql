@@ -1,0 +1,85 @@
+# One order by its number, with the copy of lines, prices, tax and addresses it was placed with.
+query Order($number: String!) {
+  order(number: $number) {
+    number
+    step
+    placedAt
+    customerName
+    purchaseOrderNumber
+    currency
+    lines {
+      lineNo
+      sku
+      productName
+      unitName
+      quantity
+      unitPrice {
+        amount
+        currency
+      }
+      net {
+        amount
+        currency
+      }
+    }
+    taxes {
+      lineNo
+      name
+      rate
+      amount {
+        amount
+        currency
+      }
+    }
+    shippingMethod
+    subtotal {
+      amount
+      currency
+    }
+    discount {
+      amount
+      currency
+    }
+    shipping {
+      amount
+      currency
+    }
+    shippingDiscount {
+      amount
+      currency
+    }
+    tax {
+      amount
+      currency
+    }
+    grandTotal {
+      amount
+      currency
+    }
+    paymentMethod
+    paymentTermDays
+    dueOn
+    sellerTaxId
+    taxExemptionCertificate
+    billingAddress {
+      label
+      countryCode
+      line1
+      line2
+      city
+      regionCode
+      postalCode
+      gstin
+    }
+    shippingAddress {
+      label
+      countryCode
+      line1
+      line2
+      city
+      regionCode
+      postalCode
+      gstin
+    }
+  }
+}

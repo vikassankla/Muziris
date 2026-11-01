@@ -3,6 +3,127 @@
 
 import type { Operation } from '../lib/graphql.js';
 
+export interface OrderVariables {
+  number: string;
+}
+
+export interface OrderResult {
+  order: {
+    number: string;
+    step: 'NEW' | 'CONFIRMED' | 'PROCESSING' | 'COMPLETED' | 'DECLINED';
+    placedAt: string;
+    customerName: string;
+    purchaseOrderNumber: string | null;
+    currency: string;
+    lines: readonly {
+      lineNo: number;
+      sku: string;
+      productName: string;
+      unitName: string;
+      quantity: string;
+      unitPrice: {
+        amount: string;
+        currency: string;
+      };
+      net: {
+        amount: string;
+        currency: string;
+      };
+    }[];
+    taxes: readonly {
+      lineNo: number | null;
+      name: string;
+      rate: string;
+      amount: {
+        amount: string;
+        currency: string;
+      };
+    }[];
+    shippingMethod: string;
+    subtotal: {
+      amount: string;
+      currency: string;
+    };
+    discount: {
+      amount: string;
+      currency: string;
+    };
+    shipping: {
+      amount: string;
+      currency: string;
+    };
+    shippingDiscount: {
+      amount: string;
+      currency: string;
+    };
+    tax: {
+      amount: string;
+      currency: string;
+    };
+    grandTotal: {
+      amount: string;
+      currency: string;
+    };
+    paymentMethod: string;
+    paymentTermDays: number;
+    dueOn: string;
+    sellerTaxId: string | null;
+    taxExemptionCertificate: string | null;
+    billingAddress: {
+      label: string;
+      countryCode: string;
+      line1: string;
+      line2: string | null;
+      city: string;
+      regionCode: string;
+      postalCode: string;
+      gstin: string | null;
+    };
+    shippingAddress: {
+      label: string;
+      countryCode: string;
+      line1: string;
+      line2: string | null;
+      city: string;
+      regionCode: string;
+      postalCode: string;
+      gstin: string | null;
+    };
+  } | null;
+}
+
+export const Order: Operation<OrderResult, OrderVariables> = {
+  name: 'Order',
+  hash: '7661c4956f106985cd4ae2cbcfb1058cb97e11c0dcfcb7fc7f2195074e2d802e',
+};
+
+export interface OrdersVariables {
+  first?: number | null;
+  after?: string | null;
+}
+
+export interface OrdersResult {
+  orders: {
+    nodes: readonly {
+      number: string;
+      step: 'NEW' | 'CONFIRMED' | 'PROCESSING' | 'COMPLETED' | 'DECLINED';
+      placedAt: string;
+      customerName: string;
+      purchaseOrderNumber: string | null;
+      grandTotal: {
+        amount: string;
+        currency: string;
+      };
+    }[];
+    nextAfter: string | null;
+  };
+}
+
+export const Orders: Operation<OrdersResult, OrdersVariables> = {
+  name: 'Orders',
+  hash: 'd97d2b7450e3ea57de5457fc9439ddd90693198d92dc9d09cb81f2a43335906b',
+};
+
 export interface ProductVariables {
   sku: string;
 }
@@ -171,6 +292,7 @@ export interface ShellResult {
     name: string;
     currency: string;
     locale: string;
+    timeZone: string;
   };
   categories: readonly {
     id: string;
@@ -182,5 +304,5 @@ export interface ShellResult {
 
 export const Shell: Operation<ShellResult, ShellVariables> = {
   name: 'Shell',
-  hash: 'd1f7fb5527480854cf2eb0e27ddd831e0317e4fb43c8934baaab9153bc84e8a6',
+  hash: '1670a6f40f5a0abf1d46642f380bdc9d3b40c3e19a99cf3360439f11de9dc524',
 };

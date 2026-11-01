@@ -46,7 +46,13 @@ export const SHELL: ShellResult = {
     email: 'ravi@kochi-traders.example',
     customer: { id: 'c1', name: 'Kochi Traders' },
   },
-  website: { code: 'main', name: 'Muziris Trade', currency: 'INR', locale: 'en-IN' },
+  website: {
+    code: 'main',
+    name: 'Muziris Trade',
+    currency: 'INR',
+    locale: 'en-IN',
+    timeZone: 'Asia/Kolkata',
+  },
   categories: [
     { id: 'fasteners', name: 'Fasteners', parentId: null, position: 1 },
     { id: 'bolts', name: 'Bolts', parentId: 'fasteners', position: 1 },
