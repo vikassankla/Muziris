@@ -2,6 +2,7 @@ import { createRoute, Link } from '@tanstack/react-router';
 import { ClipboardList, PackageX } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, ErrorState } from '../components/states.js';
+import { PaymentPanel } from '../components/payment-panel.js';
 import { TotalsList } from '../components/totals.js';
 import { Alert } from '../components/ui/alert.js';
 import { Badge } from '../components/ui/badge.js';
@@ -261,17 +262,32 @@ function OrderPage() {
             <CardTitle>Payment</CardTitle>
           </CardHeader>
           <CardContent>
+            {order.paymentMethod !== 'TERMS' ? (
+              <div className="mb-3">
+                <PaymentPanel
+                  key={order.payment?.status ?? 'PENDING'}
+                  orderNumber={order.number}
+                  method={order.paymentMethod}
+                  initialStatus={order.payment?.status ?? 'PENDING'}
+                  total={order.grandTotal}
+                  locale={locale}
+                  shopName={shell.website.name}
+                />
+              </div>
+            ) : null}
             <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-meta">
-              <dt className="text-muted-foreground">Terms</dt>
-              <dd className="m-0">
-                {order.paymentTermDays === 0
-                  ? 'Due on receipt'
-                  : `Net ${String(order.paymentTermDays)}`}
-              </dd>
-              <dt className="text-muted-foreground">Due</dt>
-              <dd className="m-0">
-                {order.dueOn ? formatDay(order.dueOn, locale) : 'Paid online'}
-              </dd>
+              {order.dueOn ? (
+                <>
+                  <dt className="text-muted-foreground">Terms</dt>
+                  <dd className="m-0">
+                    {order.paymentTermDays === 0
+                      ? 'Due on receipt'
+                      : `Net ${String(order.paymentTermDays)}`}
+                  </dd>
+                  <dt className="text-muted-foreground">Due</dt>
+                  <dd className="m-0">{formatDay(order.dueOn, locale)}</dd>
+                </>
+              ) : null}
               <dt className="text-muted-foreground">Your PO</dt>
               <dd className="m-0 font-mono text-xs">{order.purchaseOrderNumber ?? 'None'}</dd>
               {order.sellerTaxId ? (

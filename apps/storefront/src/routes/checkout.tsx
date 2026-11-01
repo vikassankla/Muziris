@@ -20,7 +20,7 @@ import { runOperation } from '../lib/api.js';
 import { forgetQuickOrder, quickOrderLines, type CheckoutLine } from '../lib/checkout.js';
 import { formatPrice } from '../lib/format.js';
 import { signInOn401 } from '../lib/guard.js';
-import { formatDay, totalRows } from '../lib/orders.js';
+import { formatDay, PAYMENT_METHOD_LABELS, totalRows, type PaymentMethod } from '../lib/orders.js';
 import {
   CheckoutAddresses,
   CheckoutPreview,
@@ -176,6 +176,7 @@ function CheckoutForm({
   const [billing, setBilling] = useState(() => defaultAddress(addresses, 'billing'));
   const [shipping, setShipping] = useState(() => defaultAddress(addresses, 'shipping'));
   const [po, setPo] = useState('');
+  const [method, setMethod] = useState<PaymentMethod | undefined>();
   const [answer, setAnswer] = useState<{ key: string; result?: Answer; error?: unknown }>();
   const [rerun, setRerun] = useState(0);
   const [placing, setPlacing] = useState(false);
@@ -222,13 +223,17 @@ function CheckoutForm({
 
   const current = answer?.key === requestKey ? answer : undefined;
   const preview = current?.result?.preview ?? undefined;
+  // The buyer's pick while the preview still offers it, else the first method offered.
+  const methods = preview?.paymentMethods ?? [];
+  const paymentMethod = method !== undefined && methods.includes(method) ? method : methods[0];
   const refusal = current?.result?.refusal ?? undefined;
   const money = (amount: { amount: string; currency: string }) => formatPrice(amount, locale);
 
   async function place() {
-    if (!preview) return;
-    if (attempt.current?.inputKey !== inputKey) {
-      attempt.current = { inputKey, idempotencyKey: crypto.randomUUID() };
+    if (!preview || paymentMethod === undefined) return;
+    const attemptKey = `${inputKey} ${paymentMethod}`;
+    if (attempt.current?.inputKey !== attemptKey) {
+      attempt.current = { inputKey: attemptKey, idempotencyKey: crypto.randomUUID() };
     }
     setPlacing(true);
     setPlaceProblem(undefined);
@@ -238,6 +243,7 @@ function CheckoutForm({
           ...input,
           idempotencyKey: attempt.current.idempotencyKey,
           expectedGrandTotal: preview.totals.grandTotal.amount,
+          paymentMethod,
         },
       });
       if (placeOrder.order) {
@@ -279,9 +285,7 @@ function CheckoutForm({
           </Link>
         )}
         <h1 className="m-0 mt-1 text-page-title font-[650] tracking-[-0.015em]">Checkout</h1>
-        <p className="m-0 mt-1 text-muted-foreground">
-          Ordering for {shell.viewer.customer.name}, on your payment terms.
-        </p>
+        <p className="m-0 mt-1 text-muted-foreground">Ordering for {shell.viewer.customer.name}.</p>
       </div>
       {source.kind === 'list' && source.leftOut > 0 ? (
         <Alert variant="warning">
@@ -399,7 +403,33 @@ function CheckoutForm({
                 }}
               />
             </div>
-            {preview ? (
+            {methods.length > 1 ? (
+              <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
+                <legend className="mb-1.5 text-control font-[550]">Pay by</legend>
+                {methods.map((m) => (
+                  <label key={m} className="flex items-center gap-2 text-control">
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value={m}
+                      checked={paymentMethod === m}
+                      onChange={() => {
+                        setMethod(m);
+                      }}
+                    />
+                    {m === 'TERMS' && preview
+                      ? `${PAYMENT_METHOD_LABELS[m]} (${preview.paymentTermDays === 0 ? 'due on receipt' : `net ${String(preview.paymentTermDays)}`})`
+                      : PAYMENT_METHOD_LABELS[m]}
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            {preview && paymentMethod !== 'TERMS' ? (
+              <p className="m-0 text-meta text-muted-foreground">
+                You pay online right after placing the order. Card and bank details go to the
+                payment service, not to us.
+              </p>
+            ) : preview ? (
               <p className="m-0 text-meta text-muted-foreground">
                 {preview.paymentTermDays === 0
                   ? 'Payment is due on receipt'

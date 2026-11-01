@@ -1,0 +1,21 @@
+# Starts paying an order placed with an online method: what the gateway's own form needs.
+mutation StartPayment($orderNumber: String!) {
+  startPayment(orderNumber: $orderNumber) {
+    stripe {
+      publishableKey
+      clientSecret
+    }
+    razorpay {
+      keyId
+      orderId
+      amount {
+        minorUnits
+        currency
+      }
+    }
+    refusal {
+      code
+      message
+    }
+  }
+}

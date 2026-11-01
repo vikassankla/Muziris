@@ -46,6 +46,7 @@ const ORDER: NonNullable<OrderResult['order']> = {
   tax: inr('945.00'),
   grandTotal: inr('6195.00'),
   paymentMethod: 'TERMS',
+  payment: null,
   paymentTermDays: 30,
   dueOn: '2026-11-25',
   sellerTaxId: '27AAPFU0939F1ZV',

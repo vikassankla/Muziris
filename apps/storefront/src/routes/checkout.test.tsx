@@ -110,6 +110,7 @@ const PREVIEW: NonNullable<CheckoutPreviewResult['checkoutPreview']['preview']> 
     tax: inr('900.00'),
     grandTotal: inr('5900.00'),
   },
+  paymentMethods: ['TERMS'],
   paymentTermDays: 30,
   dueOn: '2026-11-25',
 };

@@ -58,6 +58,7 @@ query CheckoutPreview($input: CheckoutInput!) {
           currency
         }
       }
+      paymentMethods
       paymentTermDays
       dueOn
     }

@@ -1,0 +1,12 @@
+# The order's payment now; the API reads a pending payment from the gateway, server to server.
+mutation CheckPayment($orderNumber: String!) {
+  checkPayment(orderNumber: $orderNumber) {
+    payment {
+      status
+    }
+    refusal {
+      code
+      message
+    }
+  }
+}
