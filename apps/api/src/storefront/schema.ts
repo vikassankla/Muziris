@@ -13,11 +13,18 @@ import {
 import { listAddressesForBuyer, listCustomersForBuyer, type Address } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import type { AuthenticatedUser } from '@muziris/identity';
-import { toDecimalString, type CurrencyCode, type Decimal, type Money } from '@muziris/money';
+import {
+  isCurrencyCode,
+  toDecimalString,
+  type CurrencyCode,
+  type Decimal,
+  type Money,
+} from '@muziris/money';
 import {
   findOrderForBuyer,
   listOrdersForBuyer,
   ORDER_STEPS,
+  PAYMENT_METHODS,
   placeOrder,
   placeOrderRequestSchema,
   previewCheckout,
@@ -28,11 +35,21 @@ import {
   type Order,
   type OrderAddress,
   type OrderSummary,
+  type PaymentMethod,
   type Totals,
   type TotalsLine,
   type TaxLine,
   type TaxProblem,
 } from '@muziris/orders';
+import {
+  checkPayment,
+  findPaymentForOrder,
+  PAYMENT_STATUSES,
+  startPayment,
+  type GatewayClients,
+  type Payment,
+  type PaymentRefusalCode,
+} from '@muziris/payments';
 import type { Website } from '@muziris/platform';
 import { findPricesForBuyer, type PriceLookup } from '@muziris/pricing';
 import { MATCHES, searchProductsForBuyer, type SearchHit } from '@muziris/search';
@@ -102,6 +119,8 @@ export interface StorefrontContext {
   buyer: BuyerOnWebsite;
   /** Tax and the other checkout providers; null until a tax calculator is set up (ADR 0017). */
   checkout: CheckoutDependencies | null;
+  /** The configured payment gateways (ADR 0019); empty when none is. */
+  payments: GatewayClients;
   loaders: {
     product: Loader<string, Product | null>;
     /** Every category the buyer may see, read once per request. */
@@ -117,6 +136,7 @@ export function createContext(input: {
   user: AuthenticatedUser;
   website: Website;
   checkout: CheckoutDependencies | null;
+  payments?: GatewayClients;
 }): StorefrontContext {
   const { db, now, user, website, checkout } = input;
   const buyer: BuyerOnWebsite = { buyerUserId: user.id, websiteId: website.id };
@@ -128,6 +148,7 @@ export function createContext(input: {
     website,
     buyer,
     checkout,
+    payments: input.payments ?? {},
     loaders: {
       product: createLoader<string, Product | null>(
         async (ids) => {
@@ -586,18 +607,29 @@ const TotalsType = new GraphQLObjectType<Totals, StorefrontContext>({
   fields: totalsFields,
 });
 
+const PaymentMethodType = enumOf(
+  'PaymentMethod',
+  PAYMENT_METHODS,
+  'TERMS: an invoice paid later. The others are paid online through Stripe or Razorpay.',
+);
+
 const CheckoutPreviewType = new GraphQLObjectType<
-  { totals: Totals; paymentTermDays: number; dueOn: string },
+  { totals: Totals; paymentMethods: PaymentMethod[]; paymentTermDays: number; dueOn: string },
   StorefrontContext
 >({
   name: 'CheckoutPreview',
   fields: {
     totals: { type: nonNull(TotalsType) },
+    paymentMethods: {
+      type: listOf(PaymentMethodType),
+      description: 'How the buyer may pay this order, in the order to offer them.',
+      extensions: { listSize: 4 } satisfies FieldCostExtensions,
+    },
     paymentTermDays: { type: nonNull(GraphQLInt), description: 'Days to pay: 30 is net 30.' },
     dueOn: {
       type: nonNull(GraphQLString),
       description:
-        "The day payment would be due if placed now (YYYY-MM-DD, the website's time zone).",
+        "On terms, the day payment would be due if placed now (YYYY-MM-DD, the website's time zone).",
     },
   },
 });
@@ -630,6 +662,7 @@ const REFUSAL_CODES = [
   'idempotency_key_reused',
   'tax_problems',
   'tax_not_configured',
+  'payment_method_not_available',
 ] as const satisfies readonly Refusal['code'][];
 
 const TAX_PROBLEMS = ['no_tax_code', 'no_rate', 'no_registration', 'cross_border'] as const;
@@ -661,6 +694,8 @@ function refusalMessage(refusal: Refusal): string {
       return 'Tax cannot be worked out for this order, so it cannot be placed yet';
     case 'tax_not_configured':
       return 'Checkout is not available yet: tax is not set up for this storefront';
+    case 'payment_method_not_available':
+      return 'That way of paying is not available for this order';
   }
 }
 
@@ -747,15 +782,57 @@ const OrderSummaryType = new GraphQLObjectType<OrderSummary, StorefrontContext>(
   fields: summaryFields,
 });
 
+const PaymentStatusType = enumOf(
+  'PaymentStatus',
+  PAYMENT_STATUSES,
+  'Set only by the gateway: a signed webhook, or the API reading the gateway itself.',
+);
+
+/** An order paid online whose payment has not been started reads as pending. */
+function notStarted(
+  order: Order,
+): Pick<Payment, 'status' | 'amountMinor' | 'currency' | 'refundedMinor'> {
+  return {
+    status: 'pending',
+    amountMinor: order.grandTotal.minor,
+    currency: order.currency,
+    refundedMinor: 0n,
+  };
+}
+
+function paymentMoney(minor: bigint, currency: string): Money | null {
+  return isCurrencyCode(currency) ? { minor, currency } : null;
+}
+
+const OrderPaymentType = new GraphQLObjectType<
+  Pick<Payment, 'status' | 'amountMinor' | 'currency' | 'refundedMinor'>,
+  StorefrontContext
+>({
+  name: 'OrderPayment',
+  fields: {
+    status: { type: nonNull(PaymentStatusType) },
+    amount: { type: MoneyType, resolve: (p) => paymentMoney(p.amountMinor, p.currency) },
+    refunded: { type: MoneyType, resolve: (p) => paymentMoney(p.refundedMinor, p.currency) },
+  },
+});
+
 const OrderType = new GraphQLObjectType<Order, StorefrontContext>({
   name: 'Order',
   description: 'A placed order. It keeps its own copy of lines, prices, tax and addresses.',
   fields: () => ({
     ...summaryFields(),
     ...(totalsFields() as Record<string, Field<Order>>),
-    paymentMethod: { type: nonNull(GraphQLString), description: 'TERMS: pay on invoice.' },
-    paymentTermDays: { type: nonNull(GraphQLInt) },
-    dueOn: { type: nonNull(GraphQLString), description: 'YYYY-MM-DD.' },
+    paymentMethod: { type: nonNull(PaymentMethodType) },
+    paymentTermDays: { type: nonNull(GraphQLInt), description: 'Days to pay on terms; 0 online.' },
+    dueOn: { type: GraphQLString, description: 'On terms, the day payment is due: YYYY-MM-DD.' },
+    payment: {
+      type: OrderPaymentType,
+      description: 'The online payment and its status; null for an order on terms.',
+      resolve: async (order, _args, ctx) => {
+        if (order.paymentMethod === 'terms') return null;
+        return (await findPaymentForOrder(ctx.db, order.id)) ?? notStarted(order);
+      },
+    },
     sellerTaxId: {
       type: GraphQLString,
       description: "The seller's registration the tax was charged under: a GSTIN or US permit.",
@@ -840,6 +917,11 @@ const PlaceOrderInput = new GraphQLInputObjectType({
       type: inputOf(GraphQLString),
       description: "The preview's grand total, as a decimal string; a different total refuses.",
     },
+    paymentMethod: {
+      type: PaymentMethodType,
+      default: { value: 'TERMS' },
+      description: "One of the preview's paymentMethods.",
+    },
   },
 });
 
@@ -851,6 +933,7 @@ interface CheckoutArgs {
     purchaseOrderNumber?: string | null;
     idempotencyKey?: string;
     expectedGrandTotal?: string;
+    paymentMethod?: PaymentMethod | null;
   };
 }
 
@@ -1359,11 +1442,153 @@ const shoppingListQueries: Record<string, Field<unknown>> = {
 
 const notConfigured = { code: 'tax_not_configured' } as const;
 
+// Paying online (ADR 0019). The browser gets only what the gateway's own form needs; card and
+// bank details go from the buyer straight to the gateway.
+
+const PAYMENT_REFUSALS = [
+  'order_not_found',
+  'not_paid_online',
+  'already_paid',
+  'payment_closed',
+  'gateway_not_configured',
+  'gateway_unavailable',
+] as const satisfies readonly PaymentRefusalCode[];
+
+const PAYMENT_REFUSAL_MESSAGES: Record<PaymentRefusalCode, string> = {
+  order_not_found: 'We can’t find that order',
+  not_paid_online: 'This order is paid on your payment terms, not online',
+  already_paid: 'This order is already paid',
+  payment_closed: 'This payment was cancelled; contact us to pay this order',
+  gateway_not_configured: 'Paying online is not available on this storefront',
+  gateway_unavailable: 'The payment service did not answer. Try again in a minute.',
+};
+
+const PaymentRefusalType = new GraphQLObjectType<{ code: PaymentRefusalCode }, StorefrontContext>({
+  name: 'PaymentRefusal',
+  description: 'Why paying cannot go on. The message is safe to show the buyer.',
+  fields: {
+    code: { type: nonNull(enumOf('PaymentRefusalCode', PAYMENT_REFUSALS)) },
+    message: { type: nonNull(GraphQLString), resolve: (r) => PAYMENT_REFUSAL_MESSAGES[r.code] },
+  },
+});
+
+const StripePaymentStartType = new GraphQLObjectType<
+  { publishableKey: string; clientSecret: string },
+  StorefrontContext
+>({
+  name: 'StripePaymentStart',
+  description: "What Stripe's Payment Element needs, from js.stripe.com.",
+  fields: {
+    publishableKey: { type: nonNull(GraphQLString) },
+    clientSecret: {
+      type: nonNull(GraphQLString),
+      description: 'Lets the browser complete this one payment. Do not store or log it.',
+    },
+  },
+});
+
+const RazorpayPaymentStartType = new GraphQLObjectType<
+  { keyId: string; razorpayOrderId: string; amountMinor: bigint; currency: string },
+  StorefrontContext
+>({
+  name: 'RazorpayPaymentStart',
+  description: 'What Razorpay Checkout needs, from checkout.razorpay.com.',
+  fields: {
+    keyId: { type: nonNull(GraphQLString) },
+    orderId: { type: nonNull(GraphQLString), resolve: (r) => r.razorpayOrderId },
+    amount: { type: MoneyType, resolve: (r) => paymentMoney(r.amountMinor, r.currency) },
+  },
+});
+
+const StartPaymentResultType = new GraphQLObjectType<
+  {
+    stripe: { publishableKey: string; clientSecret: string } | null;
+    razorpay: {
+      keyId: string;
+      razorpayOrderId: string;
+      amountMinor: bigint;
+      currency: string;
+    } | null;
+    refusal: { code: PaymentRefusalCode } | null;
+  },
+  StorefrontContext
+>({
+  name: 'StartPaymentResult',
+  description: 'Exactly one of stripe, razorpay and refusal is set.',
+  fields: {
+    stripe: { type: StripePaymentStartType },
+    razorpay: { type: RazorpayPaymentStartType },
+    refusal: { type: PaymentRefusalType },
+  },
+});
+
+const CheckPaymentResultType = new GraphQLObjectType<
+  {
+    payment: Pick<Payment, 'status' | 'amountMinor' | 'currency' | 'refundedMinor'> | null;
+    refusal: { code: PaymentRefusalCode } | null;
+  },
+  StorefrontContext
+>({
+  name: 'CheckPaymentResult',
+  description: 'Exactly one of payment and refusal is set.',
+  fields: {
+    payment: { type: OrderPaymentType },
+    refusal: { type: PaymentRefusalType },
+  },
+});
+
+const orderNumberArg = { orderNumber: { type: nonNull(GraphQLString) } };
+
+const paymentMutations: Record<string, Field<unknown>> = {
+  startPayment: {
+    type: nonNull(StartPaymentResultType),
+    description:
+      'Starts paying an order placed with an online method, or starts again after a failure.',
+    args: orderNumberArg,
+    resolve: async (_root, args: { orderNumber: string }, ctx) => {
+      const result = await startPayment(ctx.db, ctx.payments, {
+        buyerUserId: ctx.user.id,
+        websiteId: ctx.website.id,
+        orderNumber: args.orderNumber,
+        now: ctx.now,
+      });
+      if (!result.ok) return { stripe: null, razorpay: null, refusal: { code: result.refusal } };
+      const { start } = result;
+      return start.gateway === 'stripe'
+        ? { stripe: start, razorpay: null, refusal: null }
+        : { stripe: null, razorpay: start, refusal: null };
+    },
+  },
+  checkPayment: {
+    type: nonNull(CheckPaymentResultType),
+    description:
+      "The order's payment now. A pending payment is read from the gateway, server to server.",
+    args: orderNumberArg,
+    resolve: async (_root, args: { orderNumber: string }, ctx) => {
+      const order = await findOrderForBuyer(ctx.db, ctx.user.id, {
+        websiteId: ctx.website.id,
+        number: args.orderNumber,
+      });
+      const result = await checkPayment(ctx.db, ctx.payments, {
+        buyerUserId: ctx.user.id,
+        websiteId: ctx.website.id,
+        orderNumber: args.orderNumber,
+        now: ctx.now,
+      });
+      if (!result.ok) return { payment: null, refusal: { code: result.refusal } };
+      return {
+        payment: result.payment ?? (order ? notStarted(order) : null),
+        refusal: null,
+      };
+    },
+  },
+};
+
 const mutation: Record<string, Field<unknown>> = {
   placeOrder: {
     type: nonNull(PlaceOrderResultType),
     description:
-      'Places an order on payment terms. Everything is checked again; sending the same idempotency key again returns the same order.',
+      'Places an order, on payment terms or to pay online next. Everything is checked again; sending the same idempotency key again returns the same order.',
     args: { input: { type: inputOf(PlaceOrderInput) } },
     resolve: async (_root, args: CheckoutArgs, ctx) => {
       const request = checkoutRequest(placeOrderRequestSchema, args, ctx);
@@ -1379,6 +1604,7 @@ const mutation: Record<string, Field<unknown>> = {
     },
   },
   ...shoppingListMutations,
+  ...paymentMutations,
 };
 
 const query: Record<string, Field<unknown>> = {

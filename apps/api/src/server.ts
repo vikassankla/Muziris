@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { createDatabase } from '@muziris/db';
+import { createGatewayClients } from '@muziris/payments';
 import { tableTaxProvider } from '@muziris/tax';
 import { createApp } from './app.js';
 import { loadEnv } from './env.js';
@@ -27,6 +28,8 @@ const app = createApp({
   trustedProxyHops: env.TRUSTED_PROXY_HOPS,
   // GST and US sales tax from the tax tables; a missing code, rate or registration refuses.
   tax: tableTaxProvider(database.db),
+  // Stripe and Razorpay when their keys are set; terms only otherwise (ADR 0019).
+  payments: { gateways: env.payments, clients: createGatewayClients(env.payments) },
   storefront: {
     persistedQueries,
     allowAdhocQueries: env.STOREFRONT_ADHOC_QUERIES === 'allow',
@@ -34,7 +37,15 @@ const app = createApp({
 });
 
 const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (info) => {
-  logger.info({ port: info.port, host: env.HOST, nodeEnv: env.NODE_ENV }, 'API listening');
+  logger.info(
+    {
+      port: info.port,
+      host: env.HOST,
+      nodeEnv: env.NODE_ENV,
+      paymentGateways: Object.keys(env.payments),
+    },
+    'API listening',
+  );
 });
 
 let shuttingDown = false;

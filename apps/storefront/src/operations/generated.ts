@@ -142,7 +142,7 @@ export interface CheckoutPreviewResult {
       dueOn: string;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED';
+      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED' | 'PAYMENT_METHOD_NOT_AVAILABLE';
       message: string;
       lines: readonly {
         lineNo: number;
@@ -335,9 +335,9 @@ export interface OrderResult {
       amount: string;
       currency: string;
     };
-    paymentMethod: string;
+    paymentMethod: 'TERMS' | 'STRIPE_CARD' | 'STRIPE_ACH' | 'RAZORPAY';
     paymentTermDays: number;
-    dueOn: string;
+    dueOn: string | null;
     sellerTaxId: string | null;
     taxExemptionCertificate: string | null;
     billingAddress: {
@@ -409,6 +409,7 @@ export interface PlaceOrderVariables {
     purchaseOrderNumber?: string | null;
     idempotencyKey: string;
     expectedGrandTotal: string;
+    paymentMethod?: 'TERMS' | 'STRIPE_CARD' | 'STRIPE_ACH' | 'RAZORPAY' | null;
   };
 }
 
@@ -419,7 +420,7 @@ export interface PlaceOrderResult {
     } | null;
     replayed: boolean;
     refusal: {
-      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED';
+      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED' | 'PAYMENT_METHOD_NOT_AVAILABLE';
       message: string;
       lines: readonly {
         lineNo: number;

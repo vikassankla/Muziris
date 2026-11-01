@@ -269,7 +269,9 @@ function OrderPage() {
                   : `Net ${String(order.paymentTermDays)}`}
               </dd>
               <dt className="text-muted-foreground">Due</dt>
-              <dd className="m-0">{formatDay(order.dueOn, locale)}</dd>
+              <dd className="m-0">
+                {order.dueOn ? formatDay(order.dueOn, locale) : 'Paid online'}
+              </dd>
               <dt className="text-muted-foreground">Your PO</dt>
               <dd className="m-0 font-mono text-xs">{order.purchaseOrderNumber ?? 'None'}</dd>
               {order.sellerTaxId ? (

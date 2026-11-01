@@ -24,6 +24,7 @@
     "@muziris/identity": "workspace:*",
     "@muziris/money": "workspace:*",
     "@muziris/orders": "workspace:*",
+    "@muziris/payments": "workspace:*",
     "@muziris/platform": "workspace:*",
     "@muziris/pricing": "workspace:*",
     "@muziris/search": "workspace:*",

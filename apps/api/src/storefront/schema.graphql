@@ -229,11 +229,14 @@ type CheckoutPreviewResult {
 type CheckoutPreview {
   totals: Totals!
 
+  """How the buyer may pay this order, in the order to offer them."""
+  paymentMethods: [PaymentMethod!]!
+
   """Days to pay: 30 is net 30."""
   paymentTermDays: Int!
 
   """
-  The day payment would be due if placed now (YYYY-MM-DD, the website's time zone).
+  On terms, the day payment would be due if placed now (YYYY-MM-DD, the website's time zone).
   """
   dueOn: String!
 }
@@ -291,6 +294,16 @@ type Tax {
   amount: Money!
 }
 
+"""
+TERMS: an invoice paid later. The others are paid online through Stripe or Razorpay.
+"""
+enum PaymentMethod {
+  TERMS
+  STRIPE_CARD
+  STRIPE_ACH
+  RAZORPAY
+}
+
 """Why a checkout cannot go on. The message is safe to show the buyer."""
 type CheckoutRefusal {
   code: CheckoutRefusalCode!
@@ -323,6 +336,7 @@ enum CheckoutRefusalCode {
   IDEMPOTENCY_KEY_REUSED
   TAX_PROBLEMS
   TAX_NOT_CONFIGURED
+  PAYMENT_METHOD_NOT_AVAILABLE
 }
 
 enum AddressRole {
@@ -426,13 +440,16 @@ type Order {
   shipping: Money!
   shippingDiscount: Money!
   tax: Money!
+  paymentMethod: PaymentMethod!
 
-  """TERMS: pay on invoice."""
-  paymentMethod: String!
+  """Days to pay on terms; 0 online."""
   paymentTermDays: Int!
 
-  """YYYY-MM-DD."""
-  dueOn: String!
+  """On terms, the day payment is due: YYYY-MM-DD."""
+  dueOn: String
+
+  """The online payment and its status; null for an order on terms."""
+  payment: OrderPayment
 
   """
   The seller's registration the tax was charged under: a GSTIN or US permit.
@@ -445,6 +462,24 @@ type Order {
   taxExemptionCertificate: String
   billingAddress: OrderAddress!
   shippingAddress: OrderAddress!
+}
+
+type OrderPayment {
+  status: PaymentStatus!
+  amount: Money
+  refunded: Money
+}
+
+"""
+Set only by the gateway: a signed webhook, or the API reading the gateway itself.
+"""
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
 }
 
 """An address as it was when the order was placed."""
@@ -542,7 +577,7 @@ type ProductsBySkusResult {
 
 type Mutation {
   """
-  Places an order on payment terms. Everything is checked again; sending the same idempotency key again returns the same order.
+  Places an order, on payment terms or to pay online next. Everything is checked again; sending the same idempotency key again returns the same order.
   """
   placeOrder(input: PlaceOrderInput!): PlaceOrderResult!
   createShoppingList(name: String!): ShoppingListResult!
@@ -575,6 +610,16 @@ type Mutation {
   Moves lines to another list, merging into lines there. Returns the target list.
   """
   moveShoppingListLines(fromListId: ID!, toListId: ID!, lineIds: [ID!]!): ShoppingListResult!
+
+  """
+  Starts paying an order placed with an online method, or starts again after a failure.
+  """
+  startPayment(orderNumber: String!): StartPaymentResult!
+
+  """
+  The order's payment now. A pending payment is read from the gateway, server to server.
+  """
+  checkPayment(orderNumber: String!): CheckPaymentResult!
 }
 
 """Exactly one of order and refusal is set."""
@@ -603,6 +648,9 @@ input PlaceOrderInput {
   The preview's grand total, as a decimal string; a different total refuses.
   """
   expectedGrandTotal: String!
+
+  """One of the preview's paymentMethods."""
+  paymentMethod: PaymentMethod = TERMS
 }
 
 """Exactly one of list and refusal is set."""
@@ -657,4 +705,47 @@ input ShoppingListLineInput {
   """A decimal string at the unit's precision, above zero."""
   quantity: String!
   note: String
+}
+
+"""Exactly one of stripe, razorpay and refusal is set."""
+type StartPaymentResult {
+  stripe: StripePaymentStart
+  razorpay: RazorpayPaymentStart
+  refusal: PaymentRefusal
+}
+
+"""What Stripe's Payment Element needs, from js.stripe.com."""
+type StripePaymentStart {
+  publishableKey: String!
+
+  """Lets the browser complete this one payment. Do not store or log it."""
+  clientSecret: String!
+}
+
+"""What Razorpay Checkout needs, from checkout.razorpay.com."""
+type RazorpayPaymentStart {
+  keyId: String!
+  orderId: String!
+  amount: Money
+}
+
+"""Why paying cannot go on. The message is safe to show the buyer."""
+type PaymentRefusal {
+  code: PaymentRefusalCode!
+  message: String!
+}
+
+enum PaymentRefusalCode {
+  ORDER_NOT_FOUND
+  NOT_PAID_ONLINE
+  ALREADY_PAID
+  PAYMENT_CLOSED
+  GATEWAY_NOT_CONFIGURED
+  GATEWAY_UNAVAILABLE
+}
+
+"""Exactly one of payment and refusal is set."""
+type CheckPaymentResult {
+  payment: OrderPayment
+  refusal: PaymentRefusal
 }

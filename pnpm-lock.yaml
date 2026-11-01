@@ -156,6 +156,9 @@ importers:
       '@muziris/orders':
         specifier: workspace:*
         version: link:../../modules/orders
+      '@muziris/payments':
+        specifier: workspace:*
+        version: link:../../modules/payments
       '@muziris/platform':
         specifier: workspace:*
         version: link:../../modules/platform

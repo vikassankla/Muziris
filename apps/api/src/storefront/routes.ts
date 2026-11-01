@@ -1,5 +1,6 @@
 import type { Database } from '@muziris/db';
 import type { CheckoutDependencies } from '@muziris/orders';
+import type { GatewayClients } from '@muziris/payments';
 import { findWebsiteByCode } from '@muziris/platform';
 import {
   execute,
@@ -41,6 +42,8 @@ export interface StorefrontRouteDependencies {
   storefront: StorefrontOptions;
   /** Checkout's tax and other providers; null refuses checkout with TAX_NOT_CONFIGURED. */
   checkout: CheckoutDependencies | null;
+  /** The configured payment gateways (ADR 0019). */
+  payments?: GatewayClients;
 }
 
 interface StorefrontEnv {
@@ -262,6 +265,7 @@ export function storefrontRoutes(deps: StorefrontRouteDependencies): Hono<Storef
           user,
           website,
           checkout: deps.checkout,
+          ...(deps.payments ? { payments: deps.payments } : {}),
         }),
       });
       const errors = (result.errors ?? []).map((e) =>

@@ -1,6 +1,6 @@
 import type { AdminPermission } from '@muziris/access';
 import type { Database } from '@muziris/db';
-import { decimalToString, toDecimalString } from '@muziris/money';
+import { decimalToString, isCurrencyCode, toDecimalString } from '@muziris/money';
 import {
   findOrderById,
   listOrders,
@@ -12,6 +12,7 @@ import {
   type Order,
   type OrderSummary,
 } from '@muziris/orders';
+import { findPaymentForOrder, listPaymentTransactions } from '@muziris/payments';
 import { availableTransitions } from '@muziris/workflow';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -124,11 +125,47 @@ function orderJson(order: Order) {
   };
 }
 
+function minorJson(minor: bigint, currency: string): string {
+  return isCurrencyCode(currency) ? toDecimalString({ minor, currency }) : minor.toString();
+}
+
+/** An order's online payment and its transaction log (ADR 0019); null on terms. */
+async function paymentJson(db: Database, order: Order) {
+  if (order.paymentMethod === 'terms') return null;
+  const payment = await findPaymentForOrder(db, order.id);
+  if (!payment) {
+    return { status: 'pending', started: false, amount: toDecimalString(order.grandTotal) };
+  }
+  const transactions = await listPaymentTransactions(db, payment.id);
+  return {
+    status: payment.status,
+    started: true,
+    gateway: payment.gateway,
+    gatewayRef: payment.gatewayRef,
+    amount: minorJson(payment.amountMinor, payment.currency),
+    refunded: minorJson(payment.refundedMinor, payment.currency),
+    paidAt: payment.paidAt,
+    transactions: transactions.map((t) => ({
+      eventId: t.eventId,
+      eventType: t.eventType,
+      amount:
+        t.amountMinor === null || t.currency === null ? null : minorJson(t.amountMinor, t.currency),
+      outcome: t.outcome,
+      statusAfter: t.statusAfter,
+      receivedAt: t.receivedAt,
+    })),
+  };
+}
+
 /** An order with its history, its workflow version and the transitions open from its step. */
 async function orderView(db: Database, order: Order) {
-  const history = await orderHistory(db, order.id);
+  const [history, payment] = await Promise.all([
+    orderHistory(db, order.id),
+    paymentJson(db, order),
+  ]);
   return {
     order: orderJson(order),
+    payment,
     version: history.at(-1)?.sequence ?? 0,
     transitions: availableTransitions(orderWorkflow, order.step),
     history: history.map((e) => ({
@@ -173,8 +210,11 @@ export function orderRoutes(deps: OrderRouteDependencies): Hono<OrderEnv> {
     if (!(await findOrderById(deps.db, orderId))) {
       throw new HttpProblem(404, 'order_not_found', 'No such order');
     }
+    // Confirming an order paid online needs its payment in (ADR 0019).
+    const payment = await findPaymentForOrder(deps.db, orderId);
     const result = await transitionOrder(deps.db, {
       orderId,
+      paid: payment?.status === 'paid',
       transition: input.transition,
       actor: { type: 'admin_user', id: c.get('user').id },
       now: deps.now(),
@@ -199,6 +239,14 @@ export function orderRoutes(deps: OrderRouteDependencies): Hono<OrderEnv> {
             `${refusal.transition} is not open from ${refusal.step}`,
           );
         case 'guard_failed':
+          if (refusal.guard === 'payment_settled') {
+            throw new HttpProblem(
+              409,
+              'payment_not_received',
+              'The order is not paid yet',
+              'An order paid online can be confirmed once its payment is received',
+            );
+          }
           throw new HttpProblem(409, 'transition_not_allowed', 'The order cannot make this move');
         case 'unknown_transition':
           throw new HttpProblem(400, 'unknown_transition', 'No such transition');
