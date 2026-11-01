@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-30
+Last updated: 2026-11-01
 
 ## Goal
 
@@ -33,7 +33,7 @@ Decisions are recorded in `docs/adr/0001` to `0017`. ADRs 0006 (access control),
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is proposed, in review. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are proposed, in review. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -98,15 +98,20 @@ emails wait for the email work in week 4.
    Storefront GraphQL `checkoutPreview`, `placeOrder`, `orders`, `order(number)` and the
    customer's `addresses`; admin `/admin/v1/orders` (list, view with history, transitions). Not
    built yet: the checkout and order screens in the storefront and the admin app.
-8. Tax engine (ADR 0017). **In review**, not merged. This is tax, so CLAUDE.md rule 4 asks for
-   a second human review. Module `modules/tax`: registrations per website (GSTIN, US permits),
+8. Tax engine (ADR 0017). **Merged** (PR 25, 2026-10-30, as b786d4f, approved by Vikas in chat,
+   with no second review recorded on GitHub). This is tax, so CLAUDE.md rule 4 asks for a second
+   human review. Module `modules/tax`: registrations per website (GSTIN, US permits),
    dated GST rates by HSN or SAC prefix, dated US rates by state and ZIP prefix with a CSV
    import, US exemption certificates, and `tableTaxProvider`, which the server now passes to
    checkout. Products gain `hsnSacCode` and `usTaxCategory`; orders copy the seller's
    registration and any exemption certificate. Admin routes under `/admin/v1/tax` with new
-   permissions `tax.view` and `tax.manage`. Migrations `0011` to `0013`. Five choices in the
+   permissions `tax.view` and `tax.manage`. Migrations `0011` to `0013`. Four choices in the
    ADR are marked for a tax adviser to confirm before go-live. Not built yet: the tax admin
    screens, and the product tax code fields in the admin app.
+9. Order screens. **In review**, not merged. Admin `/orders` (status filter) and
+   `/orders/$orderId` (lines, taxes per rate, addresses, payment, progress, history, workflow
+   moves for `order.manage`); storefront `/orders` and `/orders/$number`. Not built: the
+   storefront checkout page, which needs shopping lists or quick order first (ADR 0018).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -172,7 +177,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
-- Admin app: designed in `docs/design/admin` but waiting on APIs: Orders, OrderDetail, RFQs,
+- Admin app: designed in `docs/design/admin` but waiting on APIs: RFQs,
   QuoteEditor, Websites, Settings, the Home dashboard widgets,
   Admin users, and the customer detail tabs for orders, quotes, price lists, settings
   overrides and payment term. Their sidebar items stay hidden until the APIs exist. The
