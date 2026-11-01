@@ -1,0 +1,19 @@
+# Moves lines to another list, merging into lines there.
+mutation MoveShoppingListLines($fromListId: ID!, $toListId: ID!, $lineIds: [ID!]!) {
+  moveShoppingListLines(fromListId: $fromListId, toListId: $toListId, lineIds: $lineIds) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Adds lines to a list; nothing is added when any line has a problem.
+mutation AddShoppingListLines($listId: ID!, $lines: [ShoppingListLineInput!]!) {
+  addShoppingListLines(listId: $listId, lines: $lines) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

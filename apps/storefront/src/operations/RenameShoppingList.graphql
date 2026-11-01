@@ -1,0 +1,19 @@
+# Renames a list.
+mutation RenameShoppingList($listId: ID!, $name: String!) {
+  renameShoppingList(listId: $listId, name: $name) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+# Changes a line's quantity, unit or note.
+mutation UpdateShoppingListLine(
+  $listId: ID!
+  $lineId: ID!
+  $quantity: String
+  $unitCode: String
+  $note: String
+) {
+  updateShoppingListLine(
+    listId: $listId
+    lineId: $lineId
+    quantity: $quantity
+    unitCode: $unitCode
+    note: $note
+  ) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+# Deletes a list and its lines.
+mutation DeleteShoppingList($listId: ID!) {
+  deleteShoppingList(listId: $listId) {
+    deleted
+    refusal {
+      code
+      message
+    }
+  }
+}

@@ -1,0 +1,38 @@
+# One shopping list with a page of 50 lines, each with its product and the buyer's price now.
+query ShoppingList($id: ID!, $after: String) {
+  shoppingList(id: $id) {
+    id
+    name
+    lineCount
+    isOwn
+    updatedAt
+    lines(first: 50, after: $after) {
+      nodes {
+        id
+        position
+        productId
+        unitCode
+        quantity
+        note
+        product {
+          id
+          sku
+          name
+          units {
+            code
+            name
+            precision
+          }
+        }
+        price {
+          unitPrice {
+            amount
+            currency
+          }
+          minQuantity
+        }
+      }
+      nextAfter
+    }
+  }
+}

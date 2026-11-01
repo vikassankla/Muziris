@@ -1,0 +1,20 @@
+# The customer's addresses, to pick billing and shipping at checkout.
+query CheckoutAddresses {
+  viewer {
+    customer {
+      addresses {
+        id
+        label
+        countryCode
+        line1
+        line2
+        city
+        regionCode
+        postalCode
+        gstin
+        isDefaultBilling
+        isDefaultShipping
+      }
+    }
+  }
+}

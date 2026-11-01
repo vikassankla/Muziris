@@ -1,0 +1,23 @@
+# Quick order: the products for up to 100 SKUs, their units (the primary one first) and the price
+# of one primary unit.
+query ProductsBySkus($skus: [String!]!) {
+  productsBySkus(skus: $skus) {
+    products {
+      id
+      sku
+      name
+      units {
+        code
+        name
+        precision
+      }
+      price {
+        unitPrice {
+          amount
+          currency
+        }
+      }
+    }
+    missingSkus
+  }
+}
