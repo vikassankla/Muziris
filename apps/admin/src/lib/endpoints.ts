@@ -690,10 +690,24 @@ const orderAddressSchema = z.object({
 });
 export type OrderAddress = z.infer<typeof orderAddressSchema>;
 
+export const PAYMENT_METHODS = ['terms', 'stripe', 'razorpay'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const PAYMENT_STATUSES = [
+  'pending',
+  'paid',
+  'failed',
+  'cancelled',
+  'refunded',
+  'partially_refunded',
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
 const orderSchema = orderSummarySchema.extend({
-  paymentMethod: z.string(),
+  paymentMethod: z.enum(PAYMENT_METHODS),
   paymentTermDays: z.number(),
-  dueOn: z.string(),
+  /** Null when the order is paid online (ADR 0019). */
+  dueOn: z.string().nullable(),
   shippingMethod: z.string(),
   taxProvider: z.string(),
   sellerTaxId: z.string().nullable(),
@@ -733,8 +747,37 @@ const orderSchema = orderSummarySchema.extend({
 });
 export type Order = z.infer<typeof orderSchema>;
 
+/**
+ * An online payment and what the gateway said about it (ADR 0019). Before the buyer presses
+ * Pay now there is no gateway record yet: `started` is false.
+ */
+const orderPaymentSchema = z.union([
+  z.object({ status: z.literal('pending'), started: z.literal(false), amount: z.string() }),
+  z.object({
+    status: z.enum(PAYMENT_STATUSES),
+    started: z.literal(true),
+    gateway: z.enum(['stripe', 'razorpay']),
+    gatewayRef: z.string().nullable(),
+    amount: z.string(),
+    refunded: z.string(),
+    paidAt: z.string().nullable(),
+    transactions: z.array(
+      z.object({
+        eventId: z.string(),
+        eventType: z.string(),
+        amount: z.string().nullable(),
+        outcome: z.string(),
+        statusAfter: z.string().nullable(),
+        receivedAt: z.string(),
+      }),
+    ),
+  }),
+]);
+export type OrderPayment = z.infer<typeof orderPaymentSchema>;
+
 const orderViewSchema = z.object({
   order: orderSchema,
+  payment: orderPaymentSchema.nullable(),
   version: z.number(),
   transitions: z.array(z.string()),
   history: z.array(
