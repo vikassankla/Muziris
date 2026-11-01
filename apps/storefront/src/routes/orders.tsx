@@ -1,8 +1,11 @@
 import { createRoute, Link } from '@tanstack/react-router';
 import { ClipboardList, PackageX } from 'lucide-react';
-import { EmptyState } from '../components/states.js';
+import { useState } from 'react';
+import { EmptyState, ErrorState } from '../components/states.js';
+import { TotalsList } from '../components/totals.js';
+import { Alert } from '../components/ui/alert.js';
 import { Badge } from '../components/ui/badge.js';
-import { buttonVariants } from '../components/ui/button.js';
+import { Button, buttonVariants } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import {
   Table,
@@ -15,15 +18,15 @@ import {
 import { runOperation } from '../lib/api.js';
 import { formatPrice } from '../lib/format.js';
 import { signInOn401 } from '../lib/guard.js';
+import { formatDateTime, formatDay, STEP_LABELS, STEP_TONES, totalRows } from '../lib/orders.js';
 import {
-  formatDateTime,
-  formatDay,
-  isZero,
-  STEP_LABELS,
-  STEP_TONES,
-  taxTotals,
-} from '../lib/orders.js';
-import { Order, Orders, type OrderResult } from '../operations/generated.js';
+  Order,
+  Orders,
+  RemoveShoppingListLines,
+  ShoppingList,
+  type OrderResult,
+  type ShoppingListResult,
+} from '../operations/generated.js';
 import { authedRoute } from './authed.js';
 
 export const ORDERS_PAGE_SIZE = 20;
@@ -143,9 +146,20 @@ function OrdersPage() {
   );
 }
 
+interface OrderSearch {
+  /** The shopping list the order was just placed from, to offer emptying it. */
+  fromList?: string;
+}
+
 export const orderRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/orders/$number',
+  validateSearch: (search: Record<string, unknown>): OrderSearch => {
+    const fromList = search['fromList'];
+    return typeof fromList === 'string' && fromList.length > 0 && fromList.length <= 100
+      ? { fromList }
+      : {};
+  },
   loader: async ({ params, location, abortController }) => {
     try {
       return await runOperation(
@@ -165,6 +179,7 @@ type Address = PlacedOrder['billingAddress'];
 
 function OrderPage() {
   const { order } = orderRoute.useLoaderData();
+  const { fromList } = orderRoute.useSearch();
   const { shell } = authedRoute.useRouteContext();
   const { locale, timeZone } = shell.website;
 
@@ -185,19 +200,7 @@ function OrderPage() {
   }
 
   const money = (amount: { amount: string; currency: string }) => formatPrice(amount, locale);
-  const totals: { label: string; value: string; strong?: boolean }[] = [
-    { label: 'Subtotal', value: money(order.subtotal) },
-  ];
-  if (!isZero(order.discount))
-    totals.push({ label: 'Discount', value: `−${money(order.discount)}` });
-  totals.push({ label: `Shipping (${order.shippingMethod})`, value: money(order.shipping) });
-  if (!isZero(order.shippingDiscount)) {
-    totals.push({ label: 'Shipping discount', value: `−${money(order.shippingDiscount)}` });
-  }
-  for (const tax of taxTotals(order.taxes))
-    totals.push({ label: tax.label, value: money(tax.amount) });
-  if (order.taxes.length === 0) totals.push({ label: 'Tax', value: money(order.tax) });
-  totals.push({ label: 'Total', value: money(order.grandTotal), strong: true });
+  const totals = totalRows(order, money);
 
   return (
     <>
@@ -215,6 +218,7 @@ function OrderPage() {
           {order.customerName} · placed {formatDateTime(order.placedAt, locale, timeZone)}
         </p>
       </div>
+      {fromList === undefined ? null : <EmptyListOffer listId={fromList} />}
       <Card>
         <CardContent className="grid gap-4 pt-5">
           <Table>
@@ -246,18 +250,7 @@ function OrderPage() {
               ))}
             </TableBody>
           </Table>
-          <dl className="m-0 ml-auto grid min-w-[260px] grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 text-meta">
-            {totals.map((t) => (
-              <div key={t.label} className="contents">
-                <dt className={t.strong ? 'font-[650]' : 'text-muted-foreground'}>{t.label}</dt>
-                <dd
-                  className={`m-0 text-right font-mono tabular-nums ${t.strong ? 'font-[650]' : ''}`}
-                >
-                  {t.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <TotalsList rows={totals} />
         </CardContent>
       </Card>
       <div className="grid gap-4 md:grid-cols-3">
@@ -319,5 +312,75 @@ function AddressCard({ title, address }: { title: string; address: Address }) {
         </address>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * After checkout from a list (ADR 0018): the list stays as it was, because buyers reorder from
+ * the same list, and the buyer may empty it here.
+ */
+function EmptyListOffer({ listId }: { listId: string }) {
+  const [state, setState] = useState<'offered' | 'emptying' | 'emptied' | 'refused'>('offered');
+  const [problem, setProblem] = useState<{ message?: string; error?: unknown }>();
+
+  async function empty() {
+    setState('emptying');
+    setProblem(undefined);
+    try {
+      const lineIds: string[] = [];
+      let after: string | null = null;
+      for (let page = 0; page < 10; page += 1) {
+        const { shoppingList }: ShoppingListResult = await runOperation(ShoppingList, {
+          id: listId,
+          ...(after === null ? {} : { after }),
+        });
+        if (!shoppingList) break;
+        lineIds.push(...shoppingList.lines.nodes.map((l) => l.id));
+        after = shoppingList.lines.nextAfter;
+        if (after === null) break;
+      }
+      if (lineIds.length > 0) {
+        const { removeShoppingListLines } = await runOperation(RemoveShoppingListLines, {
+          listId,
+          lineIds,
+        });
+        if (removeShoppingListLines.refusal) {
+          setState('refused');
+          setProblem({ message: removeShoppingListLines.refusal.message });
+          return;
+        }
+      }
+      setState('emptied');
+    } catch (error) {
+      setState('refused');
+      setProblem({ error });
+    }
+  }
+
+  if (state === 'emptied') return <Alert variant="info">The shopping list is empty now.</Alert>;
+  return (
+    <Alert variant="info">
+      <span>Order placed. The shopping list you ordered from is unchanged.</span>
+      {problem?.message ? <span>{problem.message}</span> : null}
+      {problem?.error ? <ErrorState error={problem.error} /> : null}
+      <div className="mt-1.5 flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={state === 'emptying'}
+          onClick={() => void empty()}
+        >
+          Empty the list
+        </Button>
+        <Link
+          to="/lists/$listId"
+          params={{ listId }}
+          search={{}}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+        >
+          Open the list
+        </Link>
+      </div>
+    </Alert>
   );
 }

@@ -2,8 +2,11 @@ import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import { PendingList, RouteError } from './components/states.js';
 import { authedRoute } from './routes/authed.js';
 import { categoryRoute, homeRoute } from './routes/catalog.js';
+import { checkoutRoute } from './routes/checkout.js';
+import { listRoute, listsRoute } from './routes/lists.js';
 import { orderRoute, ordersRoute } from './routes/orders.js';
 import { productRoute } from './routes/product.js';
+import { quickOrderRoute } from './routes/quick-order.js';
 import { rootRoute } from './routes/root.js';
 import { searchRoute } from './routes/search.js';
 import { signInRoute } from './routes/sign-in.js';
@@ -17,6 +20,10 @@ const routeTree = rootRoute.addChildren([
     searchRoute,
     ordersRoute,
     orderRoute,
+    listsRoute,
+    listRoute,
+    quickOrderRoute,
+    checkoutRoute,
   ]),
 ]);
 

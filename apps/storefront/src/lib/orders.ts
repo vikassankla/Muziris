@@ -85,3 +85,35 @@ export function taxTotals(
 export function isZero(amount: { amount: string }): boolean {
   return /^-?0*(\.0*)?$/.test(amount.amount);
 }
+
+type Amount = TaxLine['amount'];
+
+/** An order's or a checkout's totals, as rows from subtotal to total; zero discounts left out. */
+export function totalRows(
+  totals: {
+    subtotal: Amount;
+    discount: Amount;
+    shippingMethod: string;
+    shipping: Amount;
+    shippingDiscount: Amount;
+    taxes: readonly TaxLine[];
+    tax: Amount;
+    grandTotal: Amount;
+  },
+  money: (amount: Amount) => string,
+): { label: string; value: string; strong?: boolean }[] {
+  const rows: { label: string; value: string; strong?: boolean }[] = [
+    { label: 'Subtotal', value: money(totals.subtotal) },
+  ];
+  if (!isZero(totals.discount))
+    rows.push({ label: 'Discount', value: `−${money(totals.discount)}` });
+  rows.push({ label: `Shipping (${totals.shippingMethod})`, value: money(totals.shipping) });
+  if (!isZero(totals.shippingDiscount)) {
+    rows.push({ label: 'Shipping discount', value: `−${money(totals.shippingDiscount)}` });
+  }
+  for (const tax of taxTotals(totals.taxes))
+    rows.push({ label: tax.label, value: money(tax.amount) });
+  if (totals.taxes.length === 0) rows.push({ label: 'Tax', value: money(totals.tax) });
+  rows.push({ label: 'Total', value: money(totals.grandTotal), strong: true });
+  return rows;
+}

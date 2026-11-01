@@ -92,6 +92,19 @@ export function Header({
         <SearchForm key={searchText ?? ''} initial={searchText ?? ''} />
         <div className="ml-auto flex items-center gap-2.5">
           <Link
+            to="/quick-order"
+            className="inline-flex h-8 items-center rounded-md px-2.5 text-control text-foreground no-underline hover:bg-accent"
+          >
+            Quick order
+          </Link>
+          <Link
+            to="/lists"
+            search={{}}
+            className="inline-flex h-8 items-center rounded-md px-2.5 text-control text-foreground no-underline hover:bg-accent"
+          >
+            Lists
+          </Link>
+          <Link
             to="/orders"
             className="inline-flex h-8 items-center rounded-md px-2.5 text-control text-foreground no-underline hover:bg-accent"
           >
