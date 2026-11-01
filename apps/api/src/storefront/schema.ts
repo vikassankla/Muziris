@@ -1,5 +1,6 @@
 import {
   findProductBySkuWithin,
+  findProductsBySkusWithin,
   findProductsWithin,
   listCategoriesWithin,
   listProductsWithin,
@@ -35,6 +36,24 @@ import {
 import type { Website } from '@muziris/platform';
 import { findPricesForBuyer, type PriceLookup } from '@muziris/pricing';
 import { MATCHES, searchProductsForBuyer, type SearchHit } from '@muziris/search';
+import {
+  addShoppingListLines,
+  createShoppingList,
+  deleteShoppingList,
+  duplicateShoppingList,
+  findShoppingList,
+  listShoppingLists,
+  MAX_LINES_PER_LIST,
+  moveShoppingListLines,
+  removeShoppingListLines,
+  renameShoppingList,
+  updateShoppingListLine,
+  type ShoppingList,
+  type ShoppingListLine,
+  type ShoppingListRefusal,
+  type ShoppingListResult,
+  type ShoppingListSummary,
+} from '@muziris/shopping-lists';
 import {
   visibleCategoryIdsForBuyer,
   visibleProductIdsForBuyer,
@@ -858,6 +877,486 @@ function checkoutRequest<T extends z.ZodType>(
   return parsed.data;
 }
 
+// Shopping lists and quick order (ADR 0018). Lists are read and changed through the module's
+// buyer-scoped functions; a line's product is read within visibility, so a product hidden since
+// it was added shows as null (unavailable) rather than disappearing.
+
+/**
+ * Most SKUs one productsBySkus call may ask for. A 500-row quick order asks in pieces of this
+ * size, which keeps a call with prices and units inside the query cost limit.
+ */
+export const MAX_QUICK_ORDER_SKUS = 100;
+
+const ShoppingListLineType = new GraphQLObjectType<ShoppingListLine, StorefrontContext>({
+  name: 'ShoppingListLine',
+  fields: {
+    id: { type: nonNull(GraphQLID) },
+    position: { type: nonNull(GraphQLInt), description: '1, 2, 3 in the order the buyer sees.' },
+    productId: { type: nonNull(GraphQLID) },
+    product: {
+      type: ProductType,
+      description: 'Null when the buyer may no longer see or order the product.',
+      resolve: async (line, _args, ctx) => {
+        const product = await ctx.loaders.product.load(line.productId);
+        return product?.status === 'enabled' ? product : null;
+      },
+    },
+    unitCode: { type: nonNull(GraphQLString) },
+    quantity: { type: nonNull(GraphQLString), description: 'A decimal string, such as "2.5".' },
+    note: { type: GraphQLString },
+    price: {
+      type: PriceType,
+      description: "The buyer's price now for this line's unit and quantity; null without one.",
+      resolve: async (line, _args, ctx) => {
+        const product = await ctx.loaders.product.load(line.productId);
+        const unit = product?.units.find((u) => u.code === line.unitCode);
+        if (product?.status !== 'enabled' || !unit) return null;
+        const quantity = parseQuantity(line.quantity, unit);
+        const lookup = await ctx.loaders.price.load({
+          productId: product.id,
+          unitCode: unit.code,
+          quantity,
+        });
+        if (!lookup.found) return null;
+        return {
+          unitPrice: lookup.unitPrice,
+          minQuantity: lookup.minQuantity,
+          unitCode: unit.code,
+          quantity,
+        } satisfies PriceSource;
+      },
+    },
+  },
+});
+
+function listSummaryFields(): Record<string, Field<ShoppingListSummary>> {
+  return {
+    id: { type: nonNull(GraphQLID) },
+    name: { type: nonNull(GraphQLString) },
+    lineCount: { type: nonNull(GraphQLInt) },
+    isOwn: {
+      type: nonNull(GraphQLBoolean),
+      description: 'True when the signed-in buyer owns the list.',
+      resolve: (list, _args, ctx) => list.ownerId === ctx.user.id,
+    },
+    updatedAt: {
+      type: nonNull(GraphQLString),
+      description: 'An ISO 8601 timestamp in UTC.',
+      resolve: (list) => list.updatedAt.toISOString(),
+    },
+  };
+}
+
+const ShoppingListSummaryType = new GraphQLObjectType<ShoppingListSummary, StorefrontContext>({
+  name: 'ShoppingListSummary',
+  fields: listSummaryFields,
+});
+
+const ShoppingListLinePageType = new GraphQLObjectType<
+  { nodes: ShoppingListLine[]; nextAfter: string | null },
+  StorefrontContext
+>({
+  name: 'ShoppingListLinePage',
+  fields: {
+    nodes: { type: listOf(ShoppingListLineType) },
+    nextAfter: {
+      type: GraphQLString,
+      description: 'Pass as after to read the next page; null on the last page.',
+    },
+  },
+});
+
+const ShoppingListType = new GraphQLObjectType<ShoppingList, StorefrontContext>({
+  name: 'ShoppingList',
+  description: 'A list of products the buyer collects to order. It stores no prices.',
+  fields: () => ({
+    ...(listSummaryFields() as Record<string, Field<ShoppingList>>),
+    lines: {
+      type: nonNull(ShoppingListLinePageType),
+      description: `The lines in position order, a page at a time; a list holds at most ${String(MAX_LINES_PER_LIST)}.`,
+      args: {
+        first: firstArg,
+        after: { type: GraphQLString, description: "The previous page's nextAfter." },
+      },
+      resolve: (list, args: { first: number; after?: string | null }) => {
+        const limit = pageSize(args.first);
+        const after = Number(args.after ?? 0);
+        if (!Number.isInteger(after) || after < 0)
+          throw badInput("after must be a page's nextAfter");
+        const rest = list.lines.filter((l) => l.position > after);
+        const nodes = rest.slice(0, limit);
+        const last = nodes.at(-1);
+        return {
+          nodes,
+          nextAfter: rest.length > limit && last ? String(last.position) : null,
+        };
+      },
+    },
+  }),
+});
+
+const ShoppingListPageType = new GraphQLObjectType<
+  { nodes: ShoppingListSummary[]; nextAfter: string | null },
+  StorefrontContext
+>({
+  name: 'ShoppingListPage',
+  fields: {
+    nodes: { type: listOf(ShoppingListSummaryType) },
+    nextAfter: {
+      type: GraphQLString,
+      description: 'Pass as after to read the next page; null on the last page.',
+    },
+  },
+});
+
+const LIST_REFUSALS = [
+  'not_allowed',
+  'list_not_found',
+  'line_not_found',
+  'too_many_lists',
+  'too_many_lines',
+  'same_list',
+  'line_problems',
+] as const;
+
+const LIST_LINE_PROBLEMS = ['product_not_available', 'unit_not_sold', 'invalid_quantity'] as const;
+
+function listRefusalMessage(r: ShoppingListRefusal): string {
+  switch (r.code) {
+    case 'not_allowed':
+      return 'Your buyer role does not let you change shopping lists';
+    case 'list_not_found':
+      return "We can't find that shopping list";
+    case 'line_not_found':
+      return 'That line is no longer on the list';
+    case 'too_many_lists':
+      return `You can keep at most ${String(r.limit)} shopping lists`;
+    case 'too_many_lines':
+      return `A shopping list can hold at most ${String(r.limit)} lines`;
+    case 'same_list':
+      return 'Choose a different list to move the lines to';
+    case 'line_problems':
+      return 'Some lines cannot be added; nothing was changed';
+  }
+}
+
+const ShoppingListLineProblemType = new GraphQLObjectType<
+  { index: number; code: string; message: string },
+  StorefrontContext
+>({
+  name: 'ShoppingListLineProblem',
+  fields: {
+    index: { type: nonNull(GraphQLInt), description: 'The line in the request, from 0.' },
+    code: { type: nonNull(enumOf('ShoppingListLineProblemCode', LIST_LINE_PROBLEMS)) },
+    message: { type: nonNull(GraphQLString) },
+  },
+});
+
+const ShoppingListRefusalType = new GraphQLObjectType<ShoppingListRefusal, StorefrontContext>({
+  name: 'ShoppingListRefusal',
+  description: 'Why a shopping list change was refused. The message is safe to show the buyer.',
+  fields: {
+    code: { type: nonNull(enumOf('ShoppingListRefusalCode', LIST_REFUSALS)) },
+    message: { type: nonNull(GraphQLString), resolve: listRefusalMessage },
+    lines: {
+      type: listOf(ShoppingListLineProblemType),
+      description: 'For LINE_PROBLEMS: each line that cannot be added, and why.',
+      extensions: { listSize: 50 } satisfies FieldCostExtensions,
+      resolve: (r) => (r.code === 'line_problems' ? r.lines : []),
+    },
+  },
+});
+
+const ShoppingListResultType = new GraphQLObjectType<
+  { list: ShoppingList | null; refusal: ShoppingListRefusal | null },
+  StorefrontContext
+>({
+  name: 'ShoppingListResult',
+  description: 'Exactly one of list and refusal is set.',
+  fields: { list: { type: ShoppingListType }, refusal: { type: ShoppingListRefusalType } },
+});
+
+const DeleteShoppingListResultType = new GraphQLObjectType<
+  { deleted: boolean; refusal: ShoppingListRefusal | null },
+  StorefrontContext
+>({
+  name: 'DeleteShoppingListResult',
+  fields: {
+    deleted: { type: nonNull(GraphQLBoolean) },
+    refusal: { type: ShoppingListRefusalType },
+  },
+});
+
+const ProductsBySkusResultType = new GraphQLObjectType<
+  { products: Product[]; missingSkus: string[] },
+  StorefrontContext
+>({
+  name: 'ProductsBySkusResult',
+  fields: {
+    products: {
+      type: listOf(ProductType),
+      description: 'The products found, in the order their SKUs were asked for.',
+      extensions: { listSize: MAX_QUICK_ORDER_SKUS } satisfies FieldCostExtensions,
+    },
+    missingSkus: {
+      type: listOf(GraphQLString),
+      description: 'SKUs that are unknown, or that the buyer may not see or order, as sent.',
+      extensions: { listSize: MAX_QUICK_ORDER_SKUS } satisfies FieldCostExtensions,
+    },
+  },
+});
+
+function listResult(result: ShoppingListResult) {
+  return result.ok ? { list: result.list, refusal: null } : { list: null, refusal: result.refusal };
+}
+
+const shoppingListLineInput = new GraphQLInputObjectType({
+  name: 'ShoppingListLineInput',
+  fields: {
+    productId: { type: inputOf(GraphQLID) },
+    unitCode: { type: inputOf(GraphQLString) },
+    quantity: {
+      type: inputOf(GraphQLString),
+      description: "A decimal string at the unit's precision, above zero.",
+    },
+    note: { type: GraphQLString },
+  },
+});
+
+interface LineInput {
+  productId: string;
+  unitCode: string;
+  quantity: string;
+  note?: string | null;
+}
+
+function lineInputs(lines: readonly LineInput[]) {
+  if (lines.length === 0 || lines.length > MAX_LINES_PER_LIST) {
+    throw badInput(`Send from 1 to ${String(MAX_LINES_PER_LIST)} lines`);
+  }
+  return lines.map((l) => {
+    if (!uuid.safeParse(l.productId).success) throw badInput('productId must be a product id');
+    return {
+      productId: l.productId,
+      unitCode: l.unitCode,
+      quantity: l.quantity,
+      ...(l.note === undefined ? {} : { note: l.note }),
+    };
+  });
+}
+
+function listName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 100) {
+    throw badInput('A list name has 1 to 100 characters');
+  }
+  return trimmed;
+}
+
+function idList(ids: readonly string[], what: string): string[] {
+  if (
+    ids.length === 0 ||
+    ids.length > MAX_LINES_PER_LIST ||
+    !ids.every((i) => uuid.safeParse(i).success)
+  ) {
+    throw badInput(`${what} must be 1 to ${String(MAX_LINES_PER_LIST)} ids`);
+  }
+  return [...ids];
+}
+
+const listIdArg = { listId: { type: nonNull(GraphQLID) } };
+
+const shoppingListMutations: Record<string, Field<unknown>> = {
+  createShoppingList: {
+    type: nonNull(ShoppingListResultType),
+    args: { name: { type: nonNull(GraphQLString) } },
+    resolve: async (_root, args: { name: string }, ctx) =>
+      listResult(
+        await createShoppingList(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          name: listName(args.name),
+        }),
+      ),
+  },
+  renameShoppingList: {
+    type: nonNull(ShoppingListResultType),
+    args: { ...listIdArg, name: { type: nonNull(GraphQLString) } },
+    resolve: async (_root, args: { listId: string; name: string }, ctx) =>
+      listResult(
+        await renameShoppingList(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          listId: args.listId,
+          name: listName(args.name),
+        }),
+      ),
+  },
+  duplicateShoppingList: {
+    type: nonNull(ShoppingListResultType),
+    description: 'A copy owned by the buyer, with the lines whose products they may still see.',
+    args: { ...listIdArg, name: { type: nonNull(GraphQLString) } },
+    resolve: async (_root, args: { listId: string; name: string }, ctx) =>
+      listResult(
+        await duplicateShoppingList(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          listId: args.listId,
+          name: listName(args.name),
+        }),
+      ),
+  },
+  deleteShoppingList: {
+    type: nonNull(DeleteShoppingListResultType),
+    args: listIdArg,
+    resolve: async (_root, args: { listId: string }, ctx) => {
+      const result = await deleteShoppingList(ctx.db, ctx.user.id, {
+        websiteId: ctx.website.id,
+        listId: args.listId,
+      });
+      return result.ok
+        ? { deleted: true, refusal: null }
+        : { deleted: false, refusal: result.refusal };
+    },
+  },
+  addShoppingListLines: {
+    type: nonNull(ShoppingListResultType),
+    description:
+      'Adds lines; the same product and unit adds to the line already there. Nothing is added when any line has a problem.',
+    args: {
+      ...listIdArg,
+      lines: { type: inputOf(new GraphQLList(inputOf(shoppingListLineInput))) },
+    },
+    resolve: async (_root, args: { listId: string; lines: LineInput[] }, ctx) =>
+      listResult(
+        await addShoppingListLines(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          listId: args.listId,
+          lines: lineInputs(args.lines),
+        }),
+      ),
+  },
+  updateShoppingListLine: {
+    type: nonNull(ShoppingListResultType),
+    description: "Changes a line's quantity, unit or note; leave out what stays.",
+    args: {
+      ...listIdArg,
+      lineId: { type: nonNull(GraphQLID) },
+      quantity: { type: GraphQLString },
+      unitCode: { type: GraphQLString },
+      note: { type: GraphQLString, description: 'An empty string clears the note.' },
+    },
+    resolve: async (
+      _root,
+      args: {
+        listId: string;
+        lineId: string;
+        quantity?: string | null;
+        unitCode?: string | null;
+        note?: string | null;
+      },
+      ctx,
+    ) =>
+      listResult(
+        await updateShoppingListLine(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          listId: args.listId,
+          lineId: args.lineId,
+          ...(args.quantity ? { quantity: args.quantity } : {}),
+          ...(args.unitCode ? { unitCode: args.unitCode } : {}),
+          ...(args.note === undefined ? {} : { note: args.note }),
+        }),
+      ),
+  },
+  removeShoppingListLines: {
+    type: nonNull(ShoppingListResultType),
+    args: { ...listIdArg, lineIds: { type: inputOf(new GraphQLList(inputOf(GraphQLID))) } },
+    resolve: async (_root, args: { listId: string; lineIds: string[] }, ctx) =>
+      listResult(
+        await removeShoppingListLines(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          listId: args.listId,
+          lineIds: idList(args.lineIds, 'lineIds'),
+        }),
+      ),
+  },
+  moveShoppingListLines: {
+    type: nonNull(ShoppingListResultType),
+    description: 'Moves lines to another list, merging into lines there. Returns the target list.',
+    args: {
+      fromListId: { type: nonNull(GraphQLID) },
+      toListId: { type: nonNull(GraphQLID) },
+      lineIds: { type: inputOf(new GraphQLList(inputOf(GraphQLID))) },
+    },
+    resolve: async (
+      _root,
+      args: { fromListId: string; toListId: string; lineIds: string[] },
+      ctx,
+    ) =>
+      listResult(
+        await moveShoppingListLines(ctx.db, ctx.user.id, {
+          websiteId: ctx.website.id,
+          fromListId: args.fromListId,
+          toListId: args.toListId,
+          lineIds: idList(args.lineIds, 'lineIds'),
+        }),
+      ),
+  },
+};
+
+const shoppingListQueries: Record<string, Field<unknown>> = {
+  shoppingLists: {
+    type: nonNull(ShoppingListPageType),
+    description: 'Shopping lists the buyer may see on this website, most recently changed first.',
+    args: {
+      first: firstArg,
+      after: { type: GraphQLString, description: "The previous page's nextAfter." },
+    },
+    resolve: async (_root, args: { first: number; after?: string | null }, ctx) => {
+      const page = await listShoppingLists(ctx.db, ctx.user.id, {
+        websiteId: ctx.website.id,
+        limit: pageSize(args.first),
+        ...(args.after ? { after: args.after } : {}),
+      });
+      return { nodes: page.lists, nextAfter: page.nextAfter };
+    },
+  },
+  shoppingList: {
+    type: ShoppingListType,
+    description: 'One shopping list, if the buyer may see it.',
+    args: { id: { type: nonNull(GraphQLID) } },
+    resolve: async (_root, args: { id: string }, ctx) =>
+      (await findShoppingList(ctx.db, ctx.user.id, ctx.website.id, args.id)) ?? null,
+  },
+  productsBySkus: {
+    type: nonNull(ProductsBySkusResultType),
+    description: `Products the buyer may order, by SKU in any letter case, for quick order. At most ${String(MAX_QUICK_ORDER_SKUS)} SKUs.`,
+    args: { skus: { type: inputOf(new GraphQLList(inputOf(GraphQLString))) } },
+    resolve: async (_root, args: { skus: string[] }, ctx) => {
+      if (args.skus.length > MAX_QUICK_ORDER_SKUS) {
+        throw badInput(`Ask for at most ${String(MAX_QUICK_ORDER_SKUS)} SKUs`);
+      }
+      const found = (
+        await findProductsBySkusWithin(ctx.db, visibleProductIdsForBuyer(ctx.buyer), args.skus)
+      ).filter((p) => p.status === 'enabled');
+      const bySku = new Map(found.map((p) => [p.sku.toLowerCase(), p]));
+      const products: Product[] = [];
+      const missingSkus: string[] = [];
+      const seen = new Set<string>();
+      for (const sku of args.skus) {
+        const key = sku.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const product = bySku.get(key);
+        if (product) {
+          ctx.loaders.product.prime(product.id, product);
+          products.push(product);
+        } else {
+          missingSkus.push(sku);
+        }
+      }
+      return { products, missingSkus };
+    },
+  },
+};
+
 const notConfigured = { code: 'tax_not_configured' } as const;
 
 const mutation: Record<string, Field<unknown>> = {
@@ -879,6 +1378,7 @@ const mutation: Record<string, Field<unknown>> = {
         : { order: null, replayed: false, refusal: result.refusal };
     },
   },
+  ...shoppingListMutations,
 };
 
 const query: Record<string, Field<unknown>> = {
@@ -1019,6 +1519,7 @@ const query: Record<string, Field<unknown>> = {
         number: args.number,
       })) ?? null,
   },
+  ...shoppingListQueries,
 };
 
 export const storefrontSchema = new GraphQLSchema({

@@ -50,6 +50,25 @@ type Query {
 
   """One order by its number, if the buyer may see it."""
   order(number: String!): Order
+
+  """
+  Shopping lists the buyer may see on this website, most recently changed first.
+  """
+  shoppingLists(
+    """How many to return, at most 50."""
+    first: Int = 20
+
+    """The previous page's nextAfter."""
+    after: String
+  ): ShoppingListPage!
+
+  """One shopping list, if the buyer may see it."""
+  shoppingList(id: ID!): ShoppingList
+
+  """
+  Products the buyer may order, by SKU in any letter case, for quick order. At most 100 SKUs.
+  """
+  productsBySkus(skus: [String!]!): ProductsBySkusResult!
 }
 
 """The signed-in buyer user."""
@@ -440,11 +459,122 @@ type OrderAddress {
   gstin: String
 }
 
+type ShoppingListPage {
+  nodes: [ShoppingListSummary!]!
+
+  """Pass as after to read the next page; null on the last page."""
+  nextAfter: String
+}
+
+type ShoppingListSummary {
+  id: ID!
+  name: String!
+  lineCount: Int!
+
+  """True when the signed-in buyer owns the list."""
+  isOwn: Boolean!
+
+  """An ISO 8601 timestamp in UTC."""
+  updatedAt: String!
+}
+
+"""A list of products the buyer collects to order. It stores no prices."""
+type ShoppingList {
+  id: ID!
+  name: String!
+  lineCount: Int!
+
+  """True when the signed-in buyer owns the list."""
+  isOwn: Boolean!
+
+  """An ISO 8601 timestamp in UTC."""
+  updatedAt: String!
+
+  """
+  The lines in position order, a page at a time; a list holds at most 500.
+  """
+  lines(
+    """How many to return, at most 50."""
+    first: Int = 20
+
+    """The previous page's nextAfter."""
+    after: String
+  ): ShoppingListLinePage!
+}
+
+type ShoppingListLinePage {
+  nodes: [ShoppingListLine!]!
+
+  """Pass as after to read the next page; null on the last page."""
+  nextAfter: String
+}
+
+type ShoppingListLine {
+  id: ID!
+
+  """1, 2, 3 in the order the buyer sees."""
+  position: Int!
+  productId: ID!
+
+  """Null when the buyer may no longer see or order the product."""
+  product: Product
+  unitCode: String!
+
+  """A decimal string, such as "2.5"."""
+  quantity: String!
+  note: String
+
+  """
+  The buyer's price now for this line's unit and quantity; null without one.
+  """
+  price: Price
+}
+
+type ProductsBySkusResult {
+  """The products found, in the order their SKUs were asked for."""
+  products: [Product!]!
+
+  """
+  SKUs that are unknown, or that the buyer may not see or order, as sent.
+  """
+  missingSkus: [String!]!
+}
+
 type Mutation {
   """
   Places an order on payment terms. Everything is checked again; sending the same idempotency key again returns the same order.
   """
   placeOrder(input: PlaceOrderInput!): PlaceOrderResult!
+  createShoppingList(name: String!): ShoppingListResult!
+  renameShoppingList(listId: ID!, name: String!): ShoppingListResult!
+
+  """
+  A copy owned by the buyer, with the lines whose products they may still see.
+  """
+  duplicateShoppingList(listId: ID!, name: String!): ShoppingListResult!
+  deleteShoppingList(listId: ID!): DeleteShoppingListResult!
+
+  """
+  Adds lines; the same product and unit adds to the line already there. Nothing is added when any line has a problem.
+  """
+  addShoppingListLines(listId: ID!, lines: [ShoppingListLineInput!]!): ShoppingListResult!
+
+  """Changes a line's quantity, unit or note; leave out what stays."""
+  updateShoppingListLine(
+    listId: ID!
+    lineId: ID!
+    quantity: String
+    unitCode: String
+
+    """An empty string clears the note."""
+    note: String
+  ): ShoppingListResult!
+  removeShoppingListLines(listId: ID!, lineIds: [ID!]!): ShoppingListResult!
+
+  """
+  Moves lines to another list, merging into lines there. Returns the target list.
+  """
+  moveShoppingListLines(fromListId: ID!, toListId: ID!, lineIds: [ID!]!): ShoppingListResult!
 }
 
 """Exactly one of order and refusal is set."""
@@ -473,4 +603,58 @@ input PlaceOrderInput {
   The preview's grand total, as a decimal string; a different total refuses.
   """
   expectedGrandTotal: String!
+}
+
+"""Exactly one of list and refusal is set."""
+type ShoppingListResult {
+  list: ShoppingList
+  refusal: ShoppingListRefusal
+}
+
+"""
+Why a shopping list change was refused. The message is safe to show the buyer.
+"""
+type ShoppingListRefusal {
+  code: ShoppingListRefusalCode!
+  message: String!
+
+  """For LINE_PROBLEMS: each line that cannot be added, and why."""
+  lines: [ShoppingListLineProblem!]!
+}
+
+enum ShoppingListRefusalCode {
+  NOT_ALLOWED
+  LIST_NOT_FOUND
+  LINE_NOT_FOUND
+  TOO_MANY_LISTS
+  TOO_MANY_LINES
+  SAME_LIST
+  LINE_PROBLEMS
+}
+
+type ShoppingListLineProblem {
+  """The line in the request, from 0."""
+  index: Int!
+  code: ShoppingListLineProblemCode!
+  message: String!
+}
+
+enum ShoppingListLineProblemCode {
+  PRODUCT_NOT_AVAILABLE
+  UNIT_NOT_SOLD
+  INVALID_QUANTITY
+}
+
+type DeleteShoppingListResult {
+  deleted: Boolean!
+  refusal: ShoppingListRefusal
+}
+
+input ShoppingListLineInput {
+  productId: ID!
+  unitCode: String!
+
+  """A decimal string at the unit's precision, above zero."""
+  quantity: String!
+  note: String
 }

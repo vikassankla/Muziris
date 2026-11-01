@@ -63,7 +63,7 @@ and one website.
 
 Quick order stores nothing, so it is a storefront page plus one new query:
 
-- **The query.** `productsBySkus(skus: [String!]!)` takes at most 500 SKUs. It returns the
+- **The query.** `productsBySkus(skus: [String!]!)` takes at most 100 SKUs per call, so a call with prices and units stays inside the query cost limit (ADR 0014); a 500-row quick order asks in pieces. It returns the
   products the buyer may see, with their units and the buyer's price, and the SKUs it could not
   find. A hidden SKU and an unknown SKU look the same, as they do on the product page.
 - **The page (`/quick-order`):**
@@ -98,7 +98,8 @@ Checkout runs from a shopping list (`/checkout?list=<id>`) or from a quick order
 
 - **Storefront GraphQL queries:**
   - `shoppingLists(first, after)`
-  - `shoppingList(id)`, whose lines carry the product as the buyer sees it
+  - `shoppingList(id)`, whose lines come a page at a time (at most 50, for the same cost
+    limit) and carry the product as the buyer sees it
   - `productsBySkus`
 - **Storefront GraphQL mutations:** `createShoppingList`, `renameShoppingList`,
   `duplicateShoppingList`, `deleteShoppingList`, `addShoppingListLines`,

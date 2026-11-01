@@ -1,4 +1,5 @@
 import { Writable } from 'node:stream';
+import { assignBuyerRole, createBuyerRole } from '@muziris/access';
 import { createCategory, createProduct, createProductUnit } from '@muziris/catalog';
 import { createCustomer, createCustomerGroup, linkBuyerUser } from '@muziris/customers';
 import {
@@ -64,7 +65,8 @@ describe.skipIf(!url)('storefront GraphQL API against PostgreSQL', () => {
         visibility_build_state, catalog_product_sold_in, catalog_product, catalog_category,
         catalog_product_unit, customer_buyer_user, customer_customer, customer_group,
         platform_website, platform_organization, identity_session, identity_user,
-        identity_rate_limit cascade`,
+        identity_rate_limit, shopping_list_line, shopping_list, access_buyer_user_role,
+        access_buyer_role_permission, access_buyer_role cascade`,
     );
     logs = [];
     queries = 0;
@@ -585,6 +587,174 @@ describe.skipIf(!url)('storefront GraphQL API against PostgreSQL', () => {
       );
       expect(status).toBe(400);
       expect(body.data).toBeUndefined();
+    });
+  });
+
+  describe('shopping lists and quick order', () => {
+    /** A buyer of the customer who manages their own lists. */
+    async function listBuyer(customerId: string, email: string): Promise<string> {
+      const role = await createBuyerRole(handle.db, {
+        code: `lists_${email.split('@')[0] ?? 'x'}`,
+        name: 'Own lists',
+        grants: [
+          { permission: 'shopping_list.view', accessLevel: 'own_records' },
+          { permission: 'shopping_list.manage', accessLevel: 'own_records' },
+        ],
+      });
+      const user = await createUser(handle.db, {
+        realm: 'buyer',
+        email,
+        displayName: email,
+        password: PASSWORD,
+      });
+      await linkBuyerUser(handle.db, customerId, email);
+      await assignBuyerRole(handle.db, user.id, role.id);
+      return signIn('buyer', email);
+    }
+
+    const LIST_FIELDS = `list { id name lineCount isOwn
+        lines(first: 50) { nodes { position quantity unitCode note
+          product { sku } price { unitPrice { amount } quantity } } nextAfter } }
+      refusal { code message lines { index code message } }`;
+
+    it('creates a list, adds lines with live prices, and refuses a hidden product', async () => {
+      const w = await world();
+      const meera = await listBuyer(w.retailer.id, 'meera@kochihardware.in');
+      const created = await gql(
+        `mutation { createShoppingList(name: "Monthly") { ${LIST_FIELDS} } }`,
+        { cookie: meera },
+      );
+      const list = (created.body.data?.['createShoppingList'] as { list: { id: string } }).list;
+      expect(list).toMatchObject({ name: 'Monthly', lineCount: 0, isOwn: true });
+
+      const added = await gql(
+        `mutation ($id: ID!, $lines: [ShoppingListLineInput!]!) {
+           addShoppingListLines(listId: $id, lines: $lines) { ${LIST_FIELDS} } }`,
+        {
+          cookie: meera,
+          variables: {
+            id: list.id,
+            lines: [{ productId: w.glove.id, unitCode: 'each', quantity: '12', note: 'Size L' }],
+          },
+        },
+      );
+      expect(added.body.data?.['addShoppingListLines']).toMatchObject({
+        list: {
+          lineCount: 1,
+          lines: {
+            nodes: [
+              {
+                position: 1,
+                quantity: '12',
+                note: 'Size L',
+                product: { sku: 'GLV-NITRILE-L' },
+                price: { quantity: '12' },
+              },
+            ],
+            nextAfter: null,
+          },
+        },
+        refusal: null,
+      });
+
+      // The bearing is hidden from retail buyers: nothing is added, and the line is named.
+      const hidden = await gql(
+        `mutation ($id: ID!, $lines: [ShoppingListLineInput!]!) {
+           addShoppingListLines(listId: $id, lines: $lines) { ${LIST_FIELDS} } }`,
+        {
+          cookie: meera,
+          variables: {
+            id: list.id,
+            lines: [
+              { productId: w.glove.id, unitCode: 'each', quantity: '1' },
+              { productId: w.bearing.id, unitCode: 'each', quantity: '1' },
+            ],
+          },
+        },
+      );
+      expect(hidden.body.data?.['addShoppingListLines']).toEqual({
+        list: null,
+        refusal: {
+          code: 'LINE_PROBLEMS',
+          message: 'Some lines cannot be added; nothing was changed',
+          lines: [
+            { index: 1, code: 'PRODUCT_NOT_AVAILABLE', message: 'This product cannot be added' },
+          ],
+        },
+      });
+
+      const read = await gql(
+        'query ($id: ID!) { shoppingLists { nodes { name lineCount } } shoppingList(id: $id) { lines { nodes { quantity } } } }',
+        { cookie: meera, variables: { id: list.id } },
+      );
+      expect(read.body.data).toEqual({
+        shoppingLists: { nodes: [{ name: 'Monthly', lineCount: 1 }] },
+        shoppingList: { lines: { nodes: [{ quantity: '12' }] } },
+      });
+      // Another buyer of the same customer, owning only their own lists, does not see it.
+      const sam = await listBuyer(w.retailer.id, 'sam@kochihardware.in');
+      const other = await gql('query ($id: ID!) { shoppingList(id: $id) { id } }', {
+        cookie: sam,
+        variables: { id: list.id },
+      });
+      expect(other.body.data).toEqual({ shoppingList: null });
+    });
+
+    it('refuses list changes to a buyer without shopping_list.manage', async () => {
+      const w = await world();
+      const { body } = await gql(
+        'mutation { createShoppingList(name: "X") { refusal { code } } }',
+        {
+          cookie: w.lena,
+        },
+      );
+      expect(body.data).toEqual({ createShoppingList: { refusal: { code: 'NOT_ALLOWED' } } });
+    });
+
+    it('finds quick order SKUs the buyer may order, and names the rest', async () => {
+      const w = await world();
+      const { body } = await gql(
+        `query ($skus: [String!]!) { productsBySkus(skus: $skus) {
+           products { sku primaryUnit { code } price { unitPrice { amount } } } missingSkus } }`,
+        {
+          cookie: w.lena,
+          variables: { skus: ['glv-nitrile-l', 'BRG-6205-2RS', 'NOPE-1', 'GLV-NITRILE-L'] },
+        },
+      );
+      expect(body.data).toMatchObject({
+        productsBySkus: {
+          products: [{ sku: 'GLV-NITRILE-L', primaryUnit: { code: 'each' } }],
+          missingSkus: ['BRG-6205-2RS', 'NOPE-1'],
+        },
+      });
+    });
+
+    it('runs a persisted mutation over POST, and never over GET', async () => {
+      const w = await world();
+      const meera = await listBuyer(w.retailer.id, 'meera@kochihardware.in');
+      const document =
+        'mutation CreateList($name: String!) { createShoppingList(name: $name) { list { name } } }';
+      const hash = queryHash(document);
+      const storefront: StorefrontOptions = {
+        persistedQueries: new Map([[hash, document]]),
+        allowAdhocQueries: false,
+      };
+      const extensions = { persistedQuery: { version: 1, sha256Hash: hash } };
+      const posted = await post(
+        { operationName: 'CreateList', variables: { name: 'Site' }, extensions },
+        { cookie: meera, storefront },
+      );
+      expect(posted.body).toEqual({ data: { createShoppingList: { list: { name: 'Site' } } } });
+
+      const params = new URLSearchParams({
+        operationName: 'CreateList',
+        variables: JSON.stringify({ name: 'Again' }),
+        extensions: JSON.stringify(extensions),
+      });
+      const got = await app(storefront).request(`/storefront/v1/graphql?${params.toString()}`, {
+        headers: { Cookie: meera, 'Muziris-Website': 'muziris-in' },
+      });
+      expect(got.status).not.toBe(200);
     });
   });
 
