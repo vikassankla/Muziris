@@ -96,7 +96,7 @@ describe('nextStatus', () => {
     ['pending', refund(500n), 'pending'],
     ['paid', refund(500n), 'partially_refunded'],
     ['paid', refund(1000n), 'refunded'],
-  ] as const)('%s with %j becomes %s', (from, effect, to) => {
+  ] as const)('%s with %o becomes %s', (from, effect, to) => {
     expect(nextStatus(p(from), effect).status).toBe(to);
   });
 
