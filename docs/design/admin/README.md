@@ -28,7 +28,9 @@ They are design data only. The tokens from `muziris.css` (light and dark) live i
 | BuyerRoles                             | `/buyer-roles`, `/buyer-roles/$roleId`  | Built                     |
 | States                                 | used on every screen                    | Built                     |
 | Tokens                                 | `apps/admin/src/index.css`, `format.ts` | Built                     |
-| Orders, OrderDetail, RFQs, QuoteEditor | none                                    | Designed, waiting on APIs |
+| Orders                                 | `/orders`                               | Built (status filter)     |
+| OrderDetail                            | `/orders/$orderId`                      | Built, no notes or print  |
+| RFQs, QuoteEditor                      | none                                    | Designed, waiting on APIs |
 | PriceLists, PriceListDetail            | none                                    | Designed, waiting on APIs |
 | Websites, Settings                     | none                                    | Designed, waiting on APIs |
 
