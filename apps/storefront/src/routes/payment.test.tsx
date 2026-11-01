@@ -142,7 +142,8 @@ describe('paying online', () => {
     await waitFor(() => {
       expect(openRazorpay).toHaveBeenCalled();
     });
-    const options = vi.mocked(openRazorpay).mock.calls[0]?.[0] as RazorpayOptions;
+    const options: RazorpayOptions | undefined = vi.mocked(openRazorpay).mock.calls[0]?.[0];
+    if (!options) throw new Error('Razorpay Checkout was not opened');
     expect(options).toMatchObject({
       key: 'rzp_test_key',
       order_id: 'order_1',
