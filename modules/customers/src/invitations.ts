@@ -147,6 +147,17 @@ export async function createInvitation(
   return { invitation: toInvitation(row), token };
 }
 
+/** An invitation by id, whatever its status. */
+export async function findInvitation(
+  db: Database,
+  invitationId: string,
+): Promise<Invitation | undefined> {
+  const id = z.uuid().safeParse(invitationId);
+  if (!id.success) return undefined;
+  const [row] = await db.select().from(invitations).where(eq(invitations.id, id.data)).limit(1);
+  return row ? toInvitation(row) : undefined;
+}
+
 /**
  * Sends an invitation again: a new invitation with a new token, for the same customer, email
  * and name and as long a life as the first, which revokes the old one. An invitation that was

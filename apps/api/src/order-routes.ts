@@ -18,6 +18,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
+import type { Emails } from './emails.js';
 import type { Logger } from './logger.js';
 import { HttpProblem } from './problem.js';
 
@@ -30,6 +31,8 @@ export interface OrderRouteDependencies {
   now: () => Date;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
+  /** Queues the buyer's email for a confirm, decline or complete (ADR 0020). */
+  emails: Emails;
 }
 
 interface OrderEnv {
@@ -207,17 +210,19 @@ export function orderRoutes(deps: OrderRouteDependencies): Hono<OrderEnv> {
   app.post('/:orderId/transitions', need('order.manage'), async (c) => {
     const orderId = idParam.parse(c.req.param('orderId'));
     const input = transitionBody.parse(await body(c));
-    if (!(await findOrderById(deps.db, orderId))) {
-      throw new HttpProblem(404, 'order_not_found', 'No such order');
-    }
+    const order = await findOrderById(deps.db, orderId);
+    if (!order) throw new HttpProblem(404, 'order_not_found', 'No such order');
+    const now = deps.now();
     // Confirming an order paid online needs its payment in (ADR 0019).
     const payment = await findPaymentForOrder(deps.db, orderId);
+    const email = await deps.emails.orderTransition(order, input.transition, now);
     const result = await transitionOrder(deps.db, {
       orderId,
+      ...(email ? { inTransaction: email } : {}),
       paid: payment?.status === 'paid',
       transition: input.transition,
       actor: { type: 'admin_user', id: c.get('user').id },
-      now: deps.now(),
+      now,
       ...(input.note === undefined ? {} : { note: input.note }),
       ...(input.expectedVersion === undefined ? {} : { expectedVersion: input.expectedVersion }),
     });

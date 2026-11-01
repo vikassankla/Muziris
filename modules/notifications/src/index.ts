@@ -25,6 +25,7 @@ export {
   type QueueEmailInput,
   type SendResult,
 } from './outbox.js';
+export { ORDER_EMAIL_SETTING } from './settings.js';
 export { smtpTransport } from './smtp.js';
 export {
   escapeHtml,

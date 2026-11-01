@@ -153,6 +153,9 @@ importers:
       '@muziris/money':
         specifier: workspace:*
         version: link:../../packages/money
+      '@muziris/notifications':
+        specifier: workspace:*
+        version: link:../../modules/notifications
       '@muziris/orders':
         specifier: workspace:*
         version: link:../../modules/orders
@@ -335,6 +338,9 @@ importers:
       '@muziris/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@muziris/platform':
+        specifier: workspace:*
+        version: link:../platform
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(postgres@3.4.9)

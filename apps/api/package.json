@@ -23,6 +23,7 @@
     "@muziris/db": "workspace:*",
     "@muziris/identity": "workspace:*",
     "@muziris/money": "workspace:*",
+    "@muziris/notifications": "workspace:*",
     "@muziris/orders": "workspace:*",
     "@muziris/payments": "workspace:*",
     "@muziris/platform": "workspace:*",

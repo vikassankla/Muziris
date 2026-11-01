@@ -69,6 +69,7 @@ export {
 export {
   acceptInvitation,
   createInvitation,
+  findInvitation,
   findPendingInvitation,
   INVITATION_DEFAULT_TTL_MS,
   INVITATION_MAX_TTL_MS,
