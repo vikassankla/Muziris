@@ -178,6 +178,16 @@ export async function performTransition<TStep extends string, TTransition extend
   db: Executor,
   definition: WorkflowDefinition<TStep, TTransition, TContext>,
   input: PerformTransitionInput,
+  options: {
+    /**
+     * Runs after the definition's actions, in the same transaction, for what the caller adds to
+     * this one transition (the order emails, ADR 0020). Throwing rolls the transition back.
+     */
+    inTransaction?: (
+      tx: WorkflowTransaction,
+      result: { instance: WorkflowInstance<TStep>; entry: TransitionLogEntry },
+    ) => Promise<void>;
+  } = {},
 ): Promise<TransitionResult<TStep>> {
   const values = transitionInputSchema.parse(input);
   const context = definition.context.parse(values.context);
@@ -241,7 +251,9 @@ export async function performTransition<TStep extends string, TTransition extend
         now: values.now,
       });
     }
-    return { ok: true, instance: after, entry: toEntry(logged) };
+    const entry = toEntry(logged);
+    if (options.inTransaction) await options.inTransaction(tx, { instance: after, entry });
+    return { ok: true, instance: after, entry };
   });
 }
 

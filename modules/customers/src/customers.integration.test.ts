@@ -32,6 +32,7 @@ import {
   listBuyerUsers,
   listPendingInvitations,
   listSubsidiaries,
+  resendInvitation,
   revokeInvitation,
   setCustomerGroup,
   setCustomerParent,
@@ -457,6 +458,74 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         acceptInvitation(handle.db, { token, password: PASSWORD, now: NOW }),
       ).rejects.toBeInstanceOf(EmailTakenError);
       expect((await listPendingInvitations(handle.db, acme.id, NOW)).invitations).toHaveLength(1);
+    });
+
+    it('runs the hook in the invitation transaction, and keeps nothing when it throws', async () => {
+      const acme = await createCustomer(handle.db, { name: 'Acme' });
+      const input = {
+        customerId: acme.id,
+        email: 'meera@acme.example',
+        displayName: 'Meera',
+        invitedByUserId: MISSING_ID,
+        now: NOW,
+      };
+      await expect(
+        createInvitation(handle.db, input, {
+          inTransaction: () => Promise.reject(new Error('the email could not be queued')),
+        }),
+      ).rejects.toThrow('the email could not be queued');
+      expect((await listPendingInvitations(handle.db, acme.id, NOW)).invitations).toEqual([]);
+      const tokens: string[] = [];
+      const created = await createInvitation(handle.db, input, {
+        inTransaction: (_tx, c) => {
+          tokens.push(c.token);
+          return Promise.resolve();
+        },
+      });
+      expect(tokens).toEqual([created.token]);
+    });
+
+    it('sends an invitation again with a new token and the same life, revoking the old one', async () => {
+      const ttlMs = 3 * 24 * 3_600_000;
+      const acme = await createCustomer(handle.db, { name: 'Acme' });
+      const first = await createInvitation(handle.db, {
+        customerId: acme.id,
+        email: 'meera@acme.example',
+        displayName: 'Meera',
+        invitedByUserId: MISSING_ID,
+        now: NOW,
+        ttlMs,
+      });
+      // Expired invitations can be sent again too.
+      const later = new Date(NOW.getTime() + ttlMs + 1);
+      const again = await resendInvitation(handle.db, {
+        invitationId: first.invitation.id,
+        invitedByUserId: MISSING_ID,
+        now: later,
+      });
+      expect(again.token).not.toBe(first.token);
+      expect(again.invitation).toMatchObject({ email: 'meera@acme.example', displayName: 'Meera' });
+      expect(again.invitation.expiresAt.getTime() - later.getTime()).toBe(ttlMs);
+      await expectRefused(
+        findPendingInvitation(handle.db, first.token, later),
+        'invitation_closed',
+      );
+      await expectRefused(
+        resendInvitation(handle.db, {
+          invitationId: first.invitation.id,
+          invitedByUserId: MISSING_ID,
+          now: later,
+        }),
+        'invitation_closed',
+      );
+      await expectRefused(
+        resendInvitation(handle.db, {
+          invitationId: MISSING_ID,
+          invitedByUserId: MISSING_ID,
+          now: later,
+        }),
+        'invitation_not_found',
+      );
     });
 
     it('refuses invitations to unknown customers', async () => {

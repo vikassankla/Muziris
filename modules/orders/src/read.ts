@@ -1,6 +1,6 @@
 import { buyerScope, getBuyerAccess } from '@muziris/access';
 import { descendantCustomerIds, findBuyerUser } from '@muziris/customers';
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import {
   isCurrencyCode,
   money,
@@ -377,19 +377,34 @@ export async function transitionOrder(
     expectedVersion?: number;
     /** True when an order paid online has been paid; the API reads it from payments. */
     paid?: boolean;
+    /**
+     * Runs in the transition's transaction with the order as it was before the move, for the
+     * order emails (ADR 0020). Throwing rolls the transition back.
+     */
+    inTransaction?: (
+      tx: Transaction,
+      event: { order: Order; transition: OrderTransition; note: string | null },
+    ) => Promise<void>;
   },
 ): Promise<TransitionOrderResult> {
   const order = await findOrderById(db, input.orderId);
   if (!order) throw new OrderError('order_not_found', 'No order with that id');
-  const result = await performTransition(db, orderWorkflow, {
-    subjectId: order.id,
-    transition: input.transition,
-    context: { paymentSettled: order.paymentMethod === 'terms' || input.paid === true },
-    actor: input.actor,
-    now: input.now,
-    ...(input.note === undefined ? {} : { note: input.note }),
-    ...(input.expectedVersion === undefined ? {} : { expectedVersion: input.expectedVersion }),
-  });
+  const hook = input.inTransaction;
+  const event = { order, transition: input.transition, note: input.note ?? null };
+  const result = await performTransition(
+    db,
+    orderWorkflow,
+    {
+      subjectId: order.id,
+      transition: input.transition,
+      context: { paymentSettled: order.paymentMethod === 'terms' || input.paid === true },
+      actor: input.actor,
+      now: input.now,
+      ...(input.note === undefined ? {} : { note: input.note }),
+      ...(input.expectedVersion === undefined ? {} : { expectedVersion: input.expectedVersion }),
+    },
+    hook ? { inTransaction: (tx) => hook(tx, event) } : {},
+  );
   if (!result.ok) return result;
   const updated = await findOrderById(db, order.id);
   if (!updated) throw new Error(`Order ${order.id} vanished`);

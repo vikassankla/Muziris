@@ -35,6 +35,7 @@ import {
   SHIPPING_FLAT_RATE,
   transitionOrder,
   type CheckoutDependencies,
+  type PlacedOrder,
   type PlaceOrderRequest,
 } from './index.js';
 import { gstTestProvider } from './test/gst-test-provider.js';
@@ -730,6 +731,95 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
         online,
       );
       expect(again).toEqual({ ok: false, refusal: { code: 'idempotency_key_reused' } });
+    });
+  });
+
+  describe('code that runs in the order transactions (ADR 0020)', () => {
+    it('hands the placed order to the hook, and rolls the order back when the hook throws', async () => {
+      const w = await world();
+      const seen: PlacedOrder[] = [];
+      await expect(
+        placeOrder(
+          handle.db,
+          {
+            buyerUserId: w.ravi,
+            request: request(w, { idempotencyKey: randomUUID() }),
+            now: NOW,
+            inTransaction: () => Promise.reject(new Error('the email could not be queued')),
+          },
+          deps,
+        ),
+      ).rejects.toThrow('the email could not be queued');
+      expect((await listOrders(handle.db, {})).orders).toEqual([]);
+
+      const placed = await placeOrder(
+        handle.db,
+        {
+          buyerUserId: w.ravi,
+          request: request(w),
+          now: NOW,
+          inTransaction: async (tx, order) => {
+            // The hook sees the order inside the transaction that is writing it.
+            const rows = await tx.execute(sql`select 1 from orders_order where id = ${order.id}`);
+            expect(rows).toHaveLength(1);
+            seen.push(order);
+          },
+        },
+        deps,
+      );
+      if (!placed.ok) throw new Error(placed.refusal.code);
+      expect(seen).toEqual([
+        expect.objectContaining({
+          id: placed.order.id,
+          number: placed.order.number,
+          placedBy: w.ravi,
+          paymentMethod: 'terms',
+          dueOn: placed.order.dueOn,
+          grandTotal: placed.order.grandTotal,
+        }),
+      ]);
+    });
+
+    it('runs the transition hook with the order and the move, and rolls the move back on a throw', async () => {
+      const w = await world();
+      const placed = await placeOrder(
+        handle.db,
+        { buyerUserId: w.ravi, request: request(w), now: NOW },
+        deps,
+      );
+      if (!placed.ok) throw new Error(placed.refusal.code);
+      const admin = { type: 'admin_user' as const, id: randomUUID() };
+      await expect(
+        transitionOrder(handle.db, {
+          orderId: placed.order.id,
+          transition: 'decline',
+          actor: admin,
+          now: NOW,
+          inTransaction: () => Promise.reject(new Error('no')),
+        }),
+      ).rejects.toThrow('no');
+      expect((await orderHistory(handle.db, placed.order.id)).map((e) => e.toStep)).toEqual([
+        'new',
+      ]);
+      const events: unknown[] = [];
+      await transitionOrder(handle.db, {
+        orderId: placed.order.id,
+        transition: 'decline',
+        actor: admin,
+        now: NOW,
+        note: 'Out of stock',
+        inTransaction: (_tx, event) => {
+          events.push({
+            number: event.order.number,
+            transition: event.transition,
+            note: event.note,
+          });
+          return Promise.resolve();
+        },
+      });
+      expect(events).toEqual([
+        { number: placed.order.number, transition: 'decline', note: 'Out of stock' },
+      ]);
     });
   });
 });

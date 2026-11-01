@@ -13,7 +13,7 @@ import {
   type Address,
   type BuyerViewer,
 } from '@muziris/customers';
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import {
   compare,
   isCurrencyCode,
@@ -415,9 +415,31 @@ async function replay(
  * and starts its workflow in one transaction. Repeating an idempotency key returns the first
  * order, even when two attempts race.
  */
+/** What placing an order tells the code that runs in its transaction (ADR 0020). */
+export interface PlacedOrder {
+  id: string;
+  number: string;
+  websiteId: string;
+  customerName: string;
+  placedBy: string;
+  grandTotal: Money;
+  purchaseOrderNumber: string | null;
+  paymentMethod: PaymentMethod;
+  dueOn: string | null;
+}
+
 export async function placeOrder(
   db: Database,
-  input: { buyerUserId: string; request: PlaceOrderRequest; now: Date },
+  input: {
+    buyerUserId: string;
+    request: PlaceOrderRequest;
+    now: Date;
+    /**
+     * Runs in the order's transaction once it is written, for the order emails (ADR 0020).
+     * Throwing rolls the order back. A replayed request does not run it again.
+     */
+    inTransaction?: (tx: Transaction, order: PlacedOrder) => Promise<void>;
+  },
   deps: CheckoutDependencies,
 ): Promise<PlaceOrderResult> {
   const request = placeOrderRequestSchema.parse(input.request);
@@ -474,7 +496,7 @@ export async function placeOrder(
           grandTotalMinor: t.grandTotal.minor,
           placedAt: input.now,
         })
-        .returning({ id: orders.id });
+        .returning({ id: orders.id, number: orders.number });
       if (!row) throw new Error('Order insert returned no row');
       await tx.insert(orderLines).values(
         t.lines.map((l) => ({
@@ -531,6 +553,19 @@ export async function placeOrder(
         actor: { type: 'buyer_user', id: buyerUserId },
         now: input.now,
       });
+      if (input.inTransaction) {
+        await input.inTransaction(tx, {
+          id: row.id,
+          number: row.number,
+          websiteId: p.website.id,
+          customerName: p.customer.name,
+          placedBy: buyerUserId,
+          grandTotal: t.grandTotal,
+          purchaseOrderNumber: request.purchaseOrderNumber ?? null,
+          paymentMethod: request.paymentMethod,
+          dueOn: onTerms ? p.dueOn : null,
+        });
+      }
       return row.id;
     });
   } catch (error) {

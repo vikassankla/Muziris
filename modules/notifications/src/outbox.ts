@@ -1,11 +1,11 @@
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import { and, asc, desc, eq, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { outbox, type NotificationKind, type OutboxStatus } from './db/schema.js';
 import type { RenderedEmail } from './templates.js';
 
 /** The database or an open transaction: an email is queued in the transaction of its change. */
-export type Executor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
+export type Executor = Database | Transaction;
 
 /** Minutes to wait after each failed attempt; the fifth failure gives up. */
 export const RETRY_DELAYS_MINUTES = [1, 5, 30, 120] as const;

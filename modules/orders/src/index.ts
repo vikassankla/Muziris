@@ -13,6 +13,7 @@ export {
   type LineProblem,
   type LineProblemCode,
   type PlaceOrderRequest,
+  type PlacedOrder,
   type PlaceOrderResult,
 } from './checkout.js';
 export { OrderError, type OrderErrorCode } from './errors.js';
