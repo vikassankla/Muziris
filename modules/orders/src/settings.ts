@@ -1,5 +1,6 @@
 import { defineSetting } from '@muziris/platform';
 import { z } from 'zod';
+import { PAYMENT_METHODS, type PaymentMethod } from './payment-methods.js';
 
 // Settings checkout reads (ADR 0016), resolved customer, customer group, website, organization
 // and global, as ADR 0003 does.
@@ -36,4 +37,16 @@ export const ORDER_NUMBER_PREFIX = defineSetting({
     .regex(/^[A-Z][A-Z0-9]{0,9}$/, 'Use 1 to 10 capital letters or digits, starting with a letter'),
   defaultValue: 'MZ',
   allowedScopes: ['website', 'organization', 'global'],
+});
+
+/**
+ * How customers may pay (ADR 0019), in the order checkout offers them. A gateway method is
+ * offered only when its keys are configured and it takes the order's currency.
+ */
+export const PAYMENT_METHODS_SETTING = defineSetting<PaymentMethod[]>({
+  key: 'payment.methods',
+  description: 'Payment methods checkout offers: terms, stripe_card, stripe_ach, razorpay',
+  schema: z.array(z.enum(PAYMENT_METHODS)).max(PAYMENT_METHODS.length),
+  defaultValue: ['terms'],
+  allowedScopes: ['customer', 'customer_group', 'website', 'organization', 'global'],
 });

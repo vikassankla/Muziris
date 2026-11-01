@@ -31,7 +31,13 @@ import { z } from 'zod';
 import { orderAddresses, orderLines, orders, orderTaxLines } from './db/schema.js';
 import { isIdempotencyConflict } from './errors.js';
 import { findOrderById, type Order } from './read.js';
-import { ORDER_NUMBER_PREFIX, PAYMENT_TERM_DAYS, SHIPPING_FLAT_RATE } from './settings.js';
+import { availableMethods, PAYMENT_METHODS, type PaymentMethod } from './payment-methods.js';
+import {
+  ORDER_NUMBER_PREFIX,
+  PAYMENT_METHODS_SETTING,
+  PAYMENT_TERM_DAYS,
+  SHIPPING_FLAT_RATE,
+} from './settings.js';
 import {
   computeTotals,
   flatRateShipping,
@@ -70,6 +76,8 @@ export const checkoutRequestSchema = z.object({
 export type CheckoutRequest = z.input<typeof checkoutRequestSchema>;
 
 export const placeOrderRequestSchema = checkoutRequestSchema.extend({
+  /** One of the preview's paymentMethods (ADR 0019). */
+  paymentMethod: z.enum(PAYMENT_METHODS).default('terms'),
   /** A fresh UUID per attempt; repeating it returns the same order. */
   idempotencyKey: z.uuid(),
   /** The grand total the buyer saw, in major units ("1250.50"). */
@@ -84,6 +92,8 @@ export type PlaceOrderRequest = z.input<typeof placeOrderRequestSchema>;
 /** What a checkout needs besides the database: the tax provider, and other stages to replace. */
 export interface CheckoutDependencies {
   tax: TaxProvider;
+  /** Gateway methods whose keys are configured (ADR 0019); terms needs none. */
+  paymentMethods?: ReadonlySet<PaymentMethod>;
   lineDiscounts?: TotalsProviders['lineDiscounts'];
   orderDiscounts?: TotalsProviders['orderDiscounts'];
   shippingDiscounts?: TotalsProviders['shippingDiscounts'];
@@ -119,10 +129,14 @@ export type CheckoutRefusal =
   /** The idempotency key was used before for a different order. */
   | { code: 'idempotency_key_reused' }
   /** Tax cannot be computed, for the lines named or the whole order; nothing is sold untaxed. */
-  | { code: 'tax_problems'; problems: readonly TaxProblem[] };
+  | { code: 'tax_problems'; problems: readonly TaxProblem[] }
+  /** No payment method is offered for this customer and currency, or not the one chosen. */
+  | { code: 'payment_method_not_available' };
 
 export interface CheckoutPreview {
   totals: Totals;
+  /** The ways the buyer may pay this order, in the order to offer them. */
+  paymentMethods: PaymentMethod[];
   paymentTermDays: number;
   /** The day payment would be due if placed now, in the website's time zone. */
   dueOn: string;
@@ -165,6 +179,7 @@ interface Prepared {
   billing: Address;
   shipping: Address;
   totals: Totals;
+  paymentMethods: PaymentMethod[];
   paymentTermDays: number;
   dueOn: string;
 }
@@ -298,10 +313,17 @@ async function prepare(
     websiteId: website.id,
     organizationId: website.organizationId,
   };
-  const [term, rate] = await Promise.all([
+  const [term, rate, methods] = await Promise.all([
     getSetting(db, PAYMENT_TERM_DAYS, scope),
     getSetting(db, SHIPPING_FLAT_RATE, scope),
+    getSetting(db, PAYMENT_METHODS_SETTING, scope),
   ]);
+  const paymentMethods = availableMethods(
+    methods.value,
+    deps.paymentMethods ?? new Set(),
+    currency,
+  );
+  if (paymentMethods.length === 0) return refuse({ code: 'payment_method_not_available' });
   const computed = await computeTotals(
     priced,
     {
@@ -334,6 +356,7 @@ async function prepare(
       billing,
       shipping,
       totals,
+      paymentMethods,
       paymentTermDays: term.value,
       dueOn: dueDate(now, website.timeZone, term.value),
     },
@@ -349,8 +372,8 @@ export async function previewCheckout(
   const request = checkoutRequestSchema.parse(input.request);
   const result = await prepare(db, z.uuid().parse(input.buyerUserId), request, deps, input.now);
   if (!result.ok) return result;
-  const { totals, paymentTermDays, dueOn } = result.prepared;
-  return { ok: true, preview: { totals, paymentTermDays, dueOn } };
+  const { totals, paymentMethods, paymentTermDays, dueOn } = result.prepared;
+  return { ok: true, preview: { totals, paymentMethods, paymentTermDays, dueOn } };
 }
 
 /** SHA-256 of what makes two attempts the same order. */
@@ -361,6 +384,8 @@ function requestHash(request: z.output<typeof placeOrderRequestSchema>): string 
     request.billingAddressId,
     request.shippingAddressId,
     request.purchaseOrderNumber ?? null,
+    // Left out for terms, so keys from before ADR 0019 still match their orders.
+    ...(request.paymentMethod === 'terms' ? [] : [request.paymentMethod]),
   ]);
   return createHash('sha256').update(canonical, 'utf8').digest('hex');
 }
@@ -409,6 +434,10 @@ export async function placeOrder(
   if (compare(expected, p.totals.grandTotal) !== 0) {
     return { ok: false, refusal: { code: 'prices_changed', expected, totals: p.totals } };
   }
+  if (!p.paymentMethods.includes(request.paymentMethod)) {
+    return { ok: false, refusal: { code: 'payment_method_not_available' } };
+  }
+  const onTerms = request.paymentMethod === 'terms';
 
   const scope = { websiteId: p.website.id, organizationId: p.website.organizationId };
   const prefix = (await getSetting(db, ORDER_NUMBER_PREFIX, scope)).value;
@@ -429,8 +458,10 @@ export async function placeOrder(
           requestHash: hash,
           currency: p.currency,
           purchaseOrderNumber: request.purchaseOrderNumber ?? null,
-          paymentTermDays: p.paymentTermDays,
-          dueOn: p.dueOn,
+          paymentMethod: request.paymentMethod,
+          // An order paid online owes nothing on terms; its payment is tracked by payments.
+          paymentTermDays: onTerms ? p.paymentTermDays : 0,
+          dueOn: onTerms ? p.dueOn : null,
           shippingMethod: t.shippingMethod,
           taxProvider: t.taxProvider,
           sellerTaxId: t.sellerTaxId,

@@ -11,8 +11,11 @@ export const ORDER_TRANSITIONS = ['confirm', 'decline', 'start_processing', 'com
 
 export type OrderTransition = (typeof ORDER_TRANSITIONS)[number];
 
-/** Transitions carry no form data in the pilot. */
-const orderContext = z.object({}).strict();
+/**
+ * What a transition's caller knows: whether the order's payment is settled, that is on terms
+ * or paid online (ADR 0019). An unpaid card order cannot be confirmed.
+ */
+const orderContext = z.object({ paymentSettled: z.boolean() }).strict();
 
 type OrderContext = z.output<typeof orderContext>;
 
@@ -45,6 +48,7 @@ export const orderWorkflow = defineWorkflow<OrderStep, OrderTransition, OrderCon
       description: 'Accept the order',
       from: ['new'],
       to: 'confirmed',
+      guards: [{ name: 'payment_settled', check: ({ context }) => context.paymentSettled }],
       actions: [recordStep],
     },
     decline: {

@@ -28,6 +28,7 @@ import {
   listOrders,
   listOrdersForBuyer,
   orderHistory,
+  PAYMENT_METHODS_SETTING,
   PAYMENT_TERM_DAYS,
   placeOrder,
   previewCheckout,
@@ -626,6 +627,109 @@ describe.skipIf(!url)('orders against PostgreSQL', () => {
         'completed',
       ]);
       expect((await listOrders(handle.db, { step: 'completed' })).orders).toHaveLength(1);
+    });
+  });
+
+  describe('payment methods (ADR 0019)', () => {
+    const online: CheckoutDependencies = {
+      ...deps,
+      paymentMethods: new Set(['razorpay', 'stripe_card']),
+    };
+
+    it('offers the listed methods that are configured and take the currency', async () => {
+      const w = await world();
+      await setSetting(handle.db, PAYMENT_METHODS_SETTING, { type: 'website', id: w.website.id }, [
+        'razorpay',
+        'stripe_card',
+        'terms',
+      ]);
+      const preview = async (d: CheckoutDependencies) => {
+        const result = await previewCheckout(
+          handle.db,
+          { buyerUserId: w.ravi, request: request(w), now: NOW },
+          d,
+        );
+        if (!result.ok) throw new Error(result.refusal.code);
+        return result.preview.paymentMethods;
+      };
+      // Stripe takes USD only; this website sells in INR.
+      expect(await preview(online)).toEqual(['razorpay', 'terms']);
+      expect(await preview(deps)).toEqual(['terms']);
+    });
+
+    it('refuses when nothing is offered, and refuses a method that is not', async () => {
+      const w = await world();
+      await setSetting(handle.db, PAYMENT_METHODS_SETTING, { type: 'website', id: w.website.id }, [
+        'razorpay',
+      ]);
+      const refused = await previewCheckout(
+        handle.db,
+        { buyerUserId: w.ravi, request: request(w), now: NOW },
+        deps,
+      );
+      expect(refused).toEqual({ ok: false, refusal: { code: 'payment_method_not_available' } });
+      const terms = await placeOrder(
+        handle.db,
+        { buyerUserId: w.ravi, request: request(w, { paymentMethod: 'terms' }), now: NOW },
+        online,
+      );
+      expect(terms).toEqual({ ok: false, refusal: { code: 'payment_method_not_available' } });
+    });
+
+    it('places an order paid online with no terms, and confirms it only once paid', async () => {
+      const w = await world();
+      await setSetting(handle.db, PAYMENT_METHODS_SETTING, { type: 'website', id: w.website.id }, [
+        'razorpay',
+      ]);
+      const placed = await placeOrder(
+        handle.db,
+        { buyerUserId: w.ravi, request: request(w, { paymentMethod: 'razorpay' }), now: NOW },
+        online,
+      );
+      if (!placed.ok) throw new Error(placed.refusal.code);
+      expect(placed.order).toMatchObject({
+        paymentMethod: 'razorpay',
+        paymentTermDays: 0,
+        dueOn: null,
+      });
+      const confirm = (paid?: boolean) =>
+        transitionOrder(handle.db, {
+          orderId: placed.order.id,
+          transition: 'confirm',
+          actor: { type: 'admin_user', id: randomUUID() },
+          now: NOW,
+          ...(paid === undefined ? {} : { paid }),
+        });
+      expect(await confirm()).toMatchObject({
+        ok: false,
+        refusal: { code: 'guard_failed', guard: 'payment_settled' },
+      });
+      expect(await confirm(true)).toMatchObject({ ok: true, order: { step: 'confirmed' } });
+    });
+
+    it('treats the same key with another method as a different order', async () => {
+      const w = await world();
+      await setSetting(handle.db, PAYMENT_METHODS_SETTING, { type: 'website', id: w.website.id }, [
+        'terms',
+        'razorpay',
+      ]);
+      const key = randomUUID();
+      const first = await placeOrder(
+        handle.db,
+        { buyerUserId: w.ravi, request: request(w, { idempotencyKey: key }), now: NOW },
+        online,
+      );
+      expect(first.ok).toBe(true);
+      const again = await placeOrder(
+        handle.db,
+        {
+          buyerUserId: w.ravi,
+          request: request(w, { idempotencyKey: key, paymentMethod: 'razorpay' }),
+          now: NOW,
+        },
+        online,
+      );
+      expect(again).toEqual({ ok: false, refusal: { code: 'idempotency_key_reused' } });
     });
   });
 });
