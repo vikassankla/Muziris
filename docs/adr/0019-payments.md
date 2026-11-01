@@ -62,8 +62,8 @@ Each gateway's keys are environment variables, read and checked with zod in
   arrive if manual capture is ever needed.
 - **The flow:**
   1. The buyer picks a card or bank method at checkout. `placeOrder` creates the order as now,
-     with `payment_method` set to the method, a `pending` payment, and the due date of terms
-     left empty.
+     with `payment_method` set to the method and the due date of terms left empty. The
+     `payment` row is made by `startPayment` (see "As built").
   2. A new mutation, `startPayment(orderNumber)`, creates the PaymentIntent or the Razorpay
      order on the server, for the order's grand total in minor units. It returns what the
      browser needs: the client secret for Stripe, or the order id for Razorpay.
@@ -94,11 +94,42 @@ Each gateway's keys are environment variables, read and checked with zod in
 - **Storefront GraphQL:**
   - `checkoutPreview` lists the payment methods available.
   - `placeOrder` takes `paymentMethod`.
-  - New mutation `startPayment`.
-  - `Order` gains `payment { method status }`.
+  - New mutations `startPayment` and `checkPayment`.
+  - `Order` gains `payment { status amount refunded }`; `paymentMethod` is an enum.
 - **Admin:** the order view shows the payment and its transaction log, under `order.view`.
 - **Storefront:** checkout gains a payment method choice. A payment step follows placing the
   order, and the order page shows the payment's status and a "Pay now" for a pending payment.
+
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **The payment row is made at `startPayment`, not at `placeOrder`.** Placing an order does not
+  call a gateway, so checkout stays fast and works when a gateway is down. Until the buyer
+  presses Pay now the order reads as `pending` with no gateway reference. Pressing it again
+  reuses the same PaymentIntent or Razorpay order.
+- **`checkPayment(orderNumber)`** is the "ask the gateway once" of step 5, as its own mutation.
+  The storefront calls it when the order page opens on a pending payment, and after Razorpay's
+  handler or Stripe's return. Its reading is logged with the event id `poll:<status>:<ref>`, so
+  repeating it adds nothing.
+- **`due_on` is nullable.** An online order has payment term 0 and no due date; a check
+  constraint keeps a due date on every order on terms.
+- **Methods are a setting.** `payment.methods` (default `["terms"]`) lists what a website
+  offers; a method is shown only when it is also configured in the environment and matches the
+  order's currency (Stripe in USD, Razorpay in INR in the pilot). Asking for anything else is
+  the refusal `payment_method_not_available`.
+- **Confirming needs the payment.** The `payment_settled` guard on `confirm` answers 409
+  `payment_not_received` in the admin API. Orders on terms are not affected.
+- **Content security policy.** The storefront build adds a CSP meta tag naming the gateways'
+  script, frame and connect hosts. The hosting should also send it as a header, which a meta tag
+  cannot fully replace (`frame-ancestors`, reporting).
+- **Webhooks** take at most 64 KB, are rate limited to 600 a minute per gateway and client IP,
+  and answer 404 for a gateway that is not configured. They log the event type and outcome,
+  never bodies, headers or signatures. Signed events that change nothing (unknown payment,
+  amount mismatch) are still acknowledged with 200, so the gateway stops retrying; they are kept
+  in the log for the admin to see.
+- **Known-answer tests** use vectors computed with `openssl dgst -sha256 -hmac`, not the
+  gateways' published examples. The manual test-mode run against both gateways is still to do.
 
 ## Consequences
 
@@ -109,7 +140,7 @@ Each gateway's keys are environment variables, read and checked with zod in
   trusted-origin guard and the session middleware, and are protected by their signatures, a body
   size limit and a rate limit.
 - Tests:
-  - Known-answer tests for both signature schemes, using the gateways' documented examples.
+  - Known-answer tests for both signature schemes (vectors computed with openssl).
   - Webhook idempotency and amount checks.
   - A fake gateway server for the flow.
   - A manual run against both gateways' test modes, with test cards and the UPI test id.
