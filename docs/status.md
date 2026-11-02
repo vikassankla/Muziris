@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-01
+Last updated: 2026-11-02
 
 ## Goal
 
@@ -29,12 +29,14 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Storefront | Signed-in buyers: sign-in, catalogue, product page with a live price box, search, lists, quick order, checkout          | `apps/storefront`        |
 | Orders     | Checkout preview and place with re-checks and idempotency, totals pipeline, order copies, numbers, terms, workflow      | `modules/orders`         |
 | Lists      | Shopping lists scoped by buyer access level, lines with notes, duplicate and move; admin reads under `customer.view`    | `modules/shopping-lists` |
+| Payments   | Stripe and Razorpay in test mode: one payment per order, signed webhooks, gateway event log, Pay now in the storefront  | `modules/payments`       |
+| Emails     | Outbox queued with each change, SMTP sender with retries, eight templates, invitations accepted from the email link     | `modules/notifications`  |
 
-Decisions are recorded in `docs/adr/0001` to `0017`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0020`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are proposed, in review. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -109,11 +111,13 @@ review).
    permissions `tax.view` and `tax.manage`. Migrations `0011` to `0013`. Four choices in the
    ADR are marked for a tax adviser to confirm before go-live. Not built yet: the tax admin
    screens, and the product tax code fields in the admin app.
-9. Order screens. **In review**, not merged. Admin `/orders` (status filter) and
+9. Order screens. **Merged** (PR 27, 2026-11-02, through PR 28, which contained its commits;
+   approved by Vikas in chat). Admin `/orders` (status filter) and
    `/orders/$orderId` (lines, taxes per rate, addresses, payment, progress, history, workflow
-   moves for `order.manage`); storefront `/orders` and `/orders/$number`. Not built: the
-   storefront checkout page, which needs shopping lists or quick order first (ADR 0018).
-10. Shopping lists, quick order and the checkout page (ADR 0018). **In review**, not merged.
+   moves for `order.manage`); storefront `/orders` and `/orders/$number`. The storefront
+   checkout page came with item 10.
+10. Shopping lists, quick order and the checkout page (ADR 0018). **Merged** (PR 28, 2026-11-02,
+    as c2ccd2f, approved by Vikas in chat).
     `modules/shopping-lists` (migration `0014`), scoped by the `shopping_list.manage` access
     level; storefront GraphQL list queries and eight mutations, `productsBySkus` (100 SKUs per
     call); admin reads under `/admin/v1/shopping-lists` (`customer.view`). Storefront
@@ -123,8 +127,9 @@ review).
     in-memory quick order; live preview; place with an idempotency key kept across retries;
     after a list checkout, an offer to empty it). Not built: SKU typeahead in quick order,
     moving lines between lists in the storefront (the API has it), and admin list screens.
-11. Payments through Stripe and Razorpay, in test mode (ADR 0019). **In review**, not merged.
-    This is payments and secrets, so CLAUDE.md rule 4 asks for a second human review.
+11. Payments through Stripe and Razorpay, in test mode (ADR 0019). **Merged** (PR 29, 2026-11-02,
+    as a6e00a5, approved by Vikas in chat, with no second review recorded on GitHub). This is
+    payments and secrets, so CLAUDE.md rule 4 asks for a second human review.
     `modules/payments` (migration `0015`): one payment per order and a log of gateway events,
     unique per event; Stripe and Razorpay over `fetch` with HMAC signature checks and no SDKs.
     Keys come only from the environment (`STRIPE_*`, `RAZORPAY_*`, `PAYMENTS_LIVE`; see
@@ -135,7 +140,8 @@ review).
     security policy; admin: the payment and its gateway events on the order page. Not done: the
     manual test-mode run against both gateways, the CSP as a hosting header, refunds from the
     admin.
-12. Transactional emails through an outbox (ADR 0020). **In review**, not merged. This touches
+12. Transactional emails through an outbox (ADR 0020). **Merged** (PR 30, 2026-11-02, as
+    4a6afe5, approved by Vikas in chat, with no second review recorded on GitHub). This touches
     authentication, access control and secrets, so CLAUDE.md rule 4 asks for a second human
     review. `modules/notifications` (migration `0016`): an outbox queued in the transaction of
     each change, sent with `FOR UPDATE SKIP LOCKED`, retried after 1, 5, 30 and 120 minutes,

@@ -8,26 +8,29 @@ Status: **pre-release**. The pilot targets 1 December 2026. Nothing here is prod
 
 ## What is in this repository
 
-| Path                 | What it is                                                                   |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `apps/api`           | The HTTP API (Hono on Node.js): health checks today, the APIs later          |
-| `apps/admin`         | The admin app (React, Vite, TanStack Router, shadcn/ui)                      |
-| `apps/storefront`    | The buyer storefront: sign-in, catalogue, product prices, search             |
-| `modules/platform`   | Organization, websites, and settings that resolve from customer to global    |
-| `modules/identity`   | Admin and buyer accounts, password hashing, sessions, rate limiting          |
-| `modules/access`     | Admin roles and permissions, buyer roles with access levels, query scoping   |
-| `modules/workflow`   | Workflows declared in code: steps, transitions, guards, actions, log         |
-| `modules/customers`  | Customer hierarchy, customer groups, buyer users, invitations, addresses     |
-| `modules/catalog`    | Simple products, product units with precision, category tree, attributes     |
-| `modules/pricing`    | Price lists, assignments, the fallback chain and the combined price build    |
-| `modules/visibility` | Product and category visibility rules, the visibility build, buyer scoping   |
-| `modules/search`     | Product search: full-text and trigram index, ranking, buyer-scoped search    |
-| `modules/tax`        | GST and US sales tax: registrations, dated rates, exemptions, the provider   |
-| `modules/orders`     | Checkout (preview and place), the totals pipeline, orders and their workflow |
-| `packages/db`        | PostgreSQL connection and the ordered migration runner                       |
-| `packages/money`     | Exact money and decimal maths, currency rules, lakh and crore formatting     |
-| `packages/ui-tokens` | The design tokens (CSS) the admin app and the storefront share               |
-| `docs/`              | Glossary, architecture decision records, admin and storefront design boards  |
+| Path                     | What it is                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `apps/api`               | The HTTP API (Hono on Node.js): health checks today, the APIs later           |
+| `apps/admin`             | The admin app (React, Vite, TanStack Router, shadcn/ui)                       |
+| `apps/storefront`        | The buyer storefront: catalogue, search, lists, quick order, checkout, orders |
+| `modules/platform`       | Organization, websites, and settings that resolve from customer to global     |
+| `modules/identity`       | Admin and buyer accounts, password hashing, sessions, rate limiting           |
+| `modules/access`         | Admin roles and permissions, buyer roles with access levels, query scoping    |
+| `modules/workflow`       | Workflows declared in code: steps, transitions, guards, actions, log          |
+| `modules/customers`      | Customer hierarchy, customer groups, buyer users, invitations, addresses      |
+| `modules/catalog`        | Simple products, product units with precision, category tree, attributes      |
+| `modules/pricing`        | Price lists, assignments, the fallback chain and the combined price build     |
+| `modules/visibility`     | Product and category visibility rules, the visibility build, buyer scoping    |
+| `modules/search`         | Product search: full-text and trigram index, ranking, buyer-scoped search     |
+| `modules/tax`            | GST and US sales tax: registrations, dated rates, exemptions, the provider    |
+| `modules/orders`         | Checkout (preview and place), the totals pipeline, orders and their workflow  |
+| `modules/shopping-lists` | Shopping lists scoped by buyer access level, lines with notes                 |
+| `modules/payments`       | Stripe and Razorpay payments for orders, signed webhooks, the event log       |
+| `modules/notifications`  | Transactional emails: the outbox, templates, the SMTP sender                  |
+| `packages/db`            | PostgreSQL connection and the ordered migration runner                        |
+| `packages/money`         | Exact money and decimal maths, currency rules, lakh and crore formatting      |
+| `packages/ui-tokens`     | The design tokens (CSS) the admin app and the storefront share                |
+| `docs/`                  | Glossary, architecture decision records, admin and storefront design boards   |
 
 ## Run it locally
 
@@ -77,6 +80,11 @@ registration (a GSTIN, or US permits per state) and rates under `/admin/v1/tax`,
 product needs its HSN or SAC code (India). A missing code, rate or registration refuses checkout
 with `TAX_PROBLEMS`, naming the lines; nothing is sold without tax. Orders are listed and moved
 through their workflow under `/admin/v1/orders`.
+
+Orders can be paid on terms or online through Stripe or Razorpay in test mode (ADR 0019); the
+gateway keys come from the environment (see `.env.example`). Invitations, order updates and
+payments send emails through an outbox (ADR 0020); locally Mailpit receives them at
+http://localhost:8025. The catalogue of emails is in `docs/notifications.md`.
 
 ### The storefront app
 

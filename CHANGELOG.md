@@ -233,9 +233,34 @@ All notable changes are listed here. The project follows semantic versioning fro
 - `pnpm --filter @muziris/storefront operations`: compiles the storefront's operations into
   TypeScript types and the persisted query registry (`persisted-queries.json`) the API loads.
 - `packages/ui-tokens`: the design tokens, shared by the admin app and the storefront.
+- Order screens: admin `/orders` and `/orders/$orderId` (lines, taxes, addresses, history and
+  workflow moves); storefront `/orders` and `/orders/$number`.
+- `@muziris/shopping-lists` (ADR 0018): shopping lists scoped by the `shopping_list.manage`
+  access level, with lines, notes, duplicate and move. Migration `0014`. Storefront GraphQL list
+  queries and mutations, `productsBySkus`, and admin reads under `/admin/v1/shopping-lists`.
+  Storefront mutations run over POST as persisted operations.
+- Storefront: `/lists`, `/quick-order` (paste or CSV) and `/checkout`, with a live preview and
+  an idempotency key kept across retries.
+- `@muziris/payments` (ADR 0019): one payment per order through Stripe or Razorpay, in test
+  mode, over `fetch` with no SDKs; signed webhooks at `POST /webhooks/stripe` and
+  `/webhooks/razorpay`, and a log of gateway events. Migration `0015`. Keys come only from the
+  environment and are redacted from logs. Orders gain the `payment.methods` setting and a
+  `payment_settled` guard on confirm. Storefront: "Pay by" at checkout and Pay now on the order
+  page, with a content security policy; admin: the payment and its events on the order page.
+- `@muziris/notifications` (ADR 0020): transactional emails queued in an outbox in the
+  transaction of each change, sent over SMTP with retries, with secret bodies emptied once sent.
+  Migration `0016`. Eight emails, listed in `docs/notifications.md`. New settings `SMTP_URL`,
+  `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` and `STOREFRONT_WEBSITE`. New dependency `nodemailer`.
+- Accepting an invitation: storefront `/accept-invitation` and
+  `POST /storefront/v1/auth/invitation` and `/accept-invitation`, rate limited per IP and token.
+- Admin: "Send again" on an invitation, `POST /admin/v1/customers/invitations/:invitationId/resend`,
+  and System > Emails over `/admin/v1/notifications`, with the new permissions
+  `notification.view` and `notification.manage`.
 
 ### Changed
 
+- API: creating an invitation no longer returns its token; the invitation email carries the
+  link instead (ADR 0020).
 - `@muziris/customers`: `listCustomerGroups`, `listBuyerUsers`, `listPendingInvitations` and
   `listAddresses` return a page (`{ <items>, nextAfter }`) instead of an array.
   `@muziris/access`: so does `listBuyerRoles`.
