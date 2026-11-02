@@ -30,6 +30,10 @@ export const REDACTED_PATHS = [
   'STRIPE_WEBHOOK_SECRET',
   'RAZORPAY_KEY_SECRET',
   'RAZORPAY_WEBHOOK_SECRET',
+  // The SMTP URL can carry the mail server's password (ADR 0020).
+  'smtpUrl',
+  '*.smtpUrl',
+  'SMTP_URL',
 ];
 
 export function createLogger(level: string, destination?: pino.DestinationStream): Logger {

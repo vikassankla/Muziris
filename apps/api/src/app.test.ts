@@ -175,6 +175,12 @@ describe('logging', () => {
     expect(lines.join('')).not.toMatch(/hidden/);
   });
 
+  it('redacts the SMTP URL, which can carry the mail password (ADR 0020)', () => {
+    const { logger, lines } = captureLogs();
+    logger.info({ mail: { smtpUrl: 'smtps://u:hidden@mail' }, smtpUrl: 'smtp://hidden' }, 'mail');
+    expect(lines.join('')).not.toMatch(/hidden/);
+  });
+
   it('logs path but never the query string', async () => {
     const { app, lines } = makeApp();
     await app.request('/health/live?token=abc123');
@@ -186,6 +192,11 @@ describe('logging', () => {
 
 describe('loadEnv', () => {
   const valid = { DATABASE_URL: 'postgres://u:p@localhost:5432/db' };
+  const productionMail = {
+    SMTP_URL: 'smtps://mailer:s3cret-mail@mail.example.com:465',
+    MAIL_FROM: 'Shop <orders@example.com>',
+    STOREFRONT_PUBLIC_URL: 'https://shop.example.com',
+  };
 
   it('applies defaults', () => {
     expect(loadEnv(valid)).toMatchObject({ PORT: 4000, HOST: '127.0.0.1', CORS_ORIGINS: [] });
@@ -209,19 +220,50 @@ describe('loadEnv', () => {
 
   it('refuses plain http origins in production', () => {
     expect(() =>
-      loadEnv({ ...valid, NODE_ENV: 'production', CORS_ORIGINS: 'http://shop.example.com' }),
+      loadEnv({
+        ...valid,
+        ...productionMail,
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'http://shop.example.com',
+      }),
     ).toThrow(/https/);
   });
 
   it('runs storefront query text outside production only', () => {
     expect(loadEnv(valid).STOREFRONT_ADHOC_QUERIES).toBe('allow');
-    expect(loadEnv({ ...valid, NODE_ENV: 'production' }).STOREFRONT_ADHOC_QUERIES).toBe('deny');
+    expect(
+      loadEnv({ ...valid, ...productionMail, NODE_ENV: 'production' }).STOREFRONT_ADHOC_QUERIES,
+    ).toBe('deny');
     expect(loadEnv({ ...valid, STOREFRONT_ADHOC_QUERIES: 'deny' }).STOREFRONT_ADHOC_QUERIES).toBe(
       'deny',
     );
     expect(() =>
-      loadEnv({ ...valid, NODE_ENV: 'production', STOREFRONT_ADHOC_QUERIES: 'allow' }),
+      loadEnv({
+        ...valid,
+        ...productionMail,
+        NODE_ENV: 'production',
+        STOREFRONT_ADHOC_QUERIES: 'allow',
+      }),
     ).toThrow(/STOREFRONT_ADHOC_QUERIES/);
+  });
+
+  it('reads mail settings, required in production, without echoing the SMTP password', () => {
+    expect(loadEnv(valid).mail).toMatchObject({
+      smtpUrl: undefined,
+      storefrontUrl: 'http://localhost:5174',
+    });
+    expect(loadEnv({ ...valid, ...productionMail, NODE_ENV: 'production' }).mail.smtpUrl).toBe(
+      productionMail.SMTP_URL,
+    );
+    let message = '';
+    try {
+      loadEnv({ ...valid, NODE_ENV: 'production', SMTP_URL: 'http://mailer:s3cret-mail@x' });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toContain('SMTP_URL');
+    expect(message).toContain('STOREFRONT_PUBLIC_URL: required in production');
+    expect(message).not.toContain('s3cret-mail');
   });
 
   it('reads payment gateways, refusing a half-set one without echoing its keys', () => {
