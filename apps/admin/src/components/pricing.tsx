@@ -236,7 +236,7 @@ export function PricePreviewSheet({
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    listCustomers({ limit: 100 }, controller.signal)
+    listCustomers({ limit: 200 }, controller.signal)
       .then((page) => {
         setCustomers(page.items);
       })
@@ -282,7 +282,7 @@ export function PricePreviewSheet({
         </SheetHeader>
         <form className="flex flex-1 flex-col" onSubmit={(event) => void handleSubmit(event)}>
           <SheetBody>
-            <Field label="Customer" hint="The first 100 customers, by name.">
+            <Field label="Customer" hint="The first 200 customers, by name.">
               {({ id }) => (
                 <Combobox
                   id={id}
