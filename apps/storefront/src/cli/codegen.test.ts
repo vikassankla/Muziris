@@ -19,7 +19,7 @@ describe('the committed operations', () => {
 
   it('key every document by the SHA-256 of its exact text', async () => {
     const registry = JSON.parse(await readFile(REGISTRY_FILE, 'utf8')) as Record<string, string>;
-    expect(Object.keys(registry)).toHaveLength(5);
+    expect(Object.keys(registry)).toHaveLength(21);
     for (const [hash, text] of Object.entries(registry)) expect(sha256(text)).toBe(hash);
   });
 
@@ -48,6 +48,18 @@ describe('compileOperations', () => {
     expect(typescript).toContain('precision: number;');
   });
 
+  it('types a mutation from the Mutation type, with input objects inline', async () => {
+    const { typescript } = await compile(
+      'Add.graphql',
+      'mutation Add($listId: ID!, $lines: [ShoppingListLineInput!]!) { addShoppingListLines(listId: $listId, lines: $lines) { list { id } refusal { code } } }',
+    );
+    expect(typescript).toMatch(
+      /lines: readonly \{[^}]*productId: string;[^}]*note\?: string \| null;/s,
+    );
+    expect(typescript).toContain("kind: 'mutation'");
+    expect(typescript).toMatch(/refusal: \{[^}]*code: 'NOT_ALLOWED' \|/s);
+  });
+
   it.each<[string, string, RegExp]>([
     ['Bad.graphql', 'query Bad { nope }', /Cannot query field "nope"/],
     ['Named.graphql', 'query Other { website { code } }', /name the operation Named/],
@@ -56,6 +68,7 @@ describe('compileOperations', () => {
       'query Two { website { code } } query Three { website { code } }',
       /exactly one/,
     ],
+    ['Sub.graphql', 'subscription Sub { website { code } }', /queries and mutations|subscription/],
     [
       'Frag.graphql',
       'query Frag { website { ...W } } fragment W on Website { code }',

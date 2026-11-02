@@ -657,3 +657,132 @@ export async function setCategoryParent(categoryId: string, parentId: string | n
 export function deleteCategory(categoryId: string) {
   return api(`/catalog/categories/${id(categoryId)}`, none, { method: 'DELETE' });
 }
+
+// Orders (ADR 0016)
+
+export const ORDER_STEPS = ['new', 'confirmed', 'processing', 'completed', 'declined'] as const;
+export type OrderStep = (typeof ORDER_STEPS)[number];
+
+const orderSummarySchema = z.object({
+  id: z.string(),
+  number: z.string(),
+  websiteId: z.string(),
+  customerId: z.string(),
+  customerName: z.string(),
+  placedBy: z.string(),
+  step: z.enum(ORDER_STEPS),
+  purchaseOrderNumber: z.string().nullable(),
+  grandTotal: z.string(),
+  currency: z.string(),
+  placedAt: z.string(),
+});
+export type OrderSummary = z.infer<typeof orderSummarySchema>;
+
+const orderAddressSchema = z.object({
+  label: z.string(),
+  countryCode: z.string(),
+  line1: z.string(),
+  line2: z.string().nullable(),
+  city: z.string(),
+  regionCode: z.string(),
+  postalCode: z.string(),
+  gstin: z.string().nullable(),
+});
+export type OrderAddress = z.infer<typeof orderAddressSchema>;
+
+const orderSchema = orderSummarySchema.extend({
+  paymentMethod: z.string(),
+  paymentTermDays: z.number(),
+  dueOn: z.string(),
+  shippingMethod: z.string(),
+  taxProvider: z.string(),
+  sellerTaxId: z.string().nullable(),
+  taxExemptionCertificate: z.string().nullable(),
+  subtotal: z.string(),
+  discount: z.string(),
+  shipping: z.string(),
+  shippingDiscount: z.string(),
+  tax: z.string(),
+  lines: z.array(
+    z.object({
+      lineNo: z.number(),
+      productId: z.string(),
+      sku: z.string(),
+      productName: z.string(),
+      unitCode: z.string(),
+      unitName: z.string(),
+      quantity: z.string(),
+      unitPrice: z.string(),
+      subtotal: z.string(),
+      discount: z.string(),
+      net: z.string(),
+      taxCode: z.string().nullable(),
+    }),
+  ),
+  taxes: z.array(
+    z.object({
+      lineNo: z.number().nullable(),
+      name: z.string(),
+      rate: z.string(),
+      taxable: z.string(),
+      amount: z.string(),
+    }),
+  ),
+  billingAddress: orderAddressSchema,
+  shippingAddress: orderAddressSchema,
+});
+export type Order = z.infer<typeof orderSchema>;
+
+const orderViewSchema = z.object({
+  order: orderSchema,
+  version: z.number(),
+  transitions: z.array(z.string()),
+  history: z.array(
+    z.object({
+      sequence: z.number(),
+      transition: z.string().nullable(),
+      fromStep: z.string().nullable(),
+      toStep: z.string(),
+      actor: z.object({ type: z.string(), id: z.string().nullable().optional() }),
+      note: z.string().nullable(),
+      occurredAt: z.string(),
+    }),
+  ),
+});
+export type OrderView = z.infer<typeof orderViewSchema>;
+
+export function listOrders(
+  query: {
+    after?: string | undefined;
+    limit?: number;
+    step?: OrderStep | undefined;
+    customerId?: string | undefined;
+  },
+  signal?: AbortSignal,
+): Promise<Page<OrderSummary>> {
+  return page(
+    '/orders',
+    'orders',
+    orderSummarySchema,
+    {
+      ...pageQuery(query.after, query.limit ?? PAGE_SIZE),
+      step: query.step,
+      customerId: query.customerId,
+    },
+    signal,
+  );
+}
+
+export function getOrder(orderId: string, signal?: AbortSignal): Promise<OrderView> {
+  return api(`/orders/${id(orderId)}`, orderViewSchema, { signal });
+}
+
+export function transitionOrder(
+  orderId: string,
+  input: { transition: string; note?: string; expectedVersion: number },
+): Promise<OrderView> {
+  return api(`/orders/${id(orderId)}/transitions`, orderViewSchema, {
+    method: 'POST',
+    body: input,
+  });
+}

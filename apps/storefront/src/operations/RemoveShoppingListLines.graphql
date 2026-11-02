@@ -1,0 +1,19 @@
+# Removes lines from a list.
+mutation RemoveShoppingListLines($listId: ID!, $lineIds: [ID!]!) {
+  removeShoppingListLines(listId: $listId, lineIds: $lineIds) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

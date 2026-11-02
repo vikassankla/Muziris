@@ -1,0 +1,79 @@
+# What the buyer would pay for these lines and addresses, or why they can't order. Saves nothing.
+query CheckoutPreview($input: CheckoutInput!) {
+  checkoutPreview(input: $input) {
+    preview {
+      totals {
+        currency
+        lines {
+          lineNo
+          sku
+          productName
+          unitName
+          quantity
+          unitPrice {
+            amount
+            currency
+          }
+          discount {
+            amount
+            currency
+          }
+          net {
+            amount
+            currency
+          }
+        }
+        taxes {
+          lineNo
+          name
+          rate
+          amount {
+            amount
+            currency
+          }
+        }
+        shippingMethod
+        subtotal {
+          amount
+          currency
+        }
+        discount {
+          amount
+          currency
+        }
+        shipping {
+          amount
+          currency
+        }
+        shippingDiscount {
+          amount
+          currency
+        }
+        tax {
+          amount
+          currency
+        }
+        grandTotal {
+          amount
+          currency
+        }
+      }
+      paymentTermDays
+      dueOn
+    }
+    refusal {
+      code
+      message
+      lines {
+        lineNo
+        code
+        message
+      }
+      taxProblems {
+        lineNo
+        code
+        message
+      }
+    }
+  }
+}

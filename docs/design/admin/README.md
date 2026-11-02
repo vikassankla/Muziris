@@ -11,26 +11,28 @@ They are design data only. The tokens from `muziris.css` (light and dark) live i
 
 ## Boards and routes
 
-| Board                                  | Route in `apps/admin`                   | State                     |
-| -------------------------------------- | --------------------------------------- | ------------------------- |
-| Main (home dashboard)                  | `/`                                     | Built without widgets     |
-| Sidebar, Topbar, CommandPalette        | the signed-in layout                    | Built                     |
-| SignIn                                 | `/sign-in`                              | Built, no two-factor      |
-| Customers                              | `/customers`                            | Built                     |
-| CustomerDetail                         | `/customers/$customerId?tab=…`          | Built (API tabs)          |
-| AddressForms                           | sheet on the customer's Addresses tab   | Built                     |
-| CustomerGroups                         | `/customer-groups`                      | Built                     |
-| Products                               | `/products`                             | Built                     |
-| ProductDetail                          | `/products/$productId`                  | Built (General tab)       |
-| Categories                             | `/categories`                           | Built                     |
-| ProductUnits                           | `/product-units`                        | Built                     |
-| AdminRoles                             | `/admin-roles`, `/admin-roles/$roleId`  | Built                     |
-| BuyerRoles                             | `/buyer-roles`, `/buyer-roles/$roleId`  | Built                     |
-| States                                 | used on every screen                    | Built                     |
-| Tokens                                 | `apps/admin/src/index.css`, `format.ts` | Built                     |
-| Orders, OrderDetail, RFQs, QuoteEditor | none                                    | Designed, waiting on APIs |
-| PriceLists, PriceListDetail            | none                                    | Designed, waiting on APIs |
-| Websites, Settings                     | none                                    | Designed, waiting on APIs |
+| Board                           | Route in `apps/admin`                   | State                     |
+| ------------------------------- | --------------------------------------- | ------------------------- |
+| Main (home dashboard)           | `/`                                     | Built without widgets     |
+| Sidebar, Topbar, CommandPalette | the signed-in layout                    | Built                     |
+| SignIn                          | `/sign-in`                              | Built, no two-factor      |
+| Customers                       | `/customers`                            | Built                     |
+| CustomerDetail                  | `/customers/$customerId?tab=…`          | Built (API tabs)          |
+| AddressForms                    | sheet on the customer's Addresses tab   | Built                     |
+| CustomerGroups                  | `/customer-groups`                      | Built                     |
+| Products                        | `/products`                             | Built                     |
+| ProductDetail                   | `/products/$productId`                  | Built (General tab)       |
+| Categories                      | `/categories`                           | Built                     |
+| ProductUnits                    | `/product-units`                        | Built                     |
+| AdminRoles                      | `/admin-roles`, `/admin-roles/$roleId`  | Built                     |
+| BuyerRoles                      | `/buyer-roles`, `/buyer-roles/$roleId`  | Built                     |
+| States                          | used on every screen                    | Built                     |
+| Tokens                          | `apps/admin/src/index.css`, `format.ts` | Built                     |
+| Orders                          | `/orders`                               | Built (status filter)     |
+| OrderDetail                     | `/orders/$orderId`                      | Built, no notes or print  |
+| RFQs, QuoteEditor               | none                                    | Designed, waiting on APIs |
+| PriceLists, PriceListDetail     | none                                    | Designed, waiting on APIs |
+| Websites, Settings              | none                                    | Designed, waiting on APIs |
 
 The pull request that built these screens lists where the app deliberately differs from the
 boards, mostly where the API has no matching data yet: counts, search, totals, activity

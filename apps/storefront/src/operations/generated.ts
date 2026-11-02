@@ -3,6 +3,444 @@
 
 import type { Operation } from '../lib/graphql.js';
 
+export interface AddShoppingListLinesVariables {
+  listId: string;
+  lines: readonly {
+    productId: string;
+    unitCode: string;
+    quantity: string;
+    note?: string | null;
+  }[];
+}
+
+export interface AddShoppingListLinesResult {
+  addShoppingListLines: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const AddShoppingListLines: Operation<AddShoppingListLinesResult, AddShoppingListLinesVariables> = {
+  name: 'AddShoppingListLines',
+  kind: 'mutation',
+  hash: '2627e10349d27087d3c53fc15433c43f89be6c5e61db36b3319040f59ee44727',
+};
+
+export type CheckoutAddressesVariables = Record<string, never>;
+
+export interface CheckoutAddressesResult {
+  viewer: {
+    customer: {
+      addresses: readonly {
+        id: string;
+        label: string;
+        countryCode: string;
+        line1: string;
+        line2: string | null;
+        city: string;
+        regionCode: string;
+        postalCode: string;
+        gstin: string | null;
+        isDefaultBilling: boolean;
+        isDefaultShipping: boolean;
+      }[];
+    };
+  };
+}
+
+export const CheckoutAddresses: Operation<CheckoutAddressesResult, CheckoutAddressesVariables> = {
+  name: 'CheckoutAddresses',
+  kind: 'query',
+  hash: 'a9b294967f1eb235616b01a605230bb19f0f46e7de1de5b39f54e21964d943da',
+};
+
+export interface CheckoutPreviewVariables {
+  input: {
+    lines: readonly {
+      productId: string;
+      unitCode: string;
+      quantity: string;
+    }[];
+    billingAddressId: string;
+    shippingAddressId: string;
+    purchaseOrderNumber?: string | null;
+  };
+}
+
+export interface CheckoutPreviewResult {
+  checkoutPreview: {
+    preview: {
+      totals: {
+        currency: string;
+        lines: readonly {
+          lineNo: number;
+          sku: string;
+          productName: string;
+          unitName: string;
+          quantity: string;
+          unitPrice: {
+            amount: string;
+            currency: string;
+          };
+          discount: {
+            amount: string;
+            currency: string;
+          };
+          net: {
+            amount: string;
+            currency: string;
+          };
+        }[];
+        taxes: readonly {
+          lineNo: number | null;
+          name: string;
+          rate: string;
+          amount: {
+            amount: string;
+            currency: string;
+          };
+        }[];
+        shippingMethod: string;
+        subtotal: {
+          amount: string;
+          currency: string;
+        };
+        discount: {
+          amount: string;
+          currency: string;
+        };
+        shipping: {
+          amount: string;
+          currency: string;
+        };
+        shippingDiscount: {
+          amount: string;
+          currency: string;
+        };
+        tax: {
+          amount: string;
+          currency: string;
+        };
+        grandTotal: {
+          amount: string;
+          currency: string;
+        };
+      };
+      paymentTermDays: number;
+      dueOn: string;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED';
+      message: string;
+      lines: readonly {
+        lineNo: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY' | 'NO_PRICE';
+        message: string;
+      }[];
+      taxProblems: readonly {
+        lineNo: number | null;
+        code: 'NO_TAX_CODE' | 'NO_RATE' | 'NO_REGISTRATION' | 'CROSS_BORDER';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const CheckoutPreview: Operation<CheckoutPreviewResult, CheckoutPreviewVariables> = {
+  name: 'CheckoutPreview',
+  kind: 'query',
+  hash: 'bce1faa7b46e1a6e4f41cbf2c6883a288fa4038234bec20c1fc3937a466fb88d',
+};
+
+export interface CreateShoppingListVariables {
+  name: string;
+}
+
+export interface CreateShoppingListResult {
+  createShoppingList: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const CreateShoppingList: Operation<CreateShoppingListResult, CreateShoppingListVariables> = {
+  name: 'CreateShoppingList',
+  kind: 'mutation',
+  hash: '7bfa423de7919ff1a8bcf93876d1b34e2f333d2d57cb19cf18076f10d2331153',
+};
+
+export interface DeleteShoppingListVariables {
+  listId: string;
+}
+
+export interface DeleteShoppingListResult {
+  deleteShoppingList: {
+    deleted: boolean;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+    } | null;
+  };
+}
+
+export const DeleteShoppingList: Operation<DeleteShoppingListResult, DeleteShoppingListVariables> = {
+  name: 'DeleteShoppingList',
+  kind: 'mutation',
+  hash: '55f70598266e815d449e680d3d8ef558c759721474b8674033a18dbf42eafa73',
+};
+
+export interface DuplicateShoppingListVariables {
+  listId: string;
+  name: string;
+}
+
+export interface DuplicateShoppingListResult {
+  duplicateShoppingList: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const DuplicateShoppingList: Operation<DuplicateShoppingListResult, DuplicateShoppingListVariables> = {
+  name: 'DuplicateShoppingList',
+  kind: 'mutation',
+  hash: '2257a113d9532d85a3397f9ba8807d0949f5a592ae2ad4c9d0bd9065d206f866',
+};
+
+export interface MoveShoppingListLinesVariables {
+  fromListId: string;
+  toListId: string;
+  lineIds: readonly string[];
+}
+
+export interface MoveShoppingListLinesResult {
+  moveShoppingListLines: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const MoveShoppingListLines: Operation<MoveShoppingListLinesResult, MoveShoppingListLinesVariables> = {
+  name: 'MoveShoppingListLines',
+  kind: 'mutation',
+  hash: '2abfadc091ab28d9ae3e2df530236b442cc2506839141a86b7ad0a7e3d76e666',
+};
+
+export interface OrderVariables {
+  number: string;
+}
+
+export interface OrderResult {
+  order: {
+    number: string;
+    step: 'NEW' | 'CONFIRMED' | 'PROCESSING' | 'COMPLETED' | 'DECLINED';
+    placedAt: string;
+    customerName: string;
+    purchaseOrderNumber: string | null;
+    currency: string;
+    lines: readonly {
+      lineNo: number;
+      sku: string;
+      productName: string;
+      unitName: string;
+      quantity: string;
+      unitPrice: {
+        amount: string;
+        currency: string;
+      };
+      net: {
+        amount: string;
+        currency: string;
+      };
+    }[];
+    taxes: readonly {
+      lineNo: number | null;
+      name: string;
+      rate: string;
+      amount: {
+        amount: string;
+        currency: string;
+      };
+    }[];
+    shippingMethod: string;
+    subtotal: {
+      amount: string;
+      currency: string;
+    };
+    discount: {
+      amount: string;
+      currency: string;
+    };
+    shipping: {
+      amount: string;
+      currency: string;
+    };
+    shippingDiscount: {
+      amount: string;
+      currency: string;
+    };
+    tax: {
+      amount: string;
+      currency: string;
+    };
+    grandTotal: {
+      amount: string;
+      currency: string;
+    };
+    paymentMethod: string;
+    paymentTermDays: number;
+    dueOn: string;
+    sellerTaxId: string | null;
+    taxExemptionCertificate: string | null;
+    billingAddress: {
+      label: string;
+      countryCode: string;
+      line1: string;
+      line2: string | null;
+      city: string;
+      regionCode: string;
+      postalCode: string;
+      gstin: string | null;
+    };
+    shippingAddress: {
+      label: string;
+      countryCode: string;
+      line1: string;
+      line2: string | null;
+      city: string;
+      regionCode: string;
+      postalCode: string;
+      gstin: string | null;
+    };
+  } | null;
+}
+
+export const Order: Operation<OrderResult, OrderVariables> = {
+  name: 'Order',
+  kind: 'query',
+  hash: '7661c4956f106985cd4ae2cbcfb1058cb97e11c0dcfcb7fc7f2195074e2d802e',
+};
+
+export interface OrdersVariables {
+  first?: number | null;
+  after?: string | null;
+}
+
+export interface OrdersResult {
+  orders: {
+    nodes: readonly {
+      number: string;
+      step: 'NEW' | 'CONFIRMED' | 'PROCESSING' | 'COMPLETED' | 'DECLINED';
+      placedAt: string;
+      customerName: string;
+      purchaseOrderNumber: string | null;
+      grandTotal: {
+        amount: string;
+        currency: string;
+      };
+    }[];
+    nextAfter: string | null;
+  };
+}
+
+export const Orders: Operation<OrdersResult, OrdersVariables> = {
+  name: 'Orders',
+  kind: 'query',
+  hash: 'd97d2b7450e3ea57de5457fc9439ddd90693198d92dc9d09cb81f2a43335906b',
+};
+
+export interface PlaceOrderVariables {
+  input: {
+    lines: readonly {
+      productId: string;
+      unitCode: string;
+      quantity: string;
+    }[];
+    billingAddressId: string;
+    shippingAddressId: string;
+    purchaseOrderNumber?: string | null;
+    idempotencyKey: string;
+    expectedGrandTotal: string;
+  };
+}
+
+export interface PlaceOrderResult {
+  placeOrder: {
+    order: {
+      number: string;
+    } | null;
+    replayed: boolean;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED';
+      message: string;
+      lines: readonly {
+        lineNo: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY' | 'NO_PRICE';
+        message: string;
+      }[];
+      taxProblems: readonly {
+        lineNo: number | null;
+        code: 'NO_TAX_CODE' | 'NO_RATE' | 'NO_REGISTRATION' | 'CROSS_BORDER';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const PlaceOrder: Operation<PlaceOrderResult, PlaceOrderVariables> = {
+  name: 'PlaceOrder',
+  kind: 'mutation',
+  hash: 'e52d27c9f4c8ccc560330149c5e9466351e5a4f265c7f7b821d406792fec4444',
+};
+
 export interface ProductVariables {
   sku: string;
 }
@@ -45,6 +483,7 @@ export interface ProductResult {
 
 export const Product: Operation<ProductResult, ProductVariables> = {
   name: 'Product',
+  kind: 'query',
   hash: 'ee664f4f6929e222d63ac7fae62e351b0f2f9c3ce1153f9dee88714fc1db0305',
 };
 
@@ -71,6 +510,7 @@ export interface ProductPriceResult {
 
 export const ProductPrice: Operation<ProductPriceResult, ProductPriceVariables> = {
   name: 'ProductPrice',
+  kind: 'query',
   hash: '1f638264b5b6c9b2579142c8e5242adf3697b6c5a5eecb509299f498b0ab9af9',
 };
 
@@ -110,7 +550,100 @@ export interface ProductsResult {
 
 export const Products: Operation<ProductsResult, ProductsVariables> = {
   name: 'Products',
+  kind: 'query',
   hash: '575ca7a982548bbf26720b315e940c964f3ef97cc5a6016225d1292d7cc31b43',
+};
+
+export interface ProductsBySkusVariables {
+  skus: readonly string[];
+}
+
+export interface ProductsBySkusResult {
+  productsBySkus: {
+    products: readonly {
+      id: string;
+      sku: string;
+      name: string;
+      units: readonly {
+        code: string;
+        name: string;
+        precision: number;
+      }[];
+      price: {
+        unitPrice: {
+          amount: string;
+          currency: string;
+        };
+      } | null;
+    }[];
+    missingSkus: readonly string[];
+  };
+}
+
+export const ProductsBySkus: Operation<ProductsBySkusResult, ProductsBySkusVariables> = {
+  name: 'ProductsBySkus',
+  kind: 'query',
+  hash: 'da63dcd6d8639abd32f5c5fafead8a77ba08d1e6d02a070a4c5decb3687a23b0',
+};
+
+export interface RemoveShoppingListLinesVariables {
+  listId: string;
+  lineIds: readonly string[];
+}
+
+export interface RemoveShoppingListLinesResult {
+  removeShoppingListLines: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const RemoveShoppingListLines: Operation<RemoveShoppingListLinesResult, RemoveShoppingListLinesVariables> = {
+  name: 'RemoveShoppingListLines',
+  kind: 'mutation',
+  hash: '583e76b0738957e2d86c9078f36c7ae45fd9524b30073a98fb0283c2f4d8d280',
+};
+
+export interface RenameShoppingListVariables {
+  listId: string;
+  name: string;
+}
+
+export interface RenameShoppingListResult {
+  renameShoppingList: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const RenameShoppingList: Operation<RenameShoppingListResult, RenameShoppingListVariables> = {
+  name: 'RenameShoppingList',
+  kind: 'mutation',
+  hash: '3e6948c109c9ed880927bede38ee29106e9f8912a337ceadc6ffb3e409198677',
 };
 
 export interface SearchVariables {
@@ -151,6 +684,7 @@ export interface SearchResult {
 
 export const Search: Operation<SearchResult, SearchVariables> = {
   name: 'Search',
+  kind: 'query',
   hash: 'd77bdbd9b2b7b0c4a7b2624b2cee9640bc91e3d58eda1528081ca065baef80b8',
 };
 
@@ -171,6 +705,7 @@ export interface ShellResult {
     name: string;
     currency: string;
     locale: string;
+    timeZone: string;
   };
   categories: readonly {
     id: string;
@@ -182,5 +717,112 @@ export interface ShellResult {
 
 export const Shell: Operation<ShellResult, ShellVariables> = {
   name: 'Shell',
-  hash: 'd1f7fb5527480854cf2eb0e27ddd831e0317e4fb43c8934baaab9153bc84e8a6',
+  kind: 'query',
+  hash: '1670a6f40f5a0abf1d46642f380bdc9d3b40c3e19a99cf3360439f11de9dc524',
+};
+
+export interface ShoppingListVariables {
+  id: string;
+  after?: string | null;
+}
+
+export interface ShoppingListResult {
+  shoppingList: {
+    id: string;
+    name: string;
+    lineCount: number;
+    isOwn: boolean;
+    updatedAt: string;
+    lines: {
+      nodes: readonly {
+        id: string;
+        position: number;
+        productId: string;
+        unitCode: string;
+        quantity: string;
+        note: string | null;
+        product: {
+          id: string;
+          sku: string;
+          name: string;
+          units: readonly {
+            code: string;
+            name: string;
+            precision: number;
+          }[];
+        } | null;
+        price: {
+          unitPrice: {
+            amount: string;
+            currency: string;
+          };
+          minQuantity: string;
+        } | null;
+      }[];
+      nextAfter: string | null;
+    };
+  } | null;
+}
+
+export const ShoppingList: Operation<ShoppingListResult, ShoppingListVariables> = {
+  name: 'ShoppingList',
+  kind: 'query',
+  hash: 'b7d631d0df4afd2e7f67d479988ddac29c3dbd1d6c5ed832dcafc2462d73df32',
+};
+
+export interface ShoppingListsVariables {
+  first: number;
+  after?: string | null;
+}
+
+export interface ShoppingListsResult {
+  shoppingLists: {
+    nodes: readonly {
+      id: string;
+      name: string;
+      lineCount: number;
+      isOwn: boolean;
+      updatedAt: string;
+    }[];
+    nextAfter: string | null;
+  };
+}
+
+export const ShoppingLists: Operation<ShoppingListsResult, ShoppingListsVariables> = {
+  name: 'ShoppingLists',
+  kind: 'query',
+  hash: 'df688bf7ffb7860f42bba8cc050aa2bfd2e0dfcded6d8660d492d70e6afe6e3b',
+};
+
+export interface UpdateShoppingListLineVariables {
+  listId: string;
+  lineId: string;
+  quantity?: string | null;
+  unitCode?: string | null;
+  note?: string | null;
+}
+
+export interface UpdateShoppingListLineResult {
+  updateShoppingListLine: {
+    list: {
+      id: string;
+      name: string;
+      lineCount: number;
+    } | null;
+    refusal: {
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      message: string;
+      lines: readonly {
+        index: number;
+        code: 'PRODUCT_NOT_AVAILABLE' | 'UNIT_NOT_SOLD' | 'INVALID_QUANTITY';
+        message: string;
+      }[];
+    } | null;
+  };
+}
+
+export const UpdateShoppingListLine: Operation<UpdateShoppingListLineResult, UpdateShoppingListLineVariables> = {
+  name: 'UpdateShoppingListLine',
+  kind: 'mutation',
+  hash: 'dfb16c520f3ff044b03ce479e4b2d73c3ea97c0d3d9750251432176d3645edfa',
 };

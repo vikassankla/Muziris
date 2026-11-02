@@ -1,0 +1,19 @@
+# Makes an empty list the buyer owns.
+mutation CreateShoppingList($name: String!) {
+  createShoppingList(name: $name) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

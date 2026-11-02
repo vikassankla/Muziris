@@ -9,6 +9,8 @@ import { customerDetailRoute } from './routes/customer-detail.js';
 import { customerGroupsRoute } from './routes/customer-groups.js';
 import { customersRoute } from './routes/customers.js';
 import { homeRoute } from './routes/home.js';
+import { orderDetailRoute } from './routes/order-detail.js';
+import { ordersRoute } from './routes/orders.js';
 import { productDetailRoute } from './routes/product-detail.js';
 import { productUnitsRoute } from './routes/product-units.js';
 import { productsRoute } from './routes/products.js';
@@ -19,6 +21,8 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   authedRoute.addChildren([
     homeRoute,
+    ordersRoute,
+    orderDetailRoute,
     customersRoute,
     customerDetailRoute,
     customerGroupsRoute,

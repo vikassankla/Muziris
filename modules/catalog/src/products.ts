@@ -392,6 +392,33 @@ export async function findProductBySkuWithin(
   return product;
 }
 
+/**
+ * The products with these SKUs (any case) that are within the set, for quick order. At most 500
+ * SKUs; malformed ones are skipped, and a SKU outside the set is simply not returned.
+ */
+export async function findProductsBySkusWithin(
+  db: Database,
+  within: SQL,
+  skus: readonly string[],
+): Promise<Product[]> {
+  const wanted = [
+    ...new Set(
+      z
+        .array(z.string())
+        .max(500)
+        .parse(skus)
+        .filter((sku) => skuSchema.safeParse(sku).success)
+        .map((sku) => sku.toLowerCase()),
+    ),
+  ];
+  if (wanted.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(products)
+    .where(and(inArray(sql`lower(${products.sku})`, wanted), inSet(within)));
+  return withUnits(db, rows);
+}
+
 /** As listProducts, for the products within the set only. */
 export async function listProductsWithin(
   db: Database,

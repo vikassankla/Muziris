@@ -106,8 +106,9 @@ async function refused(response: Response): Promise<ApiProblem> {
 }
 
 /**
- * Runs a persisted operation (ADR 0015): a GET with the operation's hash and variables, never
- * its text. Resolves with the data when every field answered; a field error rejects with an
+ * Runs a persisted operation (ADR 0015) by its hash, never its text: a query as a GET with the
+ * hash and variables in the query string, a mutation as a POST with them in a JSON body
+ * (ADR 0018). Resolves with the data when every field answered; a field error rejects with an
  * ApiProblem carrying its code and path, so a caller can show BAD_USER_INPUT next to its field.
  */
 export async function runOperation<TResult, TVariables>(
@@ -118,15 +119,25 @@ export async function runOperation<TResult, TVariables>(
   if (WEBSITE_CODE === undefined) {
     throw new ApiProblem({ status: 0, code: 'website_not_configured', title: SERVER_ERROR_TITLE });
   }
-  const params = new URLSearchParams({
-    operationName: operation.name,
-    variables: JSON.stringify(variables),
-    extensions: JSON.stringify({ persistedQuery: { version: 1, sha256Hash: operation.hash } }),
-  });
-  const response = await send(`/graphql?${params.toString()}`, {
-    headers: { accept: 'application/json', 'Muziris-Website': WEBSITE_CODE },
-    ...(options.signal ? { signal: options.signal } : {}),
-  });
+  const persisted = { persistedQuery: { version: 1, sha256Hash: operation.hash } };
+  const headers = { accept: 'application/json', 'Muziris-Website': WEBSITE_CODE };
+  const signal = options.signal ? { signal: options.signal } : {};
+  let response: Response;
+  if (operation.kind === 'mutation') {
+    response = await send('/graphql', {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ operationName: operation.name, variables, extensions: persisted }),
+      ...signal,
+    });
+  } else {
+    const params = new URLSearchParams({
+      operationName: operation.name,
+      variables: JSON.stringify(variables),
+      extensions: JSON.stringify(persisted),
+    });
+    response = await send(`/graphql?${params.toString()}`, { headers, ...signal });
+  }
   if (!response.ok) throw await refused(response);
 
   const requestId = response.headers.get('x-request-id') ?? undefined;

@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-10-30
+Last updated: 2026-11-01
 
 ## Goal
 
@@ -13,27 +13,28 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 
 ## Done
 
-| Area       | What exists                                                                                                             | Where                 |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| Foundation | Monorepo, strict TypeScript, module boundary lint, CI (tests on PostgreSQL 18, audit, gitleaks, CodeQL), Docker Compose | repo root, `.github/` |
-| Money      | Exact minor-unit maths, rounding, allocation, lakh/crore formatting                                                     | `packages/money`      |
-| Database   | Connection, ordered migrations, per-test-file databases                                                                 | `packages/db`         |
-| Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`    |
-| Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`    |
-| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`    |
-| API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`            |
-| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses; admin routes under `/admin/v1/customers`  | `modules/customers`   |
-| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes    | `modules/access`      |
-| Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`     |
-| Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`          |
-| Storefront | Signed-in buyers: sign-in, catalogue and category pages, product page with a live price box, search                     | `apps/storefront`     |
-| Orders     | Checkout preview and place with re-checks and idempotency, totals pipeline, order copies, numbers, terms, workflow      | `modules/orders`      |
+| Area       | What exists                                                                                                             | Where                    |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Foundation | Monorepo, strict TypeScript, module boundary lint, CI (tests on PostgreSQL 18, audit, gitleaks, CodeQL), Docker Compose | repo root, `.github/`    |
+| Money      | Exact minor-unit maths, rounding, allocation, lakh/crore formatting                                                     | `packages/money`         |
+| Database   | Connection, ordered migrations, per-test-file databases                                                                 | `packages/db`            |
+| Platform   | Organization, websites, settings and feature toggles resolved customer to global                                        | `modules/platform`       |
+| Identity   | Admin and buyer accounts, Argon2id, sessions, lockout, rate limiting                                                    | `modules/identity`       |
+| Workflow   | Workflows in code (steps, transitions, guards, actions), PostgreSQL state and transition log                            | `modules/workflow`       |
+| API        | Health checks, RFC 9457 errors, security headers, CORS, sign-in/out and `/me` for both realms, `admin:create`           | `apps/api`               |
+| Customers  | Hierarchy, customer groups, buyer users, invitations, India and US addresses; admin routes under `/admin/v1/customers`  | `modules/customers`      |
+| Access     | Admin roles and permissions with `requirePermission`; buyer roles with access levels, `buyerScope`, and admin routes    | `modules/access`         |
+| Catalog    | Simple products, product units with precision, category tree, JSONB attributes, admin routes under `/admin/v1/catalog`  | `modules/catalog`        |
+| Admin app  | Design-system frame, sign-in, permission-aware navigation, customer, catalog and role screens with their forms          | `apps/admin`             |
+| Storefront | Signed-in buyers: sign-in, catalogue, product page with a live price box, search, lists, quick order, checkout          | `apps/storefront`        |
+| Orders     | Checkout preview and place with re-checks and idempotency, totals pipeline, order copies, numbers, terms, workflow      | `modules/orders`         |
+| Lists      | Shopping lists scoped by buyer access level, lines with notes, duplicate and move; admin reads under `customer.view`    | `modules/shopping-lists` |
 
 Decisions are recorded in `docs/adr/0001` to `0017`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is proposed, in review. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are proposed, in review. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -98,15 +99,30 @@ emails wait for the email work in week 4.
    Storefront GraphQL `checkoutPreview`, `placeOrder`, `orders`, `order(number)` and the
    customer's `addresses`; admin `/admin/v1/orders` (list, view with history, transitions). Not
    built yet: the checkout and order screens in the storefront and the admin app.
-8. Tax engine (ADR 0017). **In review**, not merged. This is tax, so CLAUDE.md rule 4 asks for
-   a second human review. Module `modules/tax`: registrations per website (GSTIN, US permits),
+8. Tax engine (ADR 0017). **Merged** (PR 25, 2026-10-30, as b786d4f, approved by Vikas in chat,
+   with no second review recorded on GitHub). This is tax, so CLAUDE.md rule 4 asks for a second
+   human review. Module `modules/tax`: registrations per website (GSTIN, US permits),
    dated GST rates by HSN or SAC prefix, dated US rates by state and ZIP prefix with a CSV
    import, US exemption certificates, and `tableTaxProvider`, which the server now passes to
    checkout. Products gain `hsnSacCode` and `usTaxCategory`; orders copy the seller's
    registration and any exemption certificate. Admin routes under `/admin/v1/tax` with new
-   permissions `tax.view` and `tax.manage`. Migrations `0011` to `0013`. Five choices in the
+   permissions `tax.view` and `tax.manage`. Migrations `0011` to `0013`. Four choices in the
    ADR are marked for a tax adviser to confirm before go-live. Not built yet: the tax admin
    screens, and the product tax code fields in the admin app.
+9. Order screens. **In review**, not merged. Admin `/orders` (status filter) and
+   `/orders/$orderId` (lines, taxes per rate, addresses, payment, progress, history, workflow
+   moves for `order.manage`); storefront `/orders` and `/orders/$number`. Not built: the
+   storefront checkout page, which needs shopping lists or quick order first (ADR 0018).
+10. Shopping lists, quick order and the checkout page (ADR 0018). **In review**, not merged.
+    `modules/shopping-lists` (migration `0014`), scoped by the `shopping_list.manage` access
+    level; storefront GraphQL list queries and eight mutations, `productsBySkus` (100 SKUs per
+    call); admin reads under `/admin/v1/shopping-lists` (`customer.view`). Storefront
+    mutations run over POST as persisted operations; a test runs every registered operation
+    through the depth and cost limits. Storefront `/lists`, `/lists/$listId`, `/quick-order`
+    (paste or CSV read in the browser, each row checked) and `/checkout` (from a list or an
+    in-memory quick order; live preview; place with an idempotency key kept across retries;
+    after a list checkout, an offer to empty it). Not built: SKU typeahead in quick order,
+    moving lines between lists in the storefront (the API has it), and admin list screens.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -154,8 +170,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   definitions), localized names, the admin search screen, and the OpenSearch adapter. One
   buyer search over 10,000 products is held under 250 ms by a test (about 40 ms locally).
 - Storefront API (ADR 0014): signed-in buyers only; guest browsing needs visibility and prices
-  for guests. No mutations or subscriptions yet; they join with shopping lists, quick order and
-  checkout. No rate limits per API client (FR-API-5). The storefront build must produce the
+  for guests. Mutations run over POST as persisted operations (ADR 0018); no subscriptions.
+  No rate limits per API client (FR-API-5). The storefront build must produce the
   persisted query registry before production. No valid query in the first schema is deeper
   than 6 levels, so the depth limit of 8 guards later types.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
@@ -172,7 +188,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
-- Admin app: designed in `docs/design/admin` but waiting on APIs: Orders, OrderDetail, RFQs,
+- Admin app: designed in `docs/design/admin` but waiting on APIs: RFQs,
   QuoteEditor, Websites, Settings, the Home dashboard widgets,
   Admin users, and the customer detail tabs for orders, quotes, price lists, settings
   overrides and payment term. Their sidebar items stay hidden until the APIs exist. The

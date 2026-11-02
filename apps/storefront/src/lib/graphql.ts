@@ -5,6 +5,8 @@
  */
 export interface Operation<TResult, TVariables> {
   readonly name: string;
+  /** A query runs over GET, a mutation over POST (ADR 0018). */
+  readonly kind: 'query' | 'mutation';
   readonly hash: string;
   readonly types?: { result: TResult; variables: TVariables };
 }

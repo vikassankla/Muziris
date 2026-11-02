@@ -1,0 +1,13 @@
+# The buyer's shopping lists, most recently changed first.
+query ShoppingLists($first: Int!, $after: String) {
+  shoppingLists(first: $first, after: $after) {
+    nodes {
+      id
+      name
+      lineCount
+      isOwn
+      updatedAt
+    }
+    nextAfter
+  }
+}

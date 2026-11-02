@@ -1,0 +1,19 @@
+# Copies a list into a new one the buyer owns.
+mutation DuplicateShoppingList($listId: ID!, $name: String!) {
+  duplicateShoppingList(listId: $listId, name: $name) {
+    list {
+      id
+      name
+      lineCount
+    }
+    refusal {
+      code
+      message
+      lines {
+        index
+        code
+        message
+      }
+    }
+  }
+}

@@ -6,6 +6,7 @@ import {
   Package,
   Ruler,
   ShieldCheck,
+  ShoppingCart,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ import { can, type AdminPermission, type Session } from './session.js';
 
 export type NavTo =
   | '/'
+  | '/orders'
   | '/customers'
   | '/customer-groups'
   | '/products'
@@ -36,11 +38,15 @@ export interface NavGroup {
 
 /**
  * The sidebar, grouped as on the Sidebar board. Sections the board shows but that have no API
- * yet (Sales: orders, RFQs, quotes; Pricing; Admin users; Websites; Settings) are left out
+ * yet (Sales: RFQs, quotes; Pricing; Admin users; Websites; Settings) are left out
  * rather than shown empty; docs/status.md lists them.
  */
 export const NAV_GROUPS: readonly NavGroup[] = [
   { label: null, items: [{ to: '/', label: 'Home', icon: House }] },
+  {
+    label: 'Sales',
+    items: [{ to: '/orders', label: 'Orders', icon: ShoppingCart, permission: 'order.view' }],
+  },
   {
     label: 'Customers',
     items: [

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   buildSchema,
   isEnumType,
+  isInputObjectType,
   isListType,
   isNonNullType,
   isObjectType,
@@ -19,7 +20,7 @@ import {
 } from 'graphql';
 
 // The storefront's operation compiler (ADR 0015). Each src/operations/<Name>.graphql holds one
-// named query. This checks it against the committed storefront schema, prints it in graphql-js's
+// named query or mutation (ADR 0018). This checks it against the committed storefront schema, prints it in graphql-js's
 // canonical form, hashes that text as the API does (persisted.ts), and writes TypeScript types
 // for its variables and result. Fragments are not supported: the operations are few and small.
 
@@ -122,9 +123,18 @@ function objectType(
   return `{\n${lines.join('\n')}\n${pad(depth)}}`;
 }
 
-function inputType(type: GraphQLType, where: string): string {
-  if (isNonNullType(type)) return inputType(type.ofType, where);
-  if (isListType(type)) return `readonly ${inputType(type.ofType, where)}[]`;
+function inputType(type: GraphQLType, where: string, depth = 0): string {
+  if (isNonNullType(type)) return inputType(type.ofType, where, depth);
+  if (isListType(type)) return `readonly ${inputType(type.ofType, where, depth)}[]`;
+  if (isInputObjectType(type)) {
+    const fields = Object.values(type.getFields()).map((field) => {
+      const ts = inputType(field.type, `${where}.${field.name}`, depth + 1);
+      return isNonNullType(field.type)
+        ? `${pad(depth + 2)}${field.name}: ${ts};`
+        : `${pad(depth + 2)}${field.name}?: ${ts} | null;`;
+    });
+    return `{\n${fields.join('\n')}\n${pad(depth + 1)}}`;
+  }
   return scalarOrEnum(type, where);
 }
 
@@ -134,8 +144,7 @@ export function compileOperations(
   sources: readonly OperationSource[],
 ): Compiled {
   const schema: GraphQLSchema = buildSchema(schemaText);
-  const query = schema.getQueryType();
-  if (!query) throw new Error('The schema has no Query type');
+  const roots = { query: schema.getQueryType(), mutation: schema.getMutationType() };
   const blocks: string[] = [];
   const registry: Record<string, string> = {};
   const sorted = [...sources].sort((a, b) => (a.file < b.file ? -1 : 1));
@@ -151,9 +160,11 @@ export function compileOperations(
     if (operation?.kind !== Kind.OPERATION_DEFINITION || rest.length > 0) {
       throw new Error(`${source.file}: hold exactly one operation and nothing else`);
     }
-    if (operation.operation !== 'query') {
-      throw new Error(`${source.file}: only queries are supported`);
+    if (operation.operation === 'subscription') {
+      throw new Error(`${source.file}: only queries and mutations are supported`);
     }
+    const root = roots[operation.operation];
+    if (!root) throw new Error(`${source.file}: the schema has no ${operation.operation} type`);
     if (operation.name?.value !== name) {
       throw new Error(`${source.file}: name the operation ${name}, after its file`);
     }
@@ -169,7 +180,7 @@ export function compileOperations(
       variables.length === 0
         ? `export type ${name}Variables = Record<string, never>;`
         : `export interface ${name}Variables {\n${variables.join('\n')}\n}`;
-    const result = objectType(query.getFields(), operation.selectionSet, 0, name);
+    const result = objectType(root.getFields(), operation.selectionSet, 0, name);
 
     const text = print(document);
     const hash = sha256(text);
@@ -178,7 +189,7 @@ export function compileOperations(
       [
         variablesType,
         `export interface ${name}Result ${result}`,
-        `export const ${name}: Operation<${name}Result, ${name}Variables> = {\n  name: '${name}',\n  hash: '${hash}',\n};`,
+        `export const ${name}: Operation<${name}Result, ${name}Variables> = {\n  name: '${name}',\n  kind: '${operation.operation}',\n  hash: '${hash}',\n};`,
       ].join('\n\n'),
     );
   }

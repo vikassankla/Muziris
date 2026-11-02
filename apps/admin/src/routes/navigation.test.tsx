@@ -18,10 +18,8 @@ describe('permission-aware navigation', () => {
       ['buyer_role.view', 'admin_role.view'],
       ['Home', 'Admin roles', 'Buyer roles'],
     ],
-    [
-      ['customer.manage', 'order.view', 'price_list.view', 'website.view', 'setting.view'],
-      ['Home'],
-    ],
+    [['customer.manage', 'price_list.view', 'website.view', 'setting.view'], ['Home']],
+    [['order.view'], ['Home', 'Orders']],
     [
       ['admin_role.view', 'buyer_role.view', 'customer.view', 'product.view'],
       [

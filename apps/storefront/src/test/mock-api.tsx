@@ -46,7 +46,13 @@ export const SHELL: ShellResult = {
     email: 'ravi@kochi-traders.example',
     customer: { id: 'c1', name: 'Kochi Traders' },
   },
-  website: { code: 'main', name: 'Muziris Trade', currency: 'INR', locale: 'en-IN' },
+  website: {
+    code: 'main',
+    name: 'Muziris Trade',
+    currency: 'INR',
+    locale: 'en-IN',
+    timeZone: 'Asia/Kolkata',
+  },
   categories: [
     { id: 'fasteners', name: 'Fasteners', parentId: null, position: 1 },
     { id: 'bolts', name: 'Bolts', parentId: 'fasteners', position: 1 },
@@ -71,7 +77,7 @@ export function signedIn(): Record<string, Handler> {
 
 /**
  * Replaces fetch with a fake storefront API. Keys are "METHOD /path" below /storefront/v1, or
- * "GraphQL <operationName>" for a GraphQL request. A request with no handler gets a 404 problem.
+ * "GraphQL <operationName>" for a GraphQL query or mutation. A request with no handler gets a 404 problem.
  * Returns every request made, in order.
  */
 export function mockApi(handlers: Record<string, Handler>): MockRequest[] {
@@ -81,18 +87,26 @@ export function mockApi(handlers: Record<string, Handler>): MockRequest[] {
     vi.fn((input: string, init: RequestInit = {}) => {
       const url = new URL(input, 'http://localhost:5174');
       const path = url.pathname.replace(/^\/storefront\/v1/, '');
-      const operationName = url.searchParams.get('operationName') ?? undefined;
-      const variables = url.searchParams.get('variables');
+      const body: unknown = typeof init.body === 'string' ? JSON.parse(init.body) : undefined;
+      // A query names its operation in the query string, a mutation in its JSON body.
+      const posted = (body ?? {}) as {
+        operationName?: string;
+        variables?: Record<string, unknown>;
+      };
+      const operationName = url.searchParams.get('operationName') ?? posted.operationName;
+      const queryVariables = url.searchParams.get('variables');
+      const variables =
+        queryVariables === null
+          ? posted.variables
+          : (JSON.parse(queryVariables) as Record<string, unknown>);
       const request: MockRequest = {
         method: init.method ?? 'GET',
         path,
         query: url.searchParams,
         headers: new Headers(init.headers),
-        body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
+        body,
         ...(operationName === undefined ? {} : { operationName }),
-        ...(variables === null
-          ? {}
-          : { variables: JSON.parse(variables) as Record<string, unknown> }),
+        ...(variables === undefined ? {} : { variables }),
       };
       requests.push(request);
       const handler =

@@ -1,0 +1,23 @@
+# Places the order on payment terms; the same idempotency key returns the same order.
+mutation PlaceOrder($input: PlaceOrderInput!) {
+  placeOrder(input: $input) {
+    order {
+      number
+    }
+    replayed
+    refusal {
+      code
+      message
+      lines {
+        lineNo
+        code
+        message
+      }
+      taxProblems {
+        lineNo
+        code
+        message
+      }
+    }
+  }
+}
