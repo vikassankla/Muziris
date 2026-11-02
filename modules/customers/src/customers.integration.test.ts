@@ -46,6 +46,8 @@ const url = process.env['TEST_DATABASE_URL'];
 const PASSWORD = 'quiet lantern over the harbour';
 const NOW = new Date('2026-11-04T10:00:00.000Z');
 const MISSING_ID = '00000000-0000-4000-8000-000000000000';
+/** A buyer role id; customers stores it and does not check it (the API does, ADR 0021). */
+const ROLE_ID = '7c1e0a11-0000-4000-8000-0000000000a1';
 
 async function expectRefused(promise: Promise<unknown>, code: CustomerErrorCode) {
   const error: unknown = await promise.catch((e: unknown) => e);
@@ -493,6 +495,7 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         email: 'meera@acme.example',
         displayName: 'Meera',
         invitedByUserId: MISSING_ID,
+        buyerRoleId: ROLE_ID,
         now: NOW,
         ttlMs,
       });
@@ -504,7 +507,11 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         now: later,
       });
       expect(again.token).not.toBe(first.token);
-      expect(again.invitation).toMatchObject({ email: 'meera@acme.example', displayName: 'Meera' });
+      expect(again.invitation).toMatchObject({
+        email: 'meera@acme.example',
+        displayName: 'Meera',
+        buyerRoleId: ROLE_ID,
+      });
       expect(again.invitation.expiresAt.getTime() - later.getTime()).toBe(ttlMs);
       await expectRefused(
         findPendingInvitation(handle.db, first.token, later),

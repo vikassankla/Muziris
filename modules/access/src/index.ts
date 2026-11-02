@@ -23,6 +23,7 @@ export {
   deleteBuyerRole,
   findBuyerRole,
   getBuyerAccess,
+  grantBuyerRoleOnAcceptance,
   listBuyerRoles,
   listBuyerRolesQuerySchema,
   mergeBuyerGrants,

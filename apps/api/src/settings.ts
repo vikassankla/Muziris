@@ -60,7 +60,7 @@ const PAYMENT_METHOD_LABELS: Record<(typeof PAYMENT_METHODS)[number], string> = 
 const setting = <T>(
   definition: SettingDefinition<T>,
   rest: Omit<AdminSetting, 'definition'>,
-): AdminSetting => ({ definition: definition, ...rest });
+): AdminSetting => ({ definition, ...rest });
 
 export const ADMIN_SETTINGS: readonly AdminSetting[] = [
   setting(PAYMENT_METHODS_SETTING, {

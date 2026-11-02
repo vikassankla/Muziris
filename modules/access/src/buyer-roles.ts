@@ -1,4 +1,4 @@
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { assertUserInRealm } from './admin-roles.js';
@@ -215,6 +215,28 @@ export async function assignBuyerRole(
     .insert(buyerUserRoles)
     .values({ buyerUserId: userId, roleId: role.id })
     .onConflictDoNothing();
+}
+
+/**
+ * Gives a buyer role to a buyer user created in the same transaction, as when an invitation is
+ * accepted (ADR 0021). False when the role no longer exists, so accepting does not fail on it.
+ */
+export async function grantBuyerRoleOnAcceptance(
+  tx: Database | Transaction,
+  buyerUserId: string,
+  roleId: string,
+): Promise<boolean> {
+  const [role] = await tx
+    .select({ id: buyerRoles.id })
+    .from(buyerRoles)
+    .where(eq(buyerRoles.id, idSchema.parse(roleId)))
+    .limit(1);
+  if (!role) return false;
+  await tx
+    .insert(buyerUserRoles)
+    .values({ buyerUserId: idSchema.parse(buyerUserId), roleId: role.id })
+    .onConflictDoNothing();
+  return true;
 }
 
 export async function unassignBuyerRole(

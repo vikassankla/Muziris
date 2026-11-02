@@ -182,7 +182,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     mail: deps.mail ?? mailConfigFromEnv({}, { production: false }),
     storefrontWebsite: deps.storefrontWebsite ?? 'main',
   });
-  const emailDeps = { ...authDeps, emails };
+  const emailDeps = { ...authDeps, emails, storefrontWebsite: deps.storefrontWebsite ?? 'main' };
   app.route('/admin/v1/auth', authRoutes('admin', authDeps));
   app.route('/storefront/v1/auth', authRoutes('buyer', authDeps));
   app.route(

@@ -127,6 +127,13 @@
       "when": 1793610152495,
       "tag": "0017_settings_updated_by",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793610357901,
+      "tag": "0018_invitation_buyer_role",
+      "breakpoints": true
     }
   ]
 }

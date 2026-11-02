@@ -22,6 +22,8 @@ export interface Invitation {
   email: string;
   displayName: string;
   invitedByUserId: string;
+  /** The buyer role the buyer gets on accepting (ADR 0021); null for none. */
+  buyerRoleId: string | null;
   createdAt: Date;
   expiresAt: Date;
   acceptedAt: Date | null;
@@ -61,6 +63,7 @@ function toInvitation(row: typeof invitations.$inferSelect): Invitation {
     email: row.email,
     displayName: row.displayName,
     invitedByUserId: row.invitedByUserId,
+    buyerRoleId: row.buyerRoleId,
     createdAt: row.createdAt,
     expiresAt: row.expiresAt,
     acceptedAt: row.acceptedAt,
@@ -78,6 +81,8 @@ export const newInvitationSchema = z.object({
   email: newUserSchema.shape.email,
   displayName: z.string().trim().min(1).max(200),
   invitedByUserId: z.uuid(),
+  /** The buyer role given on accepting; checked by the caller, which owns access. */
+  buyerRoleId: z.uuid().nullable().default(null),
   now: z.date(),
   ttlMs: z
     .number()
@@ -134,6 +139,7 @@ export async function createInvitation(
         displayName: values.displayName,
         tokenHash: hashToken(token),
         invitedByUserId: values.invitedByUserId,
+        buyerRoleId: values.buyerRoleId,
         createdAt: values.now,
         expiresAt: new Date(values.now.getTime() + values.ttlMs),
       })
@@ -187,6 +193,7 @@ export async function resendInvitation(
       email: row.email,
       displayName: row.displayName,
       invitedByUserId: input.invitedByUserId,
+      buyerRoleId: row.buyerRoleId,
       now: input.now,
       ttlMs,
     },
@@ -296,6 +303,17 @@ export interface AcceptInvitationInput {
   now: Date;
 }
 
+export interface AcceptInvitationHooks {
+  /**
+   * Runs in the transaction that links the new buyer user, for what comes with accepting (the
+   * invitation's buyer role, ADR 0021). Throwing undoes the acceptance.
+   */
+  inTransaction?: (
+    tx: Transaction,
+    accepted: { buyerUser: BuyerUser; invitation: Invitation },
+  ) => Promise<void>;
+}
+
 /**
  * Accepts an invitation: creates the buyer account in identity with the invitation's email and
  * links it to the customer. Identity's errors (email taken, password policy) pass through.
@@ -308,6 +326,7 @@ export interface AcceptInvitationInput {
 export async function acceptInvitation(
   db: Database,
   input: AcceptInvitationInput,
+  hooks: AcceptInvitationHooks = {},
 ): Promise<BuyerUser> {
   const pending = assertPending(await loadByToken(db, input.token), input.now);
   const user = await createUser(db, {
@@ -329,7 +348,11 @@ export async function acceptInvitation(
           'The invitation was already accepted or revoked',
         );
       }
-      return insertBuyerUser(tx, user, pending.customerId);
+      const buyerUser = await insertBuyerUser(tx, user, pending.customerId);
+      if (hooks.inTransaction) {
+        await hooks.inTransaction(tx, { buyerUser, invitation: toInvitation(pending) });
+      }
+      return buyerUser;
     });
   } catch (error) {
     await disableUser(db, user.id);

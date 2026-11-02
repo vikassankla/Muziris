@@ -2,6 +2,7 @@ import { Writable } from 'node:stream';
 import {
   assignAdminRole,
   createAdminRole,
+  createBuyerRole,
   SYSTEM_ADMIN_ACCESS,
   type AdminPermission,
 } from '@muziris/access';
@@ -18,10 +19,12 @@ import {
   type DatabaseHandle,
 } from '@muziris/db';
 import { createUser } from '@muziris/identity';
+import { createOrganization, setSetting } from '@muziris/platform';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { createLogger } from './logger.js';
+import { DEFAULT_BUYER_ROLE } from './settings.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const PASSWORD = 'correct horse battery staple';
@@ -52,7 +55,8 @@ describe.skipIf(!url)('customer routes against PostgreSQL', () => {
     await handle.db.execute(
       sql`truncate notification_outbox, customer_address, customer_invitation, customer_buyer_user, customer_customer,
         customer_group, access_admin_user_role, access_admin_role_permission, access_admin_role,
-        identity_session, identity_user, identity_rate_limit cascade`,
+        access_buyer_role_permission, access_buyer_role, platform_config_value, platform_website,
+        platform_organization, identity_session, identity_user, identity_rate_limit cascade`,
     );
     logs = [];
   });
@@ -270,6 +274,48 @@ describe.skipIf(!url)('customer routes against PostgreSQL', () => {
 
     const ungrouped = await call('PUT', `/${acmeId}/group`, asha, { groupId: null });
     expect(await json(ungrouped)).toMatchObject({ customer: { groupId: null } });
+  });
+
+  it('gives an invitation the chosen buyer role, or the default buyer role setting', async () => {
+    const asha = await signedInAdmin('asha@org.example', ['customer.view', 'customer.manage']);
+    const { acme } = await seed();
+    const orderer = await createBuyerRole(handle.db, {
+      code: 'orderer',
+      name: 'Orderer',
+      grants: [],
+    });
+    const viewer = await createBuyerRole(handle.db, { code: 'viewer', name: 'Viewer', grants: [] });
+    const invite = async (email: string, extra: Record<string, unknown> = {}) => {
+      const res = await call('POST', `/${acme.id}/invitations`, asha, {
+        email,
+        displayName: 'Meera',
+        ...extra,
+      });
+      return {
+        status: res.status,
+        body: await json<{ invitation?: { buyerRoleId: string | null } }>(res),
+      };
+    };
+
+    expect((await invite('a@acme.example')).body.invitation?.buyerRoleId).toBeNull();
+    const organization = await createOrganization(handle.db, 'Acme Industrial Supply');
+    await setSetting(
+      handle.db,
+      DEFAULT_BUYER_ROLE,
+      { type: 'organization', id: organization.id },
+      orderer.id,
+    );
+    expect((await invite('b@acme.example')).body.invitation?.buyerRoleId).toBe(orderer.id);
+    expect(
+      (await invite('c@acme.example', { buyerRoleId: viewer.id })).body.invitation?.buyerRoleId,
+    ).toBe(viewer.id);
+    expect(
+      (await invite('d@acme.example', { buyerRoleId: null })).body.invitation?.buyerRoleId,
+    ).toBeNull();
+    expect(
+      (await invite('e@acme.example', { buyerRoleId: '00000000-0000-4000-8000-000000000000' }))
+        .status,
+    ).toBe(404);
   });
 
   it('lets a customer manager add buyer users, invitations and addresses', async () => {
