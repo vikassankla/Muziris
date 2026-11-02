@@ -31,6 +31,8 @@ import { authedRoute } from './authed.js';
 interface ProductsSearch extends ListSearch {
   categoryId?: string;
   status?: 'enabled' | 'disabled';
+  /** Only products without an HSN or SAC code (ADR 0023). */
+  missingTaxCode?: boolean;
 }
 
 const ANY = '__any';
@@ -45,6 +47,9 @@ export const productsRoute = createRoute({
       ...listSearch(search),
       ...(typeof categoryId === 'string' && categoryId ? { categoryId } : {}),
       ...(status === 'enabled' || status === 'disabled' ? { status } : {}),
+      ...(search['missingTaxCode'] === true || search['missingTaxCode'] === 'true'
+        ? { missingTaxCode: true }
+        : {}),
     };
   },
   loaderDeps: ({ search }) => ({
@@ -52,6 +57,7 @@ export const productsRoute = createRoute({
     limit: search.limit,
     categoryId: search.categoryId,
     status: search.status,
+    missingTaxCode: search.missingTaxCode,
   }),
   loader: async ({ deps, abortController }) => {
     const signal = abortController.signal;
@@ -61,6 +67,7 @@ export const productsRoute = createRoute({
           after: deps.after,
           categoryId: deps.categoryId,
           status: deps.status,
+          missingTaxCode: deps.missingTaxCode,
           ...(deps.limit === undefined ? {} : { limit: deps.limit }),
         },
         signal,
@@ -80,17 +87,22 @@ function ProductsPage() {
   const manage = can(useSession(), 'product.manage');
   const path = new Map(categories.map((c) => [c.node.id, c.path]));
   const unitName = new Map(units.map((u) => [u.code, u.name]));
-  const filtered = search.categoryId !== undefined || search.status !== undefined;
+  const filtered =
+    search.categoryId !== undefined ||
+    search.status !== undefined ||
+    search.missingTaxCode === true;
   const setNew = (open: boolean) => {
     void navigate({ to: '.', search: withNew<ProductsSearch>(open) });
   };
   const filter = (changes: {
     categoryId?: string | undefined;
     status?: 'enabled' | 'disabled' | undefined;
+    missingTaxCode?: true | undefined;
   }) => {
     const next = {
       ...(search.categoryId ? { categoryId: search.categoryId } : {}),
       ...(search.status ? { status: search.status } : {}),
+      ...(search.missingTaxCode ? { missingTaxCode: true } : {}),
       ...(search.limit ? { limit: search.limit } : {}),
       ...changes,
     };
@@ -160,6 +172,24 @@ function ProductsPage() {
             <SelectItem value={ANY}>Any status</SelectItem>
             <SelectItem value="enabled">Enabled</SelectItem>
             <SelectItem value="disabled">Disabled</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={search.missingTaxCode ? 'missing' : ANY}
+          onValueChange={(value) => {
+            filter({ missingTaxCode: value === 'missing' ? true : undefined });
+          }}
+        >
+          <SelectTrigger
+            size="sm"
+            className="w-auto min-w-[170px] rounded-full"
+            aria-label="Tax code filter"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ANY}>Any tax code</SelectItem>
+            <SelectItem value="missing">No HSN or SAC code</SelectItem>
           </SelectContent>
         </Select>
         {filtered ? (

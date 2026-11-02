@@ -107,6 +107,10 @@ const productSchema = z.object({
   status: z.enum(['enabled', 'disabled']),
   categoryId: z.string().nullable(),
   attributes: z.record(z.string(), attributeValueSchema),
+  /** India: HSN (goods) or SAC (services); null until set. */
+  hsnSacCode: z.string().nullable().default(null),
+  /** US: general or exempt; null is taxable, like general. */
+  usTaxCategory: z.enum(['general', 'exempt']).nullable().default(null),
   primaryUnitCode: z.string(),
   units: z.array(productUnitSchema),
   createdAt: z.string(),
@@ -541,6 +545,7 @@ export function listProducts(
     limit?: number;
     categoryId?: string | undefined;
     status?: string | undefined;
+    missingTaxCode?: boolean | undefined;
   },
   signal?: AbortSignal,
 ): Promise<Page<Product>> {
@@ -553,6 +558,7 @@ export function listProducts(
       categoryId: query.categoryId,
       includeSubcategories: query.categoryId === undefined ? undefined : 'true',
       status: query.status,
+      missingTaxCode: query.missingTaxCode ? 'true' : undefined,
     },
     signal,
   );
@@ -583,7 +589,12 @@ export async function createProduct(input: {
 
 export async function updateProduct(
   productId: string,
-  changes: Partial<Pick<Product, 'sku' | 'name' | 'status' | 'categoryId' | 'attributes'>>,
+  changes: Partial<
+    Pick<
+      Product,
+      'sku' | 'name' | 'status' | 'categoryId' | 'attributes' | 'hsnSacCode' | 'usTaxCategory'
+    >
+  >,
 ) {
   return (
     await api(`/catalog/products/${id(productId)}`, z.object({ product: productSchema }), {
@@ -1317,4 +1328,193 @@ export async function searchProducts(q: string, signal?: AbortSignal): Promise<P
       signal,
     })
   ).results;
+}
+
+// Tax (ADR 0017, screens in ADR 0023)
+
+const registrationSchema = z.object({
+  id: z.string(),
+  websiteId: z.string(),
+  regime: z.enum(['gst', 'us_sales_tax']),
+  /** The GST state code ("27") or the US state ("TX"). */
+  regionCode: z.string(),
+  number: z.string(),
+});
+export type TaxRegistration = z.infer<typeof registrationSchema>;
+
+const ratePeriod = { validFrom: z.string(), validTo: z.string().nullable() };
+const gstRateSchema = z.object({
+  id: z.string(),
+  codePrefix: z.string(),
+  ratePercent: z.string(),
+  ...ratePeriod,
+});
+export type GstRate = z.infer<typeof gstRateSchema>;
+const usRateSchema = z.object({
+  id: z.string(),
+  stateCode: z.string(),
+  zipPrefix: z.string().nullable(),
+  ratePercent: z.string(),
+  shippingTaxable: z.boolean(),
+  ...ratePeriod,
+});
+export type UsRate = z.infer<typeof usRateSchema>;
+const exemptionSchema = z.object({
+  id: z.string(),
+  customerId: z.string(),
+  stateCode: z.string(),
+  certificateNumber: z.string(),
+  expiresOn: z.string().nullable(),
+});
+export type Exemption = z.infer<typeof exemptionSchema>;
+
+const readinessItemSchema = z.object({
+  code: z.string(),
+  ok: z.boolean(),
+  count: z.number(),
+  examples: z.array(z.record(z.string(), z.unknown())),
+});
+const readinessSchema = z.object({
+  websiteId: z.string(),
+  countryCode: z.string(),
+  day: z.string(),
+  ready: z.boolean(),
+  items: z.array(readinessItemSchema),
+});
+export type TaxReadiness = z.infer<typeof readinessSchema>;
+
+/** What would refuse checkout on a website today. */
+export async function getTaxReadiness(websiteId: string, signal?: AbortSignal) {
+  return (
+    await api('/tax/readiness', z.object({ readiness: readinessSchema }), {
+      query: { websiteId },
+      signal,
+    })
+  ).readiness;
+}
+
+export async function listTaxRegistrations(websiteId: string, signal?: AbortSignal) {
+  return (
+    await api(
+      `/tax/websites/${id(websiteId)}/registrations`,
+      z.object({ registrations: z.array(registrationSchema) }),
+      { signal },
+    )
+  ).registrations;
+}
+
+export async function setGstRegistration(websiteId: string, gstin: string) {
+  return (
+    await api(
+      `/tax/websites/${id(websiteId)}/gst-registration`,
+      z.object({ registration: registrationSchema }),
+      { method: 'PUT', body: { gstin } },
+    )
+  ).registration;
+}
+
+export async function addUsRegistration(
+  websiteId: string,
+  input: { stateCode: string; permitNumber: string },
+) {
+  return (
+    await api(
+      `/tax/websites/${id(websiteId)}/us-registrations`,
+      z.object({ registration: registrationSchema }),
+      { method: 'POST', body: input },
+    )
+  ).registration;
+}
+
+export function deleteTaxRegistration(registrationId: string) {
+  return api(`/tax/registrations/${id(registrationId)}`, none, { method: 'DELETE' });
+}
+
+export async function listGstRates(query: { on?: string | undefined }, signal?: AbortSignal) {
+  return (
+    await api('/tax/gst-rates', z.object({ rates: z.array(gstRateSchema) }), {
+      query: { on: query.on },
+      signal,
+    })
+  ).rates;
+}
+
+export async function addGstRate(input: {
+  codePrefix: string;
+  ratePercent: string;
+  validFrom: string;
+  validTo: string | null;
+}) {
+  return (
+    await api('/tax/gst-rates', z.object({ rate: gstRateSchema }), { method: 'POST', body: input })
+  ).rate;
+}
+
+export async function listUsRates(
+  query: { on?: string | undefined; stateCode?: string | undefined },
+  signal?: AbortSignal,
+) {
+  return (
+    await api('/tax/us-rates', z.object({ rates: z.array(usRateSchema) }), {
+      query: { on: query.on, stateCode: query.stateCode },
+      signal,
+    })
+  ).rates;
+}
+
+export async function addUsRate(input: {
+  stateCode: string;
+  zipPrefix: string | null;
+  ratePercent: string;
+  shippingTaxable: boolean;
+  validFrom: string;
+  validTo: string | null;
+}) {
+  return (
+    await api('/tax/us-rates', z.object({ rate: usRateSchema }), { method: 'POST', body: input })
+  ).rate;
+}
+
+/** Sets the day a rate stops applying (exclusive), or null for no end. */
+export function endTaxRate(kind: 'gst' | 'us', rateId: string, validTo: string | null) {
+  return api(`/tax/${kind}-rates/${id(rateId)}`, z.unknown(), {
+    method: 'PATCH',
+    body: { validTo },
+  });
+}
+
+export function deleteTaxRate(kind: 'gst' | 'us', rateId: string) {
+  return api(`/tax/${kind}-rates/${id(rateId)}`, none, { method: 'DELETE' });
+}
+
+/** Imports US rates from CSV: every row, or none. */
+export function importUsRates(csv: string) {
+  return api('/tax/us-rates/import', z.object({ imported: z.number() }), { method: 'POST', csv });
+}
+
+export async function listExemptions(query: { customerId?: string }, signal?: AbortSignal) {
+  return (
+    await api('/tax/exemptions', z.object({ exemptions: z.array(exemptionSchema) }), {
+      query: { customerId: query.customerId },
+      signal,
+    })
+  ).exemptions;
+}
+
+export async function addExemption(input: {
+  customerId: string;
+  stateCode: string;
+  certificateNumber: string;
+  expiresOn: string | null;
+}) {
+  return (
+    await api('/tax/exemptions', z.object({ exemption: exemptionSchema }), {
+      method: 'POST',
+      body: input,
+    })
+  ).exemption;
+}
+
+export function deleteExemption(exemptionId: string) {
+  return api(`/tax/exemptions/${id(exemptionId)}`, none, { method: 'DELETE' });
 }
