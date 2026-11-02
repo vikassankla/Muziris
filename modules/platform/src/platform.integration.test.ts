@@ -12,12 +12,14 @@ import {
   createOrganization,
   createWebsite,
   defineSetting,
+  findOrganization,
   findWebsite,
   findWebsiteByCode,
   getSetting,
   listWebsites,
   setSetting,
   SettingScopeNotAllowedError,
+  updateWebsite,
 } from './index.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -71,6 +73,33 @@ describe.skipIf(!url)('platform module against PostgreSQL', () => {
     expect(await findWebsite(handle.db, '00000000-0000-4000-8000-000000000000')).toBeUndefined();
     expect(await findWebsite(handle.db, 'not-a-uuid')).toBeUndefined();
     expect((await listWebsites(handle.db, org.id)).map((w) => w.code)).toEqual(['acme-in']);
+  });
+
+  it('changes what a website may change, and nothing else', async () => {
+    const { org, site } = await seedWebsite();
+    expect(await findOrganization(handle.db)).toMatchObject({ id: org.id });
+    const changed = await updateWebsite(handle.db, site.id, {
+      name: 'Acme India B2B',
+      timeZone: 'Asia/Calcutta',
+      unitSystem: 'imperial',
+      isActive: false,
+    });
+    expect(changed).toMatchObject({
+      name: 'Acme India B2B',
+      timeZone: 'Asia/Calcutta',
+      unitSystem: 'imperial',
+      isActive: false,
+      code: 'acme-in',
+      defaultCurrency: 'INR',
+    });
+    await expect(
+      updateWebsite(handle.db, site.id, { defaultCurrency: 'USD' } as never),
+    ).rejects.toThrow();
+    await expect(updateWebsite(handle.db, site.id, { timeZone: 'Mars/Olympus' })).rejects.toThrow();
+    expect(await updateWebsite(handle.db, 'not-a-uuid', { name: 'x' })).toBeUndefined();
+    expect(
+      await updateWebsite(handle.db, '00000000-0000-4000-8000-000000000000', { name: 'x' }),
+    ).toBeUndefined();
   });
 
   it.each([

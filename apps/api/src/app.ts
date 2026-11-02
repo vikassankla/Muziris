@@ -21,6 +21,7 @@ import { taxRoutes } from './tax-routes.js';
 import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
 import { visibilityRoutes } from './visibility-routes.js';
 import { webhookRoutes } from './webhook-routes.js';
+import { websiteRoutes } from './website-routes.js';
 import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
 import { HttpProblem, problemResponse, toProblem } from './problem.js';
@@ -210,6 +211,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/tax', taxRoutes(authDeps));
   app.route('/admin/v1/shopping-lists', shoppingListRoutes(authDeps));
   app.route('/admin/v1/visibility', visibilityRoutes(authDeps));
+  app.route('/admin/v1/websites', websiteRoutes(authDeps));
 
   app.notFound((c) =>
     problemResponse(c, toProblem(c, new HttpProblem(404, 'not_found', 'No such resource'))),

@@ -44,6 +44,23 @@ export const newWebsiteSchema = z.object({
 });
 
 export type NewWebsite = z.input<typeof newWebsiteSchema>;
+
+/**
+ * What can change on a website. Its code, country and currency are fixed: the code names it in
+ * the storefront, the country decides tax, and its prices and orders are in the currency.
+ */
+export const websiteChangesSchema = z
+  .object({
+    name: newWebsiteSchema.shape.name,
+    defaultLocale: newWebsiteSchema.shape.defaultLocale,
+    timeZone: newWebsiteSchema.shape.timeZone,
+    unitSystem: z.enum(['metric', 'imperial']),
+    isActive: z.boolean(),
+  })
+  .partial()
+  .strict();
+
+export type WebsiteChanges = z.input<typeof websiteChangesSchema>;
 export type Website = typeof websites.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 
@@ -51,6 +68,16 @@ export async function createOrganization(db: Database, name: string): Promise<Or
   const parsedName = z.string().trim().min(1).max(200).parse(name);
   const [row] = await db.insert(organizations).values({ name: parsedName }).returning();
   if (!row) throw new Error('Organization insert returned no row');
+  return row;
+}
+
+/** The install's organization: one install runs one business, so the oldest is the one. */
+export async function findOrganization(db: Database): Promise<Organization | undefined> {
+  const [row] = await db
+    .select()
+    .from(organizations)
+    .orderBy(asc(organizations.createdAt))
+    .limit(1);
   return row;
 }
 
@@ -78,5 +105,24 @@ export async function findWebsite(db: Database, websiteId: string): Promise<Webs
 
 export async function findWebsiteByCode(db: Database, code: string): Promise<Website | undefined> {
   const [row] = await db.select().from(websites).where(eq(websites.code, code)).limit(1);
+  return row;
+}
+
+/** Changes a website; undefined when there is no such website. */
+export async function updateWebsite(
+  db: Database,
+  websiteId: string,
+  changes: WebsiteChanges,
+  now: Date = new Date(),
+): Promise<Website | undefined> {
+  const values = websiteChangesSchema.parse(changes);
+  const id = z.uuid().safeParse(websiteId);
+  if (!id.success) return undefined;
+  if (Object.keys(values).length === 0) return findWebsite(db, id.data);
+  const [row] = await db
+    .update(websites)
+    .set({ ...values, updatedAt: now })
+    .where(eq(websites.id, id.data))
+    .returning();
   return row;
 }

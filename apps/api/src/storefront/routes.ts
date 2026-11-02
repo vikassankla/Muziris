@@ -194,7 +194,8 @@ export function storefrontRoutes(deps: StorefrontRouteDependencies): Hono<Storef
     try {
       const code = c.req.header(WEBSITE_HEADER);
       const website = code === undefined ? undefined : await findWebsiteByCode(deps.db, code);
-      if (!website) {
+      // An inactive website (ADR 0021) answers as if it did not exist.
+      if (!website?.isActive) {
         throw new RequestError(
           'WEBSITE_NOT_FOUND',
           `Name the website with a ${WEBSITE_HEADER} header holding its code`,
