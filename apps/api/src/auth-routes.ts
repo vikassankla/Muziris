@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
+import {
+  acceptInvitation,
+  CustomerError,
+  findCustomer,
+  findPendingInvitation,
+} from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import {
   consumeRateLimit,
+  EmailTakenError,
+  PasswordPolicyError,
   revokeSession,
   SESSION_POLICIES,
   signIn,
@@ -43,6 +51,27 @@ const SIGN_IN_LIMITS = {
   perIp: { limit: 20, windowMs: 10 * 60_000 },
   perEmail: { limit: 10, windowMs: 10 * 60_000 },
 } as const;
+
+/** Per IP, and per token, for looking up and accepting invitations (ADR 0020). */
+const INVITATION_LIMITS = {
+  perIp: { limit: 30, windowMs: 10 * 60_000 },
+  perToken: { limit: 10, windowMs: 10 * 60_000 },
+} as const;
+
+/** What a token looks like is checked by the module; this only bounds the size. */
+const tokenField = z.string().min(1).max(128);
+const invitationBody = z.object({ token: tokenField });
+const acceptBody = z.object({
+  token: tokenField,
+  password: z.string().min(1).max(1024),
+  displayName: z.string().trim().min(1).max(200).optional(),
+});
+
+const INVITATION_PROBLEMS: Partial<Record<string, [401 | 404 | 409 | 410, string]>> = {
+  invitation_not_found: [404, 'This invitation link is not valid'],
+  invitation_expired: [410, 'This invitation has expired. Ask for a new one.'],
+  invitation_closed: [409, 'This invitation was already used or withdrawn'],
+};
 
 const signInBody = z.object({
   email: z.string().min(1).max(254),
@@ -129,6 +158,55 @@ async function enforceSignInLimits(
   }
 }
 
+async function enforceInvitationLimits(
+  c: Context,
+  deps: AuthRouteDependencies,
+  token: string,
+): Promise<void> {
+  const now = deps.now();
+  const ip = deps.clientIp(c) ?? 'unknown';
+  const checks = [
+    { key: `invitation:ip:${ip}`, ...INVITATION_LIMITS.perIp },
+    // The key holds a hash of the token, never the token.
+    { key: `invitation:token:${hashForKey(token)}`, ...INVITATION_LIMITS.perToken },
+  ];
+  for (const check of checks) {
+    const result = await consumeRateLimit(deps.db, check.key, check.limit, check.windowMs, now);
+    if (!result.allowed) {
+      c.header('Retry-After', String(result.retryAfterSeconds));
+      deps.logger.warn(
+        { requestId: c.get('requestId'), limit: check.key.split(':')[1] },
+        'auth.invitation_rate_limited',
+      );
+      throw new HttpProblem(429, 'too_many_attempts', 'Too many attempts. Try again later.');
+    }
+  }
+}
+
+/** Turns an invitation refusal into its problem; anything else passes through. */
+function invitationProblem(error: unknown): unknown {
+  if (error instanceof CustomerError) {
+    const known = INVITATION_PROBLEMS[error.code];
+    if (known) return new HttpProblem(known[0], error.code, known[1]);
+  }
+  if (error instanceof EmailTakenError) {
+    return new HttpProblem(
+      409,
+      'email_taken',
+      'An account with this email already exists. Sign in instead.',
+    );
+  }
+  if (error instanceof PasswordPolicyError) {
+    return new HttpProblem(
+      400,
+      'password_policy',
+      'The password does not meet the password policy',
+      error.problems.join(', '),
+    );
+  }
+  return error;
+}
+
 /** Sign-in, sign-out and current-user routes for one realm, mounted under its API prefix. */
 export function authRoutes(
   realm: Realm,
@@ -142,6 +220,20 @@ export function authRoutes(
     c.header('Cache-Control', 'no-store');
   });
   app.use('*', trustedOriginGuard(deps.trustedOrigins));
+
+  /** Drops any session this browser already had, then sets the new one's cookie. */
+  async function startSession(c: Context, token: string) {
+    const previous = readSessionCookie(c, realm);
+    if (previous) await revokeSession(deps.db, previous, deps.now());
+    setCookie(c, COOKIE_NAMES[realm], token, {
+      prefix: 'host',
+      httpOnly: true,
+      secure: true,
+      sameSite: SAME_SITE[realm],
+      path: '/',
+      maxAge: Math.floor(SESSION_POLICIES[realm].absoluteTimeoutMs / 1000),
+    });
+  }
 
   app.post('/sign-in', async (c) => {
     const body = signInBody.parse(await c.req.json().catch(() => ({})));
@@ -170,18 +262,7 @@ export function authRoutes(
       );
     }
 
-    // Drop any session this browser already had before handing out a new one.
-    const previous = readSessionCookie(c, realm);
-    if (previous) await revokeSession(deps.db, previous, deps.now());
-
-    setCookie(c, COOKIE_NAMES[realm], result.token, {
-      prefix: 'host',
-      httpOnly: true,
-      secure: true,
-      sameSite: SAME_SITE[realm],
-      path: '/',
-      maxAge: Math.floor(SESSION_POLICIES[realm].absoluteTimeoutMs / 1000),
-    });
+    await startSession(c, result.token);
     deps.logger.info(
       { requestId: c.get('requestId'), realm, userId: result.user.id },
       'auth.signed_in',
@@ -197,6 +278,69 @@ export function authRoutes(
   });
 
   app.get('/me', requireSession(realm, deps), (c) => c.json({ user: c.get('user') }));
+
+  if (realm === 'buyer') {
+    // Accepting an invitation (ADR 0020). The token travels in the body only: never in a URL
+    // or a log. Both routes answer the same way for unknown and malformed tokens.
+
+    /** Who the invitation is for, to show on the accept page. */
+    app.post('/invitation', async (c) => {
+      const { token } = invitationBody.parse(await c.req.json().catch(() => ({})));
+      await enforceInvitationLimits(c, deps, token);
+      try {
+        const invitation = await findPendingInvitation(deps.db, token, deps.now());
+        const customer = await findCustomer(deps.db, invitation.customerId);
+        return c.json({
+          invitation: {
+            email: invitation.email,
+            displayName: invitation.displayName,
+            customerName: customer?.name ?? null,
+            expiresAt: invitation.expiresAt.toISOString(),
+          },
+        });
+      } catch (error) {
+        throw invitationProblem(error);
+      }
+    });
+
+    /** Creates the buyer's account from the invitation and signs them in. */
+    app.post('/accept-invitation', async (c) => {
+      const body = acceptBody.parse(await c.req.json().catch(() => ({})));
+      await enforceInvitationLimits(c, deps, body.token);
+      const now = deps.now();
+      let buyer;
+      let email;
+      try {
+        ({ email } = await findPendingInvitation(deps.db, body.token, now));
+        buyer = await acceptInvitation(deps.db, {
+          token: body.token,
+          password: body.password,
+          now,
+          ...(body.displayName === undefined ? {} : { displayName: body.displayName }),
+        });
+      } catch (error) {
+        throw invitationProblem(error);
+      }
+      deps.logger.info(
+        { requestId: c.get('requestId'), userId: buyer.userId, customerId: buyer.customerId },
+        'auth.invitation_accepted',
+      );
+      const signedIn = await signIn(deps.db, {
+        realm,
+        email,
+        password: body.password,
+        ipAddress: deps.clientIp(c),
+        userAgent: c.req.header('user-agent'),
+        now,
+      });
+      if (!signedIn.ok) {
+        // The account exists; the buyer can sign in on the sign-in page.
+        return c.json({ user: null }, 201);
+      }
+      await startSession(c, signedIn.token);
+      return c.json({ user: signedIn.user, expiresAt: signedIn.expiresAt.toISOString() }, 201);
+    });
+  }
 
   return app;
 }
