@@ -107,6 +107,35 @@ The tax module's US rate import already parses CSV; that parser moves to a share
 - **Price formulas.** For example, list price minus 10%.
 - **Subsidiaries inheriting price lists.**
 
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **The CSV package** is `packages/csv` (`@muziris/csv`): RFC 4180 quoting, a fixed header in
+  any letter case, and a writer that prefixes `'` to a cell starting with `=`, `+`, `-`, `@`, a
+  tab or a carriage return. The import strips that `'` again, so an export imports unchanged.
+  The US tax rate import uses the same parser, so its cells may now be quoted.
+- **Search** uses `searchProductIds` (the admin search statement, up to 1,000 ids) plus an
+  exact SKU lookup in catalog, because the search index may not hold a new product yet.
+- **The 2 MB limit** applies to the import route alone; every other body keeps
+  `MAX_BODY_BYTES`.
+- **Import answers.** A refused file is 422 `price_import_invalid_file`; refused rows are 422
+  `price_import_invalid_rows` with `rows: [{row, sku, code, message}]`. A success answers
+  `{added, updated, skipped}`. An empty `min_quantity` means 1. The log records the counts,
+  never prices.
+- **Names beside ids** come from `findProductsByIds`, `customerNames` and
+  `customerGroupNames`. A price whose product is gone shows its id, and is left out of the
+  export.
+- **Status filter.** The API filters price lists by currency only; the status (worked out from
+  the dates for now) is filtered on the page.
+- **Delete** is offered only while a price list has no assignments; the API itself still
+  deletes a list with its assignments.
+- **Dates** are picked as days in the top bar website's time zone: from the start of the first
+  day to the end of the last.
+- **Not built:** the fallback chain panel on the price list page (the price preview shows the
+  chain for a chosen customer instead), a category filter, and the customer picker searching
+  beyond the first 200 customers.
+
 ## Consequences
 
 - An operator can load and maintain prices from a spreadsheet, check what a buyer will pay,
