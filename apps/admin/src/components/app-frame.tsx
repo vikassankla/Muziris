@@ -18,7 +18,8 @@ import { PREF_KEYS, readPref, writePref } from '../lib/prefs.js';
 import { visibleNav, visibleSections, type NavItem } from '../lib/nav.js';
 import { can, type AdminPermission, type Session } from '../lib/session.js';
 import { useTheme, type ThemeChoice } from '../lib/theme.js';
-import { PLACEHOLDER_WEBSITES, type WebsiteChoice } from '../lib/website.js';
+import type { Website } from '../lib/endpoints.js';
+import { websiteChoice, type WebsiteChoice } from '../lib/website.js';
 import { Tag } from './ui/badge.js';
 import { Button } from './ui/button.js';
 import {
@@ -182,6 +183,7 @@ const THEMES: { value: ThemeChoice; label: string; icon: ReactNode }[] = [
 export function TopBar({
   session,
   website,
+  websites,
   onWebsite,
   onOpenPalette,
   onOpenShortcuts,
@@ -189,7 +191,8 @@ export function TopBar({
 }: {
   session: Session;
   website: WebsiteChoice;
-  onWebsite: (website: WebsiteChoice) => void;
+  websites: readonly Website[];
+  onWebsite: (websiteId: string) => void;
   onOpenPalette: () => void;
   onOpenShortcuts: () => void;
   onSignOut: () => void;
@@ -214,21 +217,26 @@ export function TopBar({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[260px]">
-          <DropdownMenuLabel>Placeholder until the websites API exists</DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={website.id}
-            onValueChange={(value) => {
-              const next = PLACEHOLDER_WEBSITES.find((w) => w.id === value);
-              if (next) onWebsite(next);
-            }}
-          >
-            {PLACEHOLDER_WEBSITES.map((w) => (
-              <DropdownMenuRadioItem key={w.id} value={w.id}>
-                <span className="flex-1">{w.name}</span>
-                <span className="text-xs text-muted-foreground">{w.meta}</span>
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
+          <DropdownMenuLabel>Websites</DropdownMenuLabel>
+          {websites.length === 0 ? (
+            <p className="m-0 px-2 py-1.5 text-xs text-muted-foreground">
+              No websites yet. Create the first under System &gt; Websites.
+            </p>
+          ) : (
+            <DropdownMenuRadioGroup value={website.id} onValueChange={onWebsite}>
+              {websites.map((w) => {
+                const choice = websiteChoice(w);
+                return (
+                  <DropdownMenuRadioItem key={w.id} value={w.id}>
+                    <span className="flex-1">{w.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {w.isActive ? choice.meta : 'Inactive'}
+                    </span>
+                  </DropdownMenuRadioItem>
+                );
+              })}
+            </DropdownMenuRadioGroup>
+          )}
           <DropdownMenuSeparator />
           <p className="m-0 px-2 py-1.5 text-xs text-muted-foreground">
             Sets how money, quantities and dates are shown.

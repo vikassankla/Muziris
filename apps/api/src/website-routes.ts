@@ -32,13 +32,18 @@ interface WebsiteEnv {
   Variables: AdminAccessVariables;
 }
 
-/** The pilot sells in India and the US, in English (ADR 0021). */
+/**
+ * The pilot sells in India and the US, in English, in rupees and dollars (ADR 0021): the admin
+ * and storefront format only these, and payments take only these currencies.
+ */
 export const PILOT_COUNTRIES = ['IN', 'US'] as const;
 export const PILOT_LOCALES = ['en-IN', 'en-US'] as const;
+export const PILOT_CURRENCIES = ['INR', 'USD'] as const;
 
 const createBody = newWebsiteSchema.omit({ organizationId: true }).extend({
   countryCode: z.enum(PILOT_COUNTRIES),
   defaultLocale: z.enum(PILOT_LOCALES),
+  defaultCurrency: z.enum(PILOT_CURRENCIES),
 });
 const changesBody = websiteChangesSchema.extend({ defaultLocale: z.enum(PILOT_LOCALES) }).partial();
 
@@ -84,7 +89,9 @@ export function websiteRoutes(deps: WebsiteRouteDependencies): Hono<WebsiteEnv> 
   app.use('*', trustedOriginGuard(deps.trustedOrigins));
   app.use('*', requireSession('admin', deps));
 
-  app.get('/', need('website.view'), async (c) => {
+  // Every admin screen formats money and dates by the website chosen in the top bar, so any
+  // signed-in admin may list websites; reading one and changing them need the permissions.
+  app.get('/', async (c) => {
     const found = await findOrganization(deps.db);
     return c.json({ websites: found ? await listWebsites(deps.db, found.id) : [] });
   });

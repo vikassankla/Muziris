@@ -656,6 +656,7 @@ function CustomerDetailPage() {
             }}
             customerId={customer.id}
             customerName={customer.name}
+            roles={buyerRoles}
           />
           <AddressSheet
             open={dialog?.kind === 'address'}

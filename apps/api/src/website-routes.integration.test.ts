@@ -153,12 +153,17 @@ describe.skipIf(!url)('setup and website routes against PostgreSQL', () => {
     expect((await call('GET', '/00000000-0000-4000-8000-000000000000', ops)).status).toBe(404);
   });
 
-  it('needs website.view to read and website.manage to change', async () => {
+  it('lists websites for any admin, and needs website.view to read one and website.manage to change', async () => {
     await runSetup(handle.db, { organizationName: 'Acme Industrial Supply' });
     const viewer = await signedInAdmin('viewer@muziris.example', ['website.view']);
     const nobody = await signedInAdmin('nobody@muziris.example', ['order.view']);
-    expect((await call('GET', '', nobody)).status).toBe(403);
-    expect((await call('GET', '', viewer)).status).toBe(200);
+    const ops = await signedInAdmin('ops@muziris.example', ['website.manage']);
+    expect((await call('GET', '', nobody)).status).toBe(200);
+    const { website } = (await (await call('POST', '', ops, INDIA)).json()) as {
+      website: { id: string };
+    };
+    expect((await call('GET', `/${website.id}`, nobody)).status).toBe(403);
+    expect((await call('GET', `/${website.id}`, viewer)).status).toBe(200);
     expect((await call('POST', '', viewer, INDIA)).status).toBe(403);
   });
 });
