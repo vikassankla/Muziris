@@ -1,6 +1,6 @@
 import { moneyFromDecimal, sum, toDecimalString } from '@muziris/money';
 import { GST_STATE_CODES, US_STATES } from './address-rules.js';
-import type { Order, OrderAddress, OrderStep } from './endpoints.js';
+import type { Order, OrderAddress, OrderStep, PaymentMethod, PaymentStatus } from './endpoints.js';
 import type { DisplayContext } from './format.js';
 import { PLACEHOLDER_WEBSITES } from './website.js';
 
@@ -63,6 +63,41 @@ export function addressLines(address: OrderAddress): string[] {
 }
 
 /** "Net 30" for payment terms. */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  terms: 'On terms',
+  stripe: 'Card (Stripe)',
+  razorpay: 'Razorpay',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pending: 'Not paid yet',
+  paid: 'Paid',
+  failed: 'Payment failed',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+  partially_refunded: 'Partly refunded',
+};
+
+export const PAYMENT_STATUS_TONES: Record<
+  PaymentStatus,
+  'warning' | 'success' | 'destructive' | 'neutral'
+> = {
+  pending: 'warning',
+  paid: 'success',
+  failed: 'destructive',
+  cancelled: 'neutral',
+  refunded: 'neutral',
+  partially_refunded: 'warning',
+};
+
+/** What each recorded gateway event did to the payment. */
+export const TRANSACTION_OUTCOMES: Record<string, string> = {
+  applied: 'Applied',
+  ignored: 'No change',
+  amount_mismatch: 'Amount did not match',
+  unknown_payment: 'Unknown payment',
+};
+
 export function paymentTerm(days: number): string {
   return days === 0 ? 'Due on receipt' : `Net ${String(days)}`;
 }

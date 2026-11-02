@@ -38,6 +38,28 @@ export const AddShoppingListLines: Operation<AddShoppingListLinesResult, AddShop
   hash: '2627e10349d27087d3c53fc15433c43f89be6c5e61db36b3319040f59ee44727',
 };
 
+export interface CheckPaymentVariables {
+  orderNumber: string;
+}
+
+export interface CheckPaymentResult {
+  checkPayment: {
+    payment: {
+      status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
+    } | null;
+    refusal: {
+      code: 'ORDER_NOT_FOUND' | 'NOT_PAID_ONLINE' | 'ALREADY_PAID' | 'PAYMENT_CLOSED' | 'GATEWAY_NOT_CONFIGURED' | 'GATEWAY_UNAVAILABLE';
+      message: string;
+    } | null;
+  };
+}
+
+export const CheckPayment: Operation<CheckPaymentResult, CheckPaymentVariables> = {
+  name: 'CheckPayment',
+  kind: 'mutation',
+  hash: 'c5d4ac915bd64b133c19957c7c4b1356739921d7cf5d9c59d591300509976077',
+};
+
 export type CheckoutAddressesVariables = Record<string, never>;
 
 export interface CheckoutAddressesResult {
@@ -138,11 +160,12 @@ export interface CheckoutPreviewResult {
           currency: string;
         };
       };
+      paymentMethods: readonly ('TERMS' | 'STRIPE_CARD' | 'STRIPE_ACH' | 'RAZORPAY')[];
       paymentTermDays: number;
       dueOn: string;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED';
+      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED' | 'PAYMENT_METHOD_NOT_AVAILABLE';
       message: string;
       lines: readonly {
         lineNo: number;
@@ -161,7 +184,7 @@ export interface CheckoutPreviewResult {
 export const CheckoutPreview: Operation<CheckoutPreviewResult, CheckoutPreviewVariables> = {
   name: 'CheckoutPreview',
   kind: 'query',
-  hash: 'bce1faa7b46e1a6e4f41cbf2c6883a288fa4038234bec20c1fc3937a466fb88d',
+  hash: '86a137ee13d7076c3a7bdacdde5d7a7ed950070b6c1b5abc1bf3a75c61ca4631',
 };
 
 export interface CreateShoppingListVariables {
@@ -335,9 +358,12 @@ export interface OrderResult {
       amount: string;
       currency: string;
     };
-    paymentMethod: string;
+    paymentMethod: 'TERMS' | 'STRIPE_CARD' | 'STRIPE_ACH' | 'RAZORPAY';
+    payment: {
+      status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
+    } | null;
     paymentTermDays: number;
-    dueOn: string;
+    dueOn: string | null;
     sellerTaxId: string | null;
     taxExemptionCertificate: string | null;
     billingAddress: {
@@ -366,7 +392,7 @@ export interface OrderResult {
 export const Order: Operation<OrderResult, OrderVariables> = {
   name: 'Order',
   kind: 'query',
-  hash: '7661c4956f106985cd4ae2cbcfb1058cb97e11c0dcfcb7fc7f2195074e2d802e',
+  hash: '41428c868d0ebbd0e153bbc07951ce1c51c2df018870f8bc761e491f15709886',
 };
 
 export interface OrdersVariables {
@@ -409,6 +435,7 @@ export interface PlaceOrderVariables {
     purchaseOrderNumber?: string | null;
     idempotencyKey: string;
     expectedGrandTotal: string;
+    paymentMethod?: 'TERMS' | 'STRIPE_CARD' | 'STRIPE_ACH' | 'RAZORPAY' | null;
   };
 }
 
@@ -419,7 +446,7 @@ export interface PlaceOrderResult {
     } | null;
     replayed: boolean;
     refusal: {
-      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED';
+      code: 'NOT_ALLOWED' | 'WEBSITE_NOT_FOUND' | 'ADDRESS_NOT_FOUND' | 'LINE_PROBLEMS' | 'PRICES_CHANGED' | 'IDEMPOTENCY_KEY_REUSED' | 'TAX_PROBLEMS' | 'TAX_NOT_CONFIGURED' | 'PAYMENT_METHOD_NOT_AVAILABLE';
       message: string;
       lines: readonly {
         lineNo: number;
@@ -792,6 +819,37 @@ export const ShoppingLists: Operation<ShoppingListsResult, ShoppingListsVariable
   name: 'ShoppingLists',
   kind: 'query',
   hash: 'df688bf7ffb7860f42bba8cc050aa2bfd2e0dfcded6d8660d492d70e6afe6e3b',
+};
+
+export interface StartPaymentVariables {
+  orderNumber: string;
+}
+
+export interface StartPaymentResult {
+  startPayment: {
+    stripe: {
+      publishableKey: string;
+      clientSecret: string;
+    } | null;
+    razorpay: {
+      keyId: string;
+      orderId: string;
+      amount: {
+        minorUnits: string;
+        currency: string;
+      } | null;
+    } | null;
+    refusal: {
+      code: 'ORDER_NOT_FOUND' | 'NOT_PAID_ONLINE' | 'ALREADY_PAID' | 'PAYMENT_CLOSED' | 'GATEWAY_NOT_CONFIGURED' | 'GATEWAY_UNAVAILABLE';
+      message: string;
+    } | null;
+  };
+}
+
+export const StartPayment: Operation<StartPaymentResult, StartPaymentVariables> = {
+  name: 'StartPayment',
+  kind: 'mutation',
+  hash: '334c8d273efee3778bb40df19c90ba6ba85e311c8862d560ed89dc3f41aaedde',
 };
 
 export interface UpdateShoppingListLineVariables {

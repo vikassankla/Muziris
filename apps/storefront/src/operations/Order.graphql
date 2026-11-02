@@ -57,6 +57,9 @@ query Order($number: String!) {
       currency
     }
     paymentMethod
+    payment {
+      status
+    }
     paymentTermDays
     dueOn
     sellerTaxId

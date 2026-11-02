@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { CONTENT_SECURITY_POLICY } from './src/lib/content-security-policy.js';
 
 // The API runs on 127.0.0.1:4000 (apps/api). Proxying /storefront/v1 keeps the storefront and
 // the API on one origin in development, so the buyer's __Host- session cookie is first-party
@@ -9,8 +10,23 @@ import { defineConfig } from 'vite';
 // STOREFRONT_PERSISTED_QUERIES at this app's persisted-queries.json.
 const API_TARGET = 'http://127.0.0.1:4000';
 
+/** Writes the content security policy into the built index.html (ADR 0019). */
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'muziris-content-security-policy',
+    apply: 'build',
+    transformIndexHtml: () => [
+      {
+        tag: 'meta',
+        attrs: { 'http-equiv': 'Content-Security-Policy', content: CONTENT_SECURITY_POLICY },
+        injectTo: 'head-prepend',
+      },
+    ],
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), contentSecurityPolicy()],
   // VITE_STOREFRONT_WEBSITE comes from the repository's .env, like the API's settings.
   envDir: '../..',
   server: {

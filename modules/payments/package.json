@@ -1,0 +1,29 @@
+{
+  "name": "@muziris/payments",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@muziris/db": "workspace:*",
+    "@muziris/orders": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@muziris/access": "workspace:*",
+    "@muziris/catalog": "workspace:*",
+    "@muziris/customers": "workspace:*",
+    "@muziris/identity": "workspace:*",
+    "@muziris/platform": "workspace:*",
+    "@muziris/pricing": "workspace:*",
+    "@muziris/visibility": "workspace:*"
+  }
+}

@@ -17,17 +17,27 @@ import {
   TableRow,
 } from '../components/ui/table.js';
 import { cn } from '../lib/cn.js';
-import { getOrder, transitionOrder, type OrderStep, type OrderView } from '../lib/endpoints.js';
+import {
+  getOrder,
+  transitionOrder,
+  type OrderPayment,
+  type OrderStep,
+  type OrderView,
+} from '../lib/endpoints.js';
 import { formatAmount, formatDate, formatDateTime, type DisplayContext } from '../lib/format.js';
 import {
   addressLines,
   HAPPY_PATH,
   isZeroAmount,
   orderDisplay,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_TONES,
   paymentTerm,
   STEP_LABELS,
   STEP_TONES,
   taxTotals,
+  TRANSACTION_OUTCOMES,
   TRANSITION_LABELS,
   transitionLabel,
 } from '../lib/orders.js';
@@ -103,7 +113,13 @@ function OrderDetailPage() {
         badges={
           <>
             <Badge variant={STEP_TONES[order.step]}>{STEP_LABELS[order.step]}</Badge>
-            <Tag>{paymentTerm(order.paymentTermDays)}</Tag>
+            {view.payment ? (
+              <Badge variant={PAYMENT_STATUS_TONES[view.payment.status]}>
+                {PAYMENT_STATUS_LABELS[view.payment.status]}
+              </Badge>
+            ) : (
+              <Tag>{paymentTerm(order.paymentTermDays)}</Tag>
+            )}
           </>
         }
         description={`${order.customerName} · placed on ${formatDateTime(order.placedAt, ctx)}`}
@@ -127,13 +143,16 @@ function OrderDetailPage() {
             <CardContent>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">Method</dt>
-                <dd className="m-0">
-                  {order.paymentMethod === 'terms' ? 'On terms' : order.paymentMethod}
-                </dd>
-                <dt className="text-muted-foreground">Payment term</dt>
-                <dd className="m-0">{paymentTerm(order.paymentTermDays)}</dd>
-                <dt className="text-muted-foreground">Due</dt>
-                <dd className="m-0">{formatDate(`${order.dueOn}T12:00:00Z`, ctx)}</dd>
+                <dd className="m-0">{PAYMENT_METHOD_LABELS[order.paymentMethod]}</dd>
+                {order.dueOn ? (
+                  <>
+                    <dt className="text-muted-foreground">Payment term</dt>
+                    <dd className="m-0">{paymentTerm(order.paymentTermDays)}</dd>
+                    <dt className="text-muted-foreground">Due</dt>
+                    <dd className="m-0">{formatDate(`${order.dueOn}T12:00:00Z`, ctx)}</dd>
+                  </>
+                ) : null}
+                {view.payment ? <PaymentRows payment={view.payment} ctx={ctx} /> : null}
                 <dt className="text-muted-foreground">Buyer PO</dt>
                 <dd className="m-0 font-mono text-[12.5px]">
                   {order.purchaseOrderNumber ?? 'None'}
@@ -157,6 +176,7 @@ function OrderDetailPage() {
               </dl>
             </CardContent>
           </Card>
+          {view.payment?.started ? <Transactions payment={view.payment} ctx={ctx} /> : null}
           <History view={view} ctx={ctx} />
         </div>
       </div>
@@ -330,6 +350,86 @@ function History({ view, ctx }: { view: OrderView; ctx: DisplayContext }) {
             </li>
           ))}
         </ol>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** An online payment's status as the gateway last reported it (ADR 0019). */
+function PaymentRows({ payment, ctx }: { payment: OrderPayment; ctx: DisplayContext }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">Status</dt>
+      <dd className="m-0">
+        <Badge variant={PAYMENT_STATUS_TONES[payment.status]}>
+          {PAYMENT_STATUS_LABELS[payment.status]}
+        </Badge>
+      </dd>
+      <dt className="text-muted-foreground">Amount</dt>
+      <dd className="m-0 font-mono tabular-nums">{formatAmount(payment.amount, ctx)}</dd>
+      {payment.started ? (
+        <>
+          {isZeroAmount(payment.refunded) ? null : (
+            <>
+              <dt className="text-muted-foreground">Refunded</dt>
+              <dd className="m-0 font-mono tabular-nums">{formatAmount(payment.refunded, ctx)}</dd>
+            </>
+          )}
+          {payment.paidAt ? (
+            <>
+              <dt className="text-muted-foreground">Paid</dt>
+              <dd className="m-0">{formatDateTime(payment.paidAt, ctx)}</dd>
+            </>
+          ) : null}
+          {payment.gatewayRef ? (
+            <>
+              <dt className="text-muted-foreground">Gateway ref</dt>
+              <dd className="m-0 font-mono text-[12.5px] break-all">{payment.gatewayRef}</dd>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <dt className="text-muted-foreground">Gateway</dt>
+          <dd className="m-0 text-muted-foreground">The buyer has not started paying</dd>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Every gateway event recorded against the payment, oldest first. Refunds are made in the gateway. */
+function Transactions({
+  payment,
+  ctx,
+}: {
+  payment: Extract<OrderPayment, { started: true }>;
+  ctx: DisplayContext;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Gateway events</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {payment.transactions.length === 0 ? (
+          <p className="m-0 text-sm text-muted-foreground">Nothing from the gateway yet.</p>
+        ) : (
+          <ol className="m-0 grid list-none gap-3 p-0 text-sm">
+            {payment.transactions.map((t) => (
+              <li key={t.eventId}>
+                <div className="font-mono text-[12.5px]">{t.eventType}</div>
+                <div className="text-muted-foreground">
+                  {TRANSACTION_OUTCOMES[t.outcome] ?? t.outcome}
+                  {t.amount ? ` · ${formatAmount(t.amount, ctx)}` : ''}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {formatDateTime(t.receivedAt, ctx)}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
       </CardContent>
     </Card>
   );

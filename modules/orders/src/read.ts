@@ -19,6 +19,7 @@ import {
 import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { orderAddresses, orderLines, orders, orderTaxLines } from './db/schema.js';
+import type { PaymentMethod } from './payment-methods.js';
 import { OrderError } from './errors.js';
 import { ORDER_STEPS, orderWorkflow, type OrderStep, type OrderTransition } from './workflow.js';
 
@@ -88,9 +89,11 @@ export interface OrderSummary {
 /** A placed order with everything it shows. */
 export interface Order extends OrderSummary {
   currency: CurrencyCode;
-  paymentMethod: 'terms';
+  paymentMethod: PaymentMethod;
+  /** Days to pay on terms; 0 for an order paid online. */
   paymentTermDays: number;
-  dueOn: string;
+  /** Null for an order paid online. */
+  dueOn: string | null;
   shippingMethod: string;
   taxProvider: string;
   /** The seller's registration the tax was charged under (GSTIN or US permit), if any. */
@@ -177,7 +180,7 @@ async function withDetails(db: Database, row: OrderRow): Promise<Order> {
   return {
     ...toSummary(row),
     currency,
-    paymentMethod: 'terms',
+    paymentMethod: row.paymentMethod as PaymentMethod,
     paymentTermDays: row.paymentTermDays,
     dueOn: row.dueOn,
     shippingMethod: row.shippingMethod,
@@ -372,6 +375,8 @@ export async function transitionOrder(
     now: Date;
     note?: string;
     expectedVersion?: number;
+    /** True when an order paid online has been paid; the API reads it from payments. */
+    paid?: boolean;
   },
 ): Promise<TransitionOrderResult> {
   const order = await findOrderById(db, input.orderId);
@@ -379,7 +384,7 @@ export async function transitionOrder(
   const result = await performTransition(db, orderWorkflow, {
     subjectId: order.id,
     transition: input.transition,
-    context: {},
+    context: { paymentSettled: order.paymentMethod === 'terms' || input.paid === true },
     actor: input.actor,
     now: input.now,
     ...(input.note === undefined ? {} : { note: input.note }),

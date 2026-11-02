@@ -9,7 +9,7 @@ describe('storefront schema', () => {
     expect(committed).toBe(`${printSchema(storefrontSchema)}\n`);
   });
 
-  it('has placeOrder and the shopping list mutations, and no subscriptions', () => {
+  it('has placeOrder, the shopping list and payment mutations, and no subscriptions', () => {
     expect(Object.keys(storefrontSchema.getMutationType()?.getFields() ?? {})).toEqual([
       'placeOrder',
       'createShoppingList',
@@ -20,6 +20,8 @@ describe('storefront schema', () => {
       'updateShoppingListLine',
       'removeShoppingListLines',
       'moveShoppingListLines',
+      'startPayment',
+      'checkPayment',
     ]);
     expect(storefrontSchema.getSubscriptionType()).toBeUndefined();
   });

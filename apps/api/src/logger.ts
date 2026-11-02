@@ -17,6 +17,19 @@ export const REDACTED_PATHS = [
   'headers.authorization',
   'headers.cookie',
   'databaseUrl',
+  // Payment gateway keys and the secrets they hand out (ADR 0019).
+  'secretKey',
+  '*.secretKey',
+  'keySecret',
+  '*.keySecret',
+  'webhookSecret',
+  '*.webhookSecret',
+  'clientSecret',
+  '*.clientSecret',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'RAZORPAY_KEY_SECRET',
+  'RAZORPAY_WEBHOOK_SECRET',
 ];
 
 export function createLogger(level: string, destination?: pino.DestinationStream): Logger {

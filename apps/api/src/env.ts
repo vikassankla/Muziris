@@ -1,3 +1,4 @@
+import { paymentGatewaysFromEnv, type PaymentGateways } from '@muziris/payments';
 import { z } from 'zod';
 
 const origin = z.url({ protocol: /^https?$/ }).transform((value) => new URL(value).origin);
@@ -42,6 +43,11 @@ const envSchema = z.object({
 
 export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES'> & {
   STOREFRONT_ADHOC_QUERIES: 'allow' | 'deny';
+  /**
+   * The payment gateways whose keys are all set (ADR 0019), from STRIPE_* and RAZORPAY_*.
+   * Live keys are refused unless PAYMENTS_LIVE=true.
+   */
+  payments: PaymentGateways;
 };
 
 /**
@@ -70,6 +76,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   return {
     ...parsed,
+    payments: paymentGatewaysFromEnv(source),
     STOREFRONT_ADHOC_QUERIES:
       parsed.STOREFRONT_ADHOC_QUERIES ?? (parsed.NODE_ENV === 'production' ? 'deny' : 'allow'),
   };

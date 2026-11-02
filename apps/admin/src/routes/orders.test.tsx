@@ -70,9 +70,10 @@ const ORDER = {
   shippingAddress: ADDRESS,
 };
 
-function view(step: string, transitions: string[], version = 1) {
+function view(step: string, transitions: string[], version = 1, payment: unknown = null) {
   return {
     order: { ...ORDER, step },
+    payment,
     version,
     transitions,
     history: [
@@ -155,5 +156,66 @@ describe('orders', () => {
       transition: 'decline',
       expectedVersion: 1,
     });
+  });
+
+  it('shows an online payment and the gateway events recorded against it', async () => {
+    const online = {
+      ...view('new', ['confirm', 'decline']),
+      order: { ...ORDER, paymentMethod: 'razorpay', paymentTermDays: 0, dueOn: null },
+      payment: {
+        status: 'paid',
+        started: true,
+        gateway: 'razorpay',
+        gatewayRef: 'order_Q1',
+        amount: '57364.00',
+        refunded: '0.00',
+        paidAt: '2026-10-26T08:40:00.000Z',
+        transactions: [
+          {
+            eventId: 'evt_1',
+            eventType: 'payment.captured',
+            amount: '57364.00',
+            outcome: 'applied',
+            statusAfter: 'paid',
+            receivedAt: '2026-10-26T08:40:00.000Z',
+          },
+        ],
+      },
+    };
+    mockApi({
+      ...signedIn(['order.view']),
+      [`GET /orders/${ORDER_ID}`]: () => json(online),
+    });
+    renderApp(`/orders/${ORDER_ID}`);
+    expect(await screen.findByRole('heading', { name: 'Order MZ-000042' })).toBeTruthy();
+    expect(screen.getByText('Razorpay')).toBeTruthy();
+    expect(screen.getAllByText('Paid').length).toBeGreaterThan(0);
+    expect(screen.getByText('order_Q1')).toBeTruthy();
+    expect(screen.getByText('payment.captured')).toBeTruthy();
+    expect(screen.queryByText('Due')).toBeNull();
+  });
+
+  it('says why an unpaid online order cannot be confirmed yet', async () => {
+    const unpaid = {
+      ...view('new', ['confirm', 'decline']),
+      order: { ...ORDER, paymentMethod: 'stripe', paymentTermDays: 0, dueOn: null },
+      payment: { status: 'pending', started: false, amount: '57364.00' },
+    };
+    mockApi({
+      ...signedIn(['order.view', 'order.manage']),
+      [`GET /orders/${ORDER_ID}`]: () => json(unpaid),
+      [`POST /orders/${ORDER_ID}/transitions`]: () =>
+        problem(
+          409,
+          'payment_not_received',
+          'An order paid online can be confirmed once its payment is received',
+        ),
+    });
+    renderApp(`/orders/${ORDER_ID}`);
+    expect(await screen.findByText('The buyer has not started paying')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm order' }));
+    expect(
+      await screen.findByText('An order paid online can be confirmed once its payment is received'),
+    ).toBeTruthy();
   });
 });

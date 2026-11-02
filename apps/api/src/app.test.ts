@@ -162,6 +162,19 @@ describe('logging', () => {
     expect(entry).toContain('[redacted]');
   });
 
+  it('redacts payment gateway keys and client secrets (ADR 0019)', () => {
+    const { logger, lines } = captureLogs();
+    logger.info(
+      {
+        stripe: { secretKey: 'sk_test_hidden', webhookSecret: 'whsec_hidden' },
+        razorpay: { keySecret: 'rzp_hidden' },
+        start: { clientSecret: 'pi_1_secret_hidden' },
+      },
+      'payments',
+    );
+    expect(lines.join('')).not.toMatch(/hidden/);
+  });
+
   it('logs path but never the query string', async () => {
     const { app, lines } = makeApp();
     await app.request('/health/live?token=abc123');
@@ -209,5 +222,25 @@ describe('loadEnv', () => {
     expect(() =>
       loadEnv({ ...valid, NODE_ENV: 'production', STOREFRONT_ADHOC_QUERIES: 'allow' }),
     ).toThrow(/STOREFRONT_ADHOC_QUERIES/);
+  });
+
+  it('reads payment gateways, refusing a half-set one without echoing its keys', () => {
+    expect(loadEnv(valid).payments).toEqual({});
+    expect(
+      loadEnv({
+        ...valid,
+        RAZORPAY_KEY_ID: 'rzp_test_1',
+        RAZORPAY_KEY_SECRET: 'k',
+        RAZORPAY_WEBHOOK_SECRET: 'w',
+      }).payments.razorpay?.keyId,
+    ).toBe('rzp_test_1');
+    let message = '';
+    try {
+      loadEnv({ ...valid, STRIPE_SECRET_KEY: 'sk_test_topsecret' });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toMatch(/STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET/);
+    expect(message).not.toContain('topsecret');
   });
 });

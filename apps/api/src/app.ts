@@ -1,5 +1,6 @@
 import type { Database } from '@muziris/db';
 import type { TaxProvider } from '@muziris/orders';
+import { configuredMethods, type GatewayClients, type PaymentGateways } from '@muziris/payments';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
@@ -16,6 +17,7 @@ import { shoppingListRoutes } from './shopping-list-routes.js';
 import { taxRoutes } from './tax-routes.js';
 import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
 import { visibilityRoutes } from './visibility-routes.js';
+import { webhookRoutes } from './webhook-routes.js';
 import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
 import { HttpProblem, problemResponse, toProblem } from './problem.js';
@@ -42,6 +44,11 @@ export interface AppDependencies {
    * one checkout refuses with TAX_NOT_CONFIGURED, so no order is placed without tax.
    */
   tax?: TaxProvider;
+  /**
+   * The payment gateways configured from the environment (ADR 0019) and their clients. Without
+   * them checkout offers payment terms only, and the webhooks answer 404.
+   */
+  payments?: { gateways: PaymentGateways; clients: GatewayClients };
 }
 
 export interface AppEnv {
@@ -165,9 +172,17 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     storefrontRoutes({
       ...authDeps,
       storefront: deps.storefront ?? { persistedQueries: new Map(), allowAdhocQueries: false },
-      checkout: deps.tax === undefined ? null : { tax: deps.tax },
+      checkout:
+        deps.tax === undefined
+          ? null
+          : {
+              tax: deps.tax,
+              paymentMethods: configuredMethods(deps.payments?.gateways ?? {}),
+            },
+      ...(deps.payments ? { payments: deps.payments.clients } : {}),
     }),
   );
+  app.route('/webhooks', webhookRoutes({ ...authDeps, gateways: deps.payments?.gateways ?? {} }));
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(authDeps));

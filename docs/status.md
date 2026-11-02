@@ -123,6 +123,18 @@ emails wait for the email work in week 4.
     in-memory quick order; live preview; place with an idempotency key kept across retries;
     after a list checkout, an offer to empty it). Not built: SKU typeahead in quick order,
     moving lines between lists in the storefront (the API has it), and admin list screens.
+11. Payments through Stripe and Razorpay, in test mode (ADR 0019). **In review**, not merged.
+    This is payments and secrets, so CLAUDE.md rule 4 asks for a second human review.
+    `modules/payments` (migration `0015`): one payment per order and a log of gateway events,
+    unique per event; Stripe and Razorpay over `fetch` with HMAC signature checks and no SDKs.
+    Keys come only from the environment (`STRIPE_*`, `RAZORPAY_*`, `PAYMENTS_LIVE`; see
+    `.env.example`) and are redacted from logs. Orders gain `payment.methods`, an online method
+    with no due date, and a `payment_settled` guard on confirm. Webhooks at
+    `POST /webhooks/stripe` and `/webhooks/razorpay`. Storefront: a "Pay by" choice at checkout,
+    Pay now on the order page (Stripe Payment Element or Razorpay Checkout) and a content
+    security policy; admin: the payment and its gateway events on the order page. Not done: the
+    manual test-mode run against both gateways, the CSP as a hosting header, refunds from the
+    admin.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

@@ -22,6 +22,37 @@ export const STEP_TONES: Record<OrderStep, 'warning' | 'info' | 'success' | 'neu
   DECLINED: 'neutral',
 };
 
+export type PaymentMethod = NonNullable<OrderResult['order']>['paymentMethod'];
+export type PaymentStatus = NonNullable<NonNullable<OrderResult['order']>['payment']>['status'];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  TERMS: 'Payment terms',
+  STRIPE_CARD: 'Card',
+  STRIPE_ACH: 'US bank account (ACH)',
+  RAZORPAY: 'Card, UPI or net banking',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PENDING: 'Not paid yet',
+  PAID: 'Paid',
+  FAILED: 'Payment failed',
+  CANCELLED: 'Cancelled',
+  REFUNDED: 'Refunded',
+  PARTIALLY_REFUNDED: 'Partly refunded',
+};
+
+export const PAYMENT_STATUS_TONES: Record<
+  PaymentStatus,
+  'warning' | 'success' | 'destructive' | 'neutral'
+> = {
+  PENDING: 'warning',
+  PAID: 'success',
+  FAILED: 'destructive',
+  CANCELLED: 'neutral',
+  REFUNDED: 'neutral',
+  PARTIALLY_REFUNDED: 'neutral',
+};
+
 /** "27 Oct 2026, 14:05 IST" or "Oct 27, 2026, 2:05 PM CT", in the website's time zone. */
 export function formatDateTime(iso: string, locale: string, timeZone: string): string {
   return new Intl.DateTimeFormat(locale, {

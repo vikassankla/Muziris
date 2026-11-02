@@ -39,7 +39,18 @@ export {
   type OrderTax,
   type TransitionOrderResult,
 } from './read.js';
-export { ORDER_NUMBER_PREFIX, PAYMENT_TERM_DAYS, SHIPPING_FLAT_RATE } from './settings.js';
+export {
+  availableMethods,
+  METHOD_CURRENCIES,
+  PAYMENT_METHODS,
+  type PaymentMethod,
+} from './payment-methods.js';
+export {
+  ORDER_NUMBER_PREFIX,
+  PAYMENT_METHODS_SETTING,
+  PAYMENT_TERM_DAYS,
+  SHIPPING_FLAT_RATE,
+} from './settings.js';
 export {
   computeTotals,
   flatRateShipping,

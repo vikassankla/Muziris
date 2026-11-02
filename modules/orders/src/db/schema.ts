@@ -49,8 +49,8 @@ export const orders = pgTable(
     purchaseOrderNumber: text('purchase_order_number'),
     paymentMethod: text('payment_method').notNull().default('terms'),
     paymentTermDays: integer('payment_term_days').notNull(),
-    /** The day payment is due, in the website's time zone. */
-    dueOn: date('due_on', { mode: 'string' }).notNull(),
+    /** The day payment is due, in the website's time zone; null when paid online. */
+    dueOn: date('due_on', { mode: 'string' }),
     shippingMethod: text('shipping_method').notNull(),
     taxProvider: text('tax_provider').notNull(),
     /** The seller's registration the tax was charged under: a GSTIN, or a US permit number. */
@@ -76,7 +76,14 @@ export const orders = pgTable(
       'orders_order_step',
       sql`${t.step} in ('new', 'confirmed', 'processing', 'completed', 'declined')`,
     ),
-    check('orders_order_payment_method', sql`${t.paymentMethod} = 'terms'`),
+    check(
+      'orders_order_payment_method',
+      sql`${t.paymentMethod} in ('terms', 'stripe_card', 'stripe_ach', 'razorpay')`,
+    ),
+    check(
+      'orders_order_due_on_terms',
+      sql`(${t.paymentMethod} = 'terms') = (${t.dueOn} is not null)`,
+    ),
     check('orders_order_payment_term', sql`${t.paymentTermDays} between 0 and 365`),
     check('orders_order_request_hash', sql`${t.requestHash} ~ '^[0-9a-f]{64}$'`),
     check(
