@@ -19,6 +19,7 @@ import {
   findProductBySku,
   findProductBySkuWithin,
   findProductsByIds,
+  taxCodeUsage,
   findProductsBySkus,
   findProductsBySkusWithin,
   findProductsWithin,
@@ -260,6 +261,25 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
   });
 
   describe('products', () => {
+    it('reports tax codes in use and products without one, and filters on it', async () => {
+      const make = (sku: string, hsnSacCode: string | null, status: 'enabled' | 'disabled') =>
+        createProduct(handle.db, { sku, name: sku, primaryUnitCode: 'each', hsnSacCode, status });
+      await make('B-2', '8482', 'enabled');
+      await make('A-1', '8482', 'enabled');
+      await make('C-3', '998314', 'enabled');
+      const missing = await make('D-4', null, 'enabled');
+      await make('E-5', null, 'disabled');
+      expect(await taxCodeUsage(handle.db)).toEqual({
+        missing: { count: 1, examples: [{ id: missing.id, sku: 'D-4', name: 'D-4' }] },
+        codes: [
+          { code: '8482', productCount: 2 },
+          { code: '998314', productCount: 1 },
+        ],
+      });
+      const page = await listProducts(handle.db, { missingTaxCode: true });
+      expect(page.products.map((p) => p.sku)).toEqual(['D-4', 'E-5']);
+    });
+
     it('creates a simple product with its units and attributes', async () => {
       const { hex } = await seedTree();
       const product = await createProduct(handle.db, {

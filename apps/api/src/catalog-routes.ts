@@ -77,14 +77,16 @@ const listProductsQuery = z
     categoryId: z.string().max(64).optional(),
     includeSubcategories: z.enum(['true', 'false']).optional(),
     status: z.string().max(20).optional(),
+    missingTaxCode: z.enum(['true', 'false']).optional(),
     after: z.string().max(100).optional(),
     limit: z
       .string()
       .regex(/^\d{1,4}$/, 'Use a whole number')
       .optional(),
   })
-  .transform(({ includeSubcategories, limit, ...rest }) =>
+  .transform(({ includeSubcategories, limit, missingTaxCode, ...rest }) =>
     listProductsQuerySchema.parse({
+      ...(missingTaxCode === undefined ? {} : { missingTaxCode: missingTaxCode === 'true' }),
       ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)),
       ...(includeSubcategories === undefined
         ? {}
