@@ -1,5 +1,5 @@
 import { createRoute, Link, useNavigate } from '@tanstack/react-router';
-import { Building2, Mail, MapPin, Plus, Users } from 'lucide-react';
+import { Building2, Mail, MapPin, Plus, Settings, Users } from 'lucide-react';
 import { useState } from 'react';
 import { AddressSheet } from '../components/address-sheet.js';
 import {
@@ -227,16 +227,26 @@ function CustomerDetailPage() {
         }
         description={`${String(subsidiaries)} ${subsidiaries === 1 ? 'subsidiary' : 'subsidiaries'} · ${String(buyerUsers.items.length)}${buyerUsers.nextAfter ? '+' : ''} buyer users · customer since ${formatDate(customer.createdAt, website)}`}
         actions={
-          manage ? (
-            <Button
-              onClick={() => {
-                void navigate({ to: '.', search: { tab: 'invitations', new: true } });
-              }}
-            >
-              <Mail aria-hidden="true" />
-              Invite a buyer user
-            </Button>
-          ) : null
+          <>
+            {can(session, 'setting.view') ? (
+              <Button variant="outline" asChild>
+                <Link to="/settings" search={{ customer: customer.id }}>
+                  <Settings aria-hidden="true" />
+                  Settings for this customer
+                </Link>
+              </Button>
+            ) : null}
+            {manage ? (
+              <Button
+                onClick={() => {
+                  void navigate({ to: '.', search: { tab: 'invitations', new: true } });
+                }}
+              >
+                <Mail aria-hidden="true" />
+                Invite a buyer user
+              </Button>
+            ) : null}
+          </>
         }
       />
 
