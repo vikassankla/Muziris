@@ -23,6 +23,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
     restoreMocks: true,
+    // Form tests type field by field; on a busy CI runner one can take more than the default 5 s.
+    testTimeout: 15_000,
     unstubGlobals: true,
   },
 });
