@@ -28,6 +28,8 @@ export const ADMIN_PERMISSION_KEYS = [
   'order.manage',
   'tax.view',
   'tax.manage',
+  'notification.view',
+  'notification.manage',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSION_KEYS)[number];

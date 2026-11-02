@@ -12,6 +12,7 @@ import { authRoutes } from './auth-routes.js';
 import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
 import { createEmails } from './emails.js';
+import { notificationRoutes } from './notification-routes.js';
 import { orderRoutes } from './order-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
@@ -202,6 +203,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(emailDeps));
+  app.route('/admin/v1/notifications', notificationRoutes(authDeps));
   app.route('/admin/v1/orders', orderRoutes(emailDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));

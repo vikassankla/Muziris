@@ -26,6 +26,8 @@ export const ADMIN_PERMISSIONS = {
   'order.manage': 'Change and cancel orders',
   'tax.view': 'See tax registrations, rates and exemption certificates',
   'tax.manage': 'Change tax registrations, rates and exemption certificates',
+  'notification.view': 'See the emails sent and those that failed',
+  'notification.manage': 'Send a failed email again',
 } as const;
 
 export type AdminPermission = keyof typeof ADMIN_PERMISSIONS;
