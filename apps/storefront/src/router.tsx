@@ -1,5 +1,6 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import { PendingList, RouteError } from './components/states.js';
+import { acceptInvitationRoute } from './routes/accept-invitation.js';
 import { authedRoute } from './routes/authed.js';
 import { categoryRoute, homeRoute } from './routes/catalog.js';
 import { checkoutRoute } from './routes/checkout.js';
@@ -13,6 +14,7 @@ import { signInRoute } from './routes/sign-in.js';
 
 const routeTree = rootRoute.addChildren([
   signInRoute,
+  acceptInvitationRoute,
   authedRoute.addChildren([
     homeRoute,
     categoryRoute,

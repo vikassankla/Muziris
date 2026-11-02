@@ -194,3 +194,44 @@ export async function signOut(): Promise<void> {
   const response = await send('/auth/sign-out', { method: 'POST' });
   if (!response.ok && response.status !== 401) throw await refused(response);
 }
+
+const invitationSchema = z.object({
+  invitation: z.object({
+    email: z.string(),
+    displayName: z.string(),
+    customerName: z.string().nullable(),
+    expiresAt: z.string(),
+  }),
+});
+
+export type PendingInvitation = z.output<typeof invitationSchema>['invitation'];
+
+async function postJson(path: string, body: unknown): Promise<unknown> {
+  const response = await send(path, {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw await refused(response);
+  return response.json().catch(() => undefined);
+}
+
+function unexpected(): ApiProblem {
+  return new ApiProblem({ status: 0, code: 'unexpected_response', title: SERVER_ERROR_TITLE });
+}
+
+/** Who an invitation is for (ADR 0020). The token goes in the body, never in a URL. */
+export async function lookUpInvitation(token: string): Promise<PendingInvitation> {
+  const parsed = invitationSchema.safeParse(await postJson('/auth/invitation', { token }));
+  if (!parsed.success) throw unexpected();
+  return parsed.data.invitation;
+}
+
+/** Creates the buyer's account from an invitation and signs them in. */
+export async function acceptInvitation(token: string, password: string): Promise<Buyer | null> {
+  const parsed = z
+    .object({ user: buyerSchema.shape.user.nullable() })
+    .safeParse(await postJson('/auth/accept-invitation', { token, password }));
+  if (!parsed.success) throw unexpected();
+  return parsed.data.user;
+}
