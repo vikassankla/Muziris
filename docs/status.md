@@ -244,7 +244,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   a buyer user's buyer roles; no single buyer role read (the screen loads every role); no
   activity history; no product counts per category or unit.
 - Admin app: the website switcher lists the real websites but forgets the choice on reload
-  (browser storage holds UI preferences only), and admin lists are not yet filtered by it.
+  (browser storage holds UI preferences only).
 - Admin app: browser storage holds only UI preferences, the theme and whether the sidebar is
   collapsed (`apps/admin/src/lib/prefs.ts`). Nothing about the session, the admin user or the
   business goes there; tests check that no other key appears. Decided 2026-10-29.
