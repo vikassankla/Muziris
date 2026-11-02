@@ -32,7 +32,7 @@ They are design data only. The tokens from `muziris.css` (light and dark) live i
 | OrderDetail                     | `/orders/$orderId`                      | Built, no notes or print  |
 | RFQs, QuoteEditor               | none                                    | Designed, waiting on APIs |
 | PriceLists, PriceListDetail     | none                                    | Designed, waiting on APIs |
-| Websites, Settings              | none                                    | Designed, waiting on APIs |
+| Websites, Settings              | `/websites`, `/settings`                | Built, no toggles         |
 
 The pull request that built these screens lists where the app deliberately differs from the
 boards, mostly where the API has no matching data yet: counts, search, totals, activity

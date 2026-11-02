@@ -124,6 +124,43 @@ customer hierarchy (ADR 0003).
   the API assigns that role in the same transaction that creates the buyer user. A role
   deleted in the meantime is skipped and logged.
 
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **Setup** is `pnpm --filter @muziris/api setup --organization "<name>"`. It creates the
+  organization when there is none and adds the standard product units (each and pack, whole
+  numbers; kg, m and l to 3 decimal places) that are missing. Run again, it changes nothing.
+  Without an organization and without `--organization` it stops and says so.
+- **Listing websites needs only a session.** Every admin screen formats money and dates by
+  the website in the top bar, so any signed-in admin may list websites. Reading one needs
+  `website.view`; creating or changing one needs `website.manage`.
+- **Pilot values only.** A website's country is IN or US, its locale en-IN or en-US and its
+  currency INR or USD, because the admin and storefront format only these and the gateways take
+  only these. The API refuses anything else.
+- **An inactive website** answers as not found on the storefront API, as if it did not exist.
+  Buyer sign-in itself is not per website, so a buyer can still sign in.
+- **Websites are edited in a sheet** on `/websites`, not a page of their own. The sheet shows how
+  the website formats an amount, a date and a quantity.
+- **The registry** is `apps/api/src/settings.ts` (`ADMIN_SETTINGS`), with a "Customers" group
+  for the default buyer role. Feature toggles do not exist yet, so the Settings screen has no
+  toggles section.
+- **Settings screen.** It starts from the top bar's website; a customer group, or a customer
+  (from the customer page's "Settings for this customer"), narrows it. A customer brings its own
+  group. "Change" overrides at one scope of that context that the setting allows; "Clear"
+  removes the override the value comes from, when that scope is in the context.
+- **Who changed it.** `platform_config_value.updated_by_user_id` (migration `0017`) records
+  the admin. Changes are logged by key and scope, never by value, because a value can be an
+  email address.
+- **The default buyer role** (`customers.default_buyer_role`, website or organization) is read
+  for the organization and the storefront website (`STOREFRONT_WEBSITE`) when an invitation
+  leaves the role out. The invitation stores it (`customer_invitation.buyer_role_id`,
+  migration `0018`), and acceptance grants it inside the same transaction through a hook. A role
+  deleted in the meantime is skipped and logged as `auth.invitation_role_missing`.
+- **Fixed in passing.** The order emails' payment method labels named a `stripe` method that
+  does not exist; they now cover `stripe_card` and `stripe_ach`, typed so a new method cannot
+  be missed.
+
 ## Consequences
 
 - A fresh install can be set up end to end: the setup CLI, then `admin:create`, then the first

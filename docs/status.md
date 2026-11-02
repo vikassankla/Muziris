@@ -153,11 +153,21 @@ review).
     `/accept-invitation`; admin System > Emails (`notification.view`, `notification.manage`).
     Not done: a check against Mailpit by hand, bounce handling.
 
+13. Websites, settings and first-run setup (ADR 0021). **In review** (stacked on the ADR pull
+    request). This touches access control (a buyer role granted on acceptance) and settings that
+    steer payments, so CLAUDE.md rule 4 asks for a second human review. The setup CLI
+    (`pnpm --filter @muziris/api setup --organization "<name>"`) creates the organization and
+    the standard product units; `/admin/v1/websites` and `/admin/v1/settings` list, create and
+    change websites and override or clear settings at one scope, recording who did it
+    (migration `0017`). The default buyer role is a setting, stored on the invitation (migration
+    `0018`) and granted when it is accepted. Admin: a real website switcher, System > Websites
+    and System > Settings, a buyer role in the invite dialog. Not done: feature toggles, a
+    check of the screens by hand.
+
 **Next (ahead of the plan):** the admin screens an operator needs to run the pilot without API
 calls by hand, in this order:
 
-1. Websites, settings and first-run setup (ADR 0021). It also settles the default buyer role:
-   a setting, applied when an invitation is accepted.
+1. Websites, settings and first-run setup (ADR 0021): in review, item 13.
 2. Price list screens, with CSV import and export (ADR 0022).
 3. Tax screens, the readiness check, and the product tax code fields (ADR 0023).
 
@@ -216,17 +226,15 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
-- The default buyer role for invited buyer users (ADR 0006, ADR 0008) is proposed in
-  ADR 0021 as a setting. Until it is built, an admin assigns buyer roles by hand.
 - The admin buyer users list returns identity user ids only; names and emails need a batch
   lookup in identity's public interface.
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
 - Admin app: designed in `docs/design/admin` but waiting on APIs: RFQs,
-  QuoteEditor, Websites, Settings, the Home dashboard widgets,
+  QuoteEditor, the Home dashboard widgets,
   Admin users, and the customer detail tabs for orders, quotes, price lists, settings
-  overrides and payment term. Their sidebar items stay hidden until the APIs exist. The
+  overrides and payment term (the Settings screen covers a customer's overrides). Their sidebar items stay hidden until the APIs exist. The
   PriceLists and PriceListDetail APIs are in review (`/admin/v1/pricing`); their screens are
   not built. They need customer and website names beside the ids the API returns, and SKU
   search, CSV import and the "vs. list price" column are not in the API.
@@ -235,8 +243,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   delete; buyer users carry user ids only (no names, emails, roles or last sign-in); no list of
   a buyer user's buyer roles; no single buyer role read (the screen loads every role); no
   activity history; no product counts per category or unit.
-- Admin app: the website switcher is a placeholder (India or United States) that only sets
-  how money, quantities and dates show, until the websites API exists.
+- Admin app: the website switcher lists the real websites but forgets the choice on reload
+  (browser storage holds UI preferences only), and admin lists are not yet filtered by it.
 - Admin app: browser storage holds only UI preferences, the theme and whether the sidebar is
   collapsed (`apps/admin/src/lib/prefs.ts`). Nothing about the session, the admin user or the
   business goes there; tests check that no other key appears. Decided 2026-10-29.

@@ -41,12 +41,15 @@ cp .env.example .env          # then replace every CHANGE_ME value
 docker compose up -d          # PostgreSQL 18, S3-compatible storage, mail catcher
 pnpm install
 pnpm db:migrate
+pnpm --filter @muziris/api setup --organization "Your Company"
 pnpm --filter @muziris/api admin:create --email you@example.com --name "Your Name"
 pnpm --filter @muziris/api dev
 ```
 
 `admin:create` asks for the password without showing it and gives the new admin the built-in
-`administrator` role. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
+`administrator` role. `setup` creates the organization and the standard product units, and can
+be run again safely. Then create the first website and its settings in the admin app, under
+System > Websites and System > Settings. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
 
 ### The admin app
