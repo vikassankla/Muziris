@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   addPrice,
+  allPrices,
   createAssignment,
   createPriceList,
   deleteAssignment,
@@ -28,10 +29,12 @@ import {
   findPricesForBuyer,
   MAX_PRICE_ITEMS,
   getBuildState,
+  importPrices,
   listAssignments,
   listPriceLists,
   listPrices,
   previewPrice,
+  PriceImportError,
   PricingError,
   rebuildCombinedPrices,
   updateAssignment,
@@ -607,6 +610,98 @@ describe.skipIf(!url)('pricing module against PostgreSQL', () => {
       const kgOnly = await listPrices(handle.db, list.id, { unitCode: 'kg' });
       expect(kgOnly.prices).toHaveLength(1);
       await expectRefused(listPrices(handle.db, MISSING_ID), 'price_list_not_found');
+    });
+  });
+
+  describe('import', () => {
+    const header = 'sku,unit,min_quantity,price\n';
+
+    it('refuses the whole file for one bad row, naming each bad row', async () => {
+      const w = await world();
+      const list = await createPriceList(handle.db, { name: 'India', currency: 'INR' });
+      const csv =
+        header +
+        'brg-6205-2rs,each,1,100.00\n' +
+        'NOPE-1,each,1,5\n' +
+        'BRG-6205-2RS,box,1,5\n' +
+        'BRG-6205-2RS,kg,0.0001,5\n' +
+        'BRG-6205-2RS,kg,1,5.005\n' +
+        'BRG-6205-2RS,each,1.0,90\n';
+      const before = (await getBuildState(handle.db)).pendingChanges;
+      const error: unknown = await importPrices(handle.db, list.id, csv).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(PriceImportError);
+      expect((error as PriceImportError).rows.map((r) => [r.row, r.code])).toEqual([
+        [2, 'unknown_sku'],
+        [3, 'unit_not_sold'],
+        [4, 'invalid_quantity'],
+        [5, 'invalid_amount'],
+        [6, 'duplicate_row'],
+      ]);
+      expect((await listPrices(handle.db, list.id)).prices).toEqual([]);
+      expect((await getBuildState(handle.db)).pendingChanges).toBe(before);
+
+      const skipped = await importPrices(handle.db, list.id, csv, { skipInvalid: true });
+      expect(skipped).toMatchObject({ added: 1, updated: 0 });
+      expect(skipped.skipped).toHaveLength(5);
+      const [price] = (await listPrices(handle.db, list.id)).prices;
+      expect(price).toMatchObject({ productId: w.product.id, unitCode: 'each', minQuantity: '1' });
+      expect((await getBuildState(handle.db)).pendingChanges).toBe(before + 1);
+    });
+
+    it('adds and replaces prices, leaves others alone, and counts one change', async () => {
+      const w = await world();
+      const list = await createPriceList(handle.db, { name: 'India', currency: 'INR' });
+      await addPrice(handle.db, list.id, {
+        productId: w.product.id,
+        unitCode: 'kg',
+        minQuantity: '5',
+        amount: '7',
+      });
+      await addPrice(handle.db, list.id, {
+        productId: w.product.id,
+        unitCode: 'each',
+        amount: '1',
+      });
+      const before = (await getBuildState(handle.db)).pendingChanges;
+      const result = await importPrices(
+        handle.db,
+        list.id,
+        `${header}"BRG-6205-2RS",each,,120.50\r\nBRG-6205-2RS,each,10,110\r\n`,
+      );
+      expect(result).toEqual({ added: 1, updated: 1, skipped: [] });
+      expect((await getBuildState(handle.db)).pendingChanges).toBe(before + 1);
+      const all = await allPrices(handle.db, list.id);
+      expect(all.map((p) => [p.unitCode, p.minQuantity, toDecimalString(p.amount)])).toEqual([
+        ['each', '1', '120.50'],
+        ['each', '10', '110.00'],
+        ['kg', '5', '7.00'],
+      ]);
+    });
+
+    it('refuses a file that is not the price CSV', async () => {
+      await world();
+      const list = await createPriceList(handle.db, { name: 'India', currency: 'INR' });
+      for (const csv of ['sku,price\nA,1', header, `${header}A,each`]) {
+        const error: unknown = await importPrices(handle.db, list.id, csv).catch((e: unknown) => e);
+        expect((error as PriceImportError).code).toBe('invalid_file');
+      }
+    });
+
+    it('filters the price list by products', async () => {
+      const w = await world();
+      const list = await createPriceList(handle.db, { name: 'India', currency: 'INR' });
+      await addPrice(handle.db, list.id, {
+        productId: w.product.id,
+        unitCode: 'each',
+        amount: '1',
+      });
+      expect(
+        (await listPrices(handle.db, list.id, { productIds: [w.product.id] })).prices,
+      ).toHaveLength(1);
+      expect((await listPrices(handle.db, list.id, { productIds: [MISSING_ID] })).prices).toEqual(
+        [],
+      );
+      expect((await listPrices(handle.db, list.id, { productIds: [] })).prices).toEqual([]);
     });
   });
 
