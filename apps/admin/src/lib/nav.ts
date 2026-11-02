@@ -3,6 +3,7 @@ import {
   FolderTree,
   House,
   KeyRound,
+  Mail,
   Package,
   Ruler,
   ShieldCheck,
@@ -21,7 +22,8 @@ export type NavTo =
   | '/categories'
   | '/product-units'
   | '/admin-roles'
-  | '/buyer-roles';
+  | '/buyer-roles'
+  | '/emails';
 
 export interface NavItem {
   to: NavTo;
@@ -78,6 +80,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       },
       { to: '/buyer-roles', label: 'Buyer roles', icon: KeyRound, permission: 'buyer_role.view' },
     ],
+  },
+  {
+    label: 'System',
+    items: [{ to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' }],
   },
 ];
 
