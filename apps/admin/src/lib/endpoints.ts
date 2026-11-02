@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { api } from './api.js';
+import { API_PREFIX, api } from './api.js';
 
 // Requests to the admin API and the shapes of its answers, checked on arrival. The shapes
 // mirror the modules' public types (identity, access, customers, catalog), which the browser
@@ -1024,4 +1024,297 @@ export async function clearSettingValue(
     method: 'DELETE',
     query: { scope: scope.type, scopeId: scope.id },
   });
+}
+
+// Pricing (ADR 0011, screens in ADR 0022)
+
+export const PRICE_LIST_STATUSES = ['scheduled', 'active', 'expired'] as const;
+export type PriceListStatus = (typeof PRICE_LIST_STATUSES)[number];
+
+const priceListSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  currency: z.string(),
+  activeFrom: z.string().nullable(),
+  activeUntil: z.string().nullable(),
+  status: z.enum(PRICE_LIST_STATUSES),
+  priceCount: z.number().optional(),
+  assignmentCount: z.number().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PriceList = z.infer<typeof priceListSchema>;
+
+const priceSchema = z.object({
+  id: z.string(),
+  priceListId: z.string(),
+  productId: z.string(),
+  sku: z.string().nullable(),
+  productName: z.string().nullable(),
+  unitCode: z.string(),
+  minQuantity: z.string(),
+  amount: z.string(),
+  currency: z.string(),
+});
+export type Price = z.infer<typeof priceSchema>;
+
+export const ASSIGNMENT_TARGETS = ['customer', 'customer_group', 'website'] as const;
+export type AssignmentTarget = (typeof ASSIGNMENT_TARGETS)[number];
+
+const assignmentSchema = z.object({
+  id: z.string(),
+  priceListId: z.string(),
+  websiteId: z.string(),
+  websiteName: z.string().nullable().optional(),
+  target: z.enum(ASSIGNMENT_TARGETS),
+  targetId: z.string(),
+  targetName: z.string().nullable().optional(),
+  priority: z.number(),
+});
+export type Assignment = z.infer<typeof assignmentSchema>;
+
+export function listPriceLists(
+  query: { after?: string | undefined; limit?: number | undefined; currency?: string | undefined },
+  signal?: AbortSignal,
+): Promise<Page<PriceList>> {
+  return page(
+    '/pricing/price-lists',
+    'priceLists',
+    priceListSchema,
+    { ...pageQuery(query.after, query.limit ?? PAGE_SIZE), currency: query.currency },
+    signal,
+  );
+}
+
+export async function getPriceList(priceListId: string, signal?: AbortSignal) {
+  return (
+    await api(`/pricing/price-lists/${id(priceListId)}`, z.object({ priceList: priceListSchema }), {
+      signal,
+    })
+  ).priceList;
+}
+
+export async function createPriceList(input: {
+  name: string;
+  currency: string;
+  activeFrom: string | null;
+  activeUntil: string | null;
+}) {
+  return (
+    await api('/pricing/price-lists', z.object({ priceList: priceListSchema }), {
+      method: 'POST',
+      body: input,
+    })
+  ).priceList;
+}
+
+export async function updatePriceList(
+  priceListId: string,
+  changes: { name?: string; activeFrom?: string | null; activeUntil?: string | null },
+) {
+  return (
+    await api(`/pricing/price-lists/${id(priceListId)}`, z.object({ priceList: priceListSchema }), {
+      method: 'PATCH',
+      body: changes,
+    })
+  ).priceList;
+}
+
+export function deletePriceList(priceListId: string) {
+  return api(`/pricing/price-lists/${id(priceListId)}`, none, { method: 'DELETE' });
+}
+
+export function listPrices(
+  priceListId: string,
+  query: {
+    after?: string | undefined;
+    limit?: number | undefined;
+    q?: string | undefined;
+    unitCode?: string | undefined;
+  },
+  signal?: AbortSignal,
+): Promise<Page<Price>> {
+  return page(
+    `/pricing/price-lists/${id(priceListId)}/prices`,
+    'prices',
+    priceSchema,
+    {
+      ...pageQuery(query.after, query.limit ?? PAGE_SIZE),
+      q: query.q,
+      unitCode: query.unitCode,
+    },
+    signal,
+  );
+}
+
+export async function addPrice(
+  priceListId: string,
+  input: { productId: string; unitCode: string; minQuantity: string; amount: string },
+) {
+  return (
+    await api(`/pricing/price-lists/${id(priceListId)}/prices`, z.object({ price: priceSchema }), {
+      method: 'POST',
+      body: input,
+    })
+  ).price;
+}
+
+export async function updatePrice(priceId: string, amount: string) {
+  return (
+    await api(`/pricing/prices/${id(priceId)}`, z.object({ price: priceSchema }), {
+      method: 'PATCH',
+      body: { amount },
+    })
+  ).price;
+}
+
+export function deletePrice(priceId: string) {
+  return api(`/pricing/prices/${id(priceId)}`, none, { method: 'DELETE' });
+}
+
+const importResultSchema = z.object({
+  added: z.number(),
+  updated: z.number(),
+  skipped: z.array(
+    z.object({ row: z.number(), sku: z.string(), code: z.string(), message: z.string() }),
+  ),
+});
+export type PriceImportResult = z.infer<typeof importResultSchema>;
+
+/** Imports prices from CSV: all rows, or with skipInvalid only the valid ones. */
+export function importPrices(priceListId: string, csv: string, skipInvalid: boolean) {
+  return api(`/pricing/price-lists/${id(priceListId)}/prices/import`, importResultSchema, {
+    method: 'POST',
+    csv,
+    query: { skipInvalid: skipInvalid ? 'true' : undefined },
+  });
+}
+
+/** Where the browser downloads a price list's prices as CSV; the session cookie goes along. */
+export function pricesCsvUrl(priceListId: string): string {
+  return `${API_PREFIX}/pricing/price-lists/${id(priceListId)}/prices.csv`;
+}
+
+export async function listAssignments(
+  query: { priceListId?: string; target?: AssignmentTarget; targetId?: string },
+  signal?: AbortSignal,
+): Promise<Assignment[]> {
+  return (
+    await page(
+      '/pricing/assignments',
+      'assignments',
+      assignmentSchema,
+      {
+        ...pageQuery(undefined, 200),
+        priceListId: query.priceListId,
+        target: query.target,
+        targetId: query.targetId,
+      },
+      signal,
+    )
+  ).items;
+}
+
+export async function createAssignment(input: {
+  priceListId: string;
+  websiteId: string;
+  target: AssignmentTarget;
+  /** Left out for a website target. */
+  targetId?: string;
+  /** Left out to come after the target's other price lists. */
+  priority?: number;
+}) {
+  return (
+    await api('/pricing/assignments', z.object({ assignment: assignmentSchema }), {
+      method: 'POST',
+      body: input,
+    })
+  ).assignment;
+}
+
+export async function updateAssignment(assignmentId: string, priority: number) {
+  return (
+    await api(
+      `/pricing/assignments/${id(assignmentId)}`,
+      z.object({ assignment: assignmentSchema }),
+      {
+        method: 'PATCH',
+        body: { priority },
+      },
+    )
+  ).assignment;
+}
+
+export function deleteAssignment(assignmentId: string) {
+  return api(`/pricing/assignments/${id(assignmentId)}`, none, { method: 'DELETE' });
+}
+
+const buildSchema = z.object({
+  pendingChanges: z.number(),
+  lastBuild: z.object({ builtAt: z.string(), builtBy: z.string().nullable() }).nullable(),
+});
+export type PriceBuildState = z.infer<typeof buildSchema>;
+
+export async function getPriceBuild(signal?: AbortSignal) {
+  return (await api('/pricing/build', z.object({ build: buildSchema }), { signal })).build;
+}
+
+/** Builds the combined prices now and waits for it (ADR 0011). */
+export function buildPrices() {
+  return api('/pricing/build', z.unknown(), { method: 'POST' });
+}
+
+const tierSchema = z.object({ minQuantity: z.string(), unitPrice: z.string() });
+
+const previewSchema = z.object({
+  currency: z.string(),
+  quantity: z.string(),
+  price: z
+    .object({ unitPrice: z.string(), minQuantity: z.string(), priceListId: z.string() })
+    .nullable(),
+  lineAmount: z.string().nullable(),
+  reason: z.string().nullable(),
+  steps: z.array(
+    z.object({
+      target: z.enum(ASSIGNMENT_TARGETS),
+      targetId: z.string(),
+      priority: z.number(),
+      priceListId: z.string(),
+      priceListName: z.string(),
+      status: z.string(),
+      tier: tierSchema.nullable(),
+    }),
+  ),
+  unbuiltPrice: z
+    .object({ unitPrice: z.string(), minQuantity: z.string(), priceListId: z.string() })
+    .nullable(),
+  pendingChanges: z.number(),
+});
+export type PricePreview = z.infer<typeof previewSchema>;
+
+export async function previewPrice(
+  query: {
+    customerId: string;
+    websiteId: string;
+    productId: string;
+    unitCode: string;
+    quantity: string;
+  },
+  signal?: AbortSignal,
+) {
+  return (await api('/pricing/preview', z.object({ preview: previewSchema }), { query, signal }))
+    .preview;
+}
+
+const searchHitSchema = z.object({ productId: z.string(), sku: z.string(), name: z.string() });
+export type ProductHit = z.infer<typeof searchHitSchema>;
+
+/** The admin product search, for pickers: SKU, then name. */
+export async function searchProducts(q: string, signal?: AbortSignal): Promise<ProductHit[]> {
+  return (
+    await api('/search/products', z.object({ results: z.array(searchHitSchema) }), {
+      query: { q, limit: '10' },
+      signal,
+    })
+  ).results;
 }

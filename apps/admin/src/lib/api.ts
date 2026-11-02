@@ -14,7 +14,18 @@ const problemSchema = z.object({
   detail: z.string().optional(),
   requestId: z.string().optional(),
   errors: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
+  /** Refused rows of an import (price_import_invalid_rows). */
+  rows: z
+    .array(z.object({ row: z.number(), sku: z.string(), code: z.string(), message: z.string() }))
+    .optional(),
 });
+
+export interface ImportRowProblem {
+  row: number;
+  sku: string;
+  code: string;
+  message: string;
+}
 
 /**
  * A refused API request. `code` is the API's stable code to branch on; `title` is safe to show.
@@ -27,6 +38,7 @@ export class ApiProblem extends Error {
   readonly detail: string | undefined;
   readonly requestId: string | undefined;
   readonly errors: readonly { path: string; message: string }[];
+  readonly rows: readonly ImportRowProblem[];
   /** From Retry-After, when the API sent one (sign-in rate limits). */
   readonly retryAfterSeconds: number | undefined;
 
@@ -37,6 +49,7 @@ export class ApiProblem extends Error {
     detail?: string | undefined;
     requestId?: string | undefined;
     errors?: readonly { path: string; message: string }[] | undefined;
+    rows?: readonly ImportRowProblem[] | undefined;
     retryAfterSeconds?: number | undefined;
   }) {
     super(init.title);
@@ -47,6 +60,7 @@ export class ApiProblem extends Error {
     this.detail = init.detail;
     this.requestId = init.requestId;
     this.errors = init.errors ?? [];
+    this.rows = init.rows ?? [];
     this.retryAfterSeconds = init.retryAfterSeconds;
   }
 }
@@ -82,6 +96,7 @@ async function problemFrom(response: Response): Promise<ApiProblem> {
     detail: parsed.data.detail,
     requestId,
     errors: parsed.data.errors,
+    rows: parsed.data.rows,
     retryAfterSeconds: retryAfter(response),
   });
 }
@@ -89,6 +104,8 @@ async function problemFrom(response: Response): Promise<ApiProblem> {
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
+  /** A CSV file to send as text/csv instead of a JSON body. */
+  csv?: string;
   query?: Record<string, string | undefined>;
   signal?: AbortSignal | undefined;
 }
@@ -109,6 +126,7 @@ export async function api<T>(
   const search = params.size > 0 ? `?${params.toString()}` : '';
   const headers: Record<string, string> = { accept: 'application/json' };
   if (options.body !== undefined) headers['content-type'] = 'application/json';
+  if (options.csv !== undefined) headers['content-type'] = 'text/csv';
 
   let response: Response;
   try {
@@ -117,6 +135,7 @@ export async function api<T>(
       headers,
       credentials: 'same-origin',
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+      ...(options.csv === undefined ? {} : { body: options.csv }),
       ...(options.signal ? { signal: options.signal } : {}),
     });
   } catch (error) {

@@ -10,6 +10,8 @@ import { customerGroupsRoute } from './routes/customer-groups.js';
 import { customersRoute } from './routes/customers.js';
 import { homeRoute } from './routes/home.js';
 import { orderDetailRoute } from './routes/order-detail.js';
+import { priceListDetailRoute } from './routes/price-list-detail.js';
+import { priceListsRoute } from './routes/price-lists.js';
 import { ordersRoute } from './routes/orders.js';
 import { emailsRoute } from './routes/emails.js';
 import { productDetailRoute } from './routes/product-detail.js';
@@ -38,6 +40,8 @@ const routeTree = rootRoute.addChildren([
     adminRoleDetailRoute,
     buyerRolesRoute,
     buyerRoleDetailRoute,
+    priceListsRoute,
+    priceListDetailRoute,
     websitesRoute,
     settingsRoute,
   ]),

@@ -95,7 +95,12 @@ export function mockApi(handlers: Record<string, Handler>): MockRequest[] {
         method: init.method ?? 'GET',
         path: url.pathname.replace(/^\/admin\/v1/, ''),
         query: url.searchParams,
-        body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
+        body:
+          typeof init.body !== 'string'
+            ? undefined
+            : String(new Headers(init.headers).get('content-type')).startsWith('text/csv')
+              ? init.body
+              : JSON.parse(init.body),
       };
       requests.push(request);
       const handler = handlers[`${request.method} ${request.path}`];
