@@ -1,3 +1,4 @@
+import { CsvError, parseCsv } from '@muziris/csv';
 import { isUsStateCode } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import { decimalToString, parseDecimal } from '@muziris/money';
@@ -387,45 +388,34 @@ export const US_RATES_CSV_HEADER = [
 export const MAX_IMPORT_ROWS = 5_000;
 
 /**
- * Reads a US rates CSV: a header row of US_RATES_CSV_HEADER, then one rate per row. Plain
- * comma-separated values, no quoting. `zip_prefix` and `valid_to` may be empty; `shipping_taxable`
- * is true or false. Every row is checked, and any refused row refuses the whole file.
+ * Reads a US rates CSV: a header row of US_RATES_CSV_HEADER, then one rate per row
+ * (`@muziris/csv`, so cells may be quoted). `zip_prefix` and `valid_to` may be empty;
+ * `shipping_taxable` is true or false. Every row is checked, and any refused row refuses the
+ * whole file.
  */
 export function parseUsRatesCsv(text: string): UsRateValues[] {
-  const lines = text
-    .replace(/^\uFEFF/, '')
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-  const [header, ...body] = lines;
-  if (header?.toLowerCase().replace(/\s/g, '') !== US_RATES_CSV_HEADER.join(',')) {
+  let rows: Record<(typeof US_RATES_CSV_HEADER)[number], string>[];
+  try {
+    rows = parseCsv(text, US_RATES_CSV_HEADER, { maxRows: MAX_IMPORT_ROWS });
+  } catch (error) {
+    if (!(error instanceof CsvError)) throw error;
     throw new TaxError(
       'invalid_import',
-      `The first row must be the header ${US_RATES_CSV_HEADER.join(',')}`,
+      error.code === 'no_rows' ? 'The file has no rates' : error.message,
+      error.row === undefined ? undefined : [{ row: error.row, message: error.message }],
     );
-  }
-  if (body.length === 0) throw new TaxError('invalid_import', 'The file has no rates');
-  if (body.length > MAX_IMPORT_ROWS) {
-    throw new TaxError('invalid_import', `Import at most ${MAX_IMPORT_ROWS} rates at a time`);
   }
   const problems: { row: number; message: string }[] = [];
   const values: UsRateValues[] = [];
-  body.forEach((line, index) => {
-    const cells = line.split(',').map((c) => c.trim());
-    if (cells.length !== US_RATES_CSV_HEADER.length) {
-      problems.push({ row: index + 1, message: `Expected ${US_RATES_CSV_HEADER.length} values` });
-      return;
-    }
-    const [state, zipPrefix, ratePercent, shipping, validFrom, validTo] = cells;
-    const shippingTaxable =
-      shipping === 'true' ? true : shipping === 'false' ? false : (shipping ?? '');
+  rows.forEach((row, index) => {
+    const shipping = row.shipping_taxable;
     const parsed = newUsRateSchema.safeParse({
-      stateCode: state,
-      zipPrefix: zipPrefix === '' ? null : zipPrefix,
-      ratePercent,
-      shippingTaxable,
-      validFrom,
-      validTo: validTo === '' ? null : validTo,
+      stateCode: row.state,
+      zipPrefix: row.zip_prefix === '' ? null : row.zip_prefix,
+      ratePercent: row.rate_percent,
+      shippingTaxable: shipping === 'true' ? true : shipping === 'false' ? false : shipping,
+      validFrom: row.valid_from,
+      validTo: row.valid_to === '' ? null : row.valid_to,
     });
     if (!parsed.success) {
       const [issue] = parsed.error.issues;

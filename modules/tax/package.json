@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@muziris/csv": "workspace:*",
     "@muziris/customers": "workspace:*",
     "@muziris/db": "workspace:*",
     "@muziris/money": "workspace:*",
