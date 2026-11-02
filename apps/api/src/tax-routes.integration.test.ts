@@ -191,6 +191,54 @@ describe.skipIf(!url)('tax routes and checkout with the tax engine against Postg
     expect((await call('POST', '/gst-rates', manager, { codePrefix: '848' })).status).toBe(400);
   });
 
+  it('says what would refuse checkout on a website today', async () => {
+    const site = await website();
+    const viewer = await signedInAdmin('viewer@muziris.in', ['tax.view']);
+    const manager = await signedInAdmin('tax@muziris.in', ['tax.view', 'tax.manage']);
+    await createProductUnit(handle.db, { code: 'each', name: 'Each', precision: 0 });
+    const product = (sku: string, hsnSacCode: string | null) =>
+      createProduct(handle.db, {
+        sku,
+        name: sku,
+        primaryUnitCode: 'each',
+        hsnSacCode,
+        status: 'enabled',
+      });
+    await product('BRG-1', '84821011');
+    await product('SVC-1', '998314');
+    const missing = await product('NO-CODE', null);
+    await call('POST', '/gst-rates', manager, {
+      codePrefix: '8482',
+      ratePercent: '18',
+      validFrom: '2025-09-22',
+    });
+
+    const readiness = async () =>
+      (
+        (await (await call('GET', `/readiness?websiteId=${site.id}`, viewer)).json()) as {
+          readiness: {
+            ready: boolean;
+            items: { code: string; ok: boolean; count: number; examples: unknown[] }[];
+          };
+        }
+      ).readiness;
+    expect(await readiness()).toMatchObject({
+      ready: false,
+      items: [
+        { code: 'gst_registration_missing', ok: false },
+        {
+          code: 'products_missing_tax_code',
+          count: 1,
+          examples: [{ id: missing.id, sku: 'NO-CODE' }],
+        },
+        { code: 'tax_codes_without_rate', count: 1, examples: [{ code: '998314' }] },
+      ],
+    });
+    await call('PUT', `/websites/${site.id}/gst-registration`, manager, { gstin: GSTIN });
+    expect((await readiness()).items[0]).toMatchObject({ ok: true });
+    expect((await call('GET', '/readiness?websiteId=nope', viewer)).status).toBe(400);
+  });
+
   it('imports US rates from CSV, naming the rows it refuses', async () => {
     const manager = await signedInAdmin('tax@muziris.in', ['tax.view', 'tax.manage']);
     const header = 'state,zip_prefix,rate_percent,shipping_taxable,valid_from,valid_to';
