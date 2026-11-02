@@ -9,7 +9,6 @@ import {
   problem,
   renderApp,
   signedIn,
-  storedText,
 } from '../test/mock-api.js';
 
 const CUSTOMER_ID = '0b8f5a52-0000-4000-8000-000000000010';
@@ -131,28 +130,23 @@ describe('address form', () => {
   });
 });
 
+const INVITATION = {
+  id: 'i1',
+  customerId: CUSTOMER_ID,
+  email: 'neha@example.in',
+  displayName: 'Neha Shah',
+  invitedByUserId: 'a',
+  createdAt: '2026-10-28T00:00:00.000Z',
+  expiresAt: '2026-11-04T00:00:00.000Z',
+  acceptedAt: null,
+  revokedAt: null,
+};
+
 describe('invitations', () => {
-  it('shows the invitation token once, because emails are not built yet', async () => {
-    mockApi({
+  it('sends the invitation by email and never sees a token', async () => {
+    const requests = mockApi({
       ...customerApi(['customer.view', 'customer.manage']),
-      [`POST /customers/${CUSTOMER_ID}/invitations`]: () =>
-        json(
-          {
-            invitation: {
-              id: 'i1',
-              customerId: CUSTOMER_ID,
-              email: 'neha@example.in',
-              displayName: 'Neha Shah',
-              invitedByUserId: 'a',
-              createdAt: '2026-10-28T00:00:00.000Z',
-              expiresAt: '2026-11-04T00:00:00.000Z',
-              acceptedAt: null,
-              revokedAt: null,
-            },
-            token: 'tok_example_123',
-          },
-          201,
-        ),
+      [`POST /customers/${CUSTOMER_ID}/invitations`]: () => json({ invitation: INVITATION }, 201),
     });
     renderApp(`/customers/${CUSTOMER_ID}?tab=invitations&new=true`);
     const dialog = await screen.findByRole('dialog', { name: 'Invite a buyer user' });
@@ -160,14 +154,32 @@ describe('invitations', () => {
     fireEvent.change(within(dialog).getByLabelText('Email'), {
       target: { value: 'neha@example.in' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Create invitation' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send invitation' }));
 
-    const done = await screen.findByRole('dialog', { name: 'Invitation created' });
-    expect(within(done).getByLabelText<HTMLInputElement>('Invitation token').value).toBe(
-      'tok_example_123',
-    );
+    expect(await screen.findByText('Invitation sent')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Invite a buyer user' })).toBeNull();
+    });
+    expect(requests.find((r) => r.method === 'POST')?.body).toEqual({
+      email: 'neha@example.in',
+      displayName: 'Neha Shah',
+      expiresInHours: 168,
+    });
     expectOnlyPreferencesStored();
-    expect(storedText()).not.toContain('tok_example_123');
+  });
+
+  it('sends an open invitation again', async () => {
+    const requests = mockApi({
+      ...customerApi(['customer.view', 'customer.manage']),
+      [`GET /customers/${CUSTOMER_ID}/invitations`]: () =>
+        json({ invitations: [INVITATION], nextAfter: null }),
+      'POST /customers/invitations/i1/resend': () =>
+        json({ invitation: { ...INVITATION, id: 'i2' } }, 201),
+    });
+    renderApp(`/customers/${CUSTOMER_ID}?tab=invitations`);
+    await userEvent.click(await screen.findByRole('button', { name: 'Send again' }));
+    expect(await screen.findByText('Invitation sent again')).toBeTruthy();
+    expect(requests.some((r) => r.path === '/customers/invitations/i1/resend')).toBe(true);
   });
 });
 

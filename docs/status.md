@@ -44,8 +44,8 @@ with status proposed. ADR 0015 (storefront app) is merged with status proposed. 
 Access control (ADR 0006), the workflow engine (ADR 0007), customers (ADR 0008), the catalog
 (ADR 0009), the admin routes for customers and buyer roles (ADR 0010) and the admin app shell
 (PR 12, merged 2026-10-29 as 6c2bbf8, with no second review recorded) are merged; see Done.
-Customers has no storefront routes yet (accepting an invitation needs one), and invitation
-emails wait for the email work in week 4.
+Accepting an invitation and the invitation email are built with ADR 0020 (item 12, in
+review).
 
 **Week 3 (11 to 17 Nov):** Gate check: a buyer sees only their own catalog and prices.
 
@@ -135,6 +135,17 @@ emails wait for the email work in week 4.
     security policy; admin: the payment and its gateway events on the order page. Not done: the
     manual test-mode run against both gateways, the CSP as a hosting header, refunds from the
     admin.
+12. Transactional emails through an outbox (ADR 0020). **In review**, not merged. This touches
+    authentication, access control and secrets, so CLAUDE.md rule 4 asks for a second human
+    review. `modules/notifications` (migration `0016`): an outbox queued in the transaction of
+    each change, sent with `FOR UPDATE SKIP LOCKED`, retried after 1, 5, 30 and 120 minutes,
+    with secret bodies emptied once sent or failed; eight templates (see
+    `docs/notifications.md`); one new dependency, `nodemailer`. The sender runs in the API
+    process every 10 seconds when `SMTP_URL` is set, until pg-boss arrives, and as
+    `notifications:send`. The admin API no longer returns invitation tokens: the email carries
+    the link (`/accept-invitation#token=`), with "Send again" on the customer page. Storefront
+    `/accept-invitation`; admin System > Emails (`notification.view`, `notification.manage`).
+    Not done: a check against Mailpit by hand, bounce handling.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -155,9 +166,9 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   locale, time zone and units; exact money; price lists per currency) already work per country.
 
 - Admin two-factor sign-in before the first production install (ADR 0005).
-- A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`, and to run
-  the combined price build after price list edits (ADR 0011) and the visibility build after
-  rule and catalog edits (ADR 0012). Until then an admin runs it
+- A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`, to take over
+  the email sender from the API process (ADR 0020), and to run the combined price build after
+  price list edits (ADR 0011) and the visibility build after rule and catalog edits (ADR 0012). Until then an admin runs it
   with `POST /admin/v1/pricing/build` or `pnpm --filter @muziris/api pricing:build`.
 - Pricing (ADR 0011): the build is a full rebuild and makes price list writes wait while it
   runs; build only changed chains once catalogs grow. Changing the customer group of a
@@ -193,8 +204,6 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   several customers are not built (ADR 0008).
 - Decide the default buyer role for invited buyer users (ADR 0006, ADR 0008). The admin
   routes (ADR 0010) assign none; an admin assigns buyer roles by hand for now.
-- The admin API returns an invitation's token when it is created, because invitation emails
-  are not built. Move the token into the email in week 4 (ADR 0010).
 - The admin buyer users list returns identity user ids only; names and emails need a batch
   lookup in identity's public interface.
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,

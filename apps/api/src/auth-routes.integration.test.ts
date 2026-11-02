@@ -5,6 +5,7 @@ import {
   runMigrations,
   type DatabaseHandle,
 } from '@muziris/db';
+import { createCustomer, createInvitation } from '@muziris/customers';
 import { createUser, SESSION_POLICIES } from '@muziris/identity';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -29,7 +30,8 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
 
   beforeEach(async () => {
     await handle.db.execute(
-      sql`truncate identity_session, identity_user, identity_rate_limit cascade`,
+      sql`truncate customer_invitation, customer_buyer_user, customer_customer, identity_session,
+        identity_user, identity_rate_limit cascade`,
     );
     clock = new Date('2026-11-02T09:00:00.000Z');
     ip = '203.0.113.7';
@@ -258,6 +260,88 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
       await adminSignIn('wrong password here');
       const rows = await handle.db.execute(sql`select key from identity_rate_limit`);
       expect(rows.map((r) => String(r['key'])).join(' ')).not.toContain('asha');
+    });
+  });
+
+  describe('accepting an invitation (ADR 0020)', () => {
+    async function invited() {
+      const acme = await createCustomer(handle.db, { name: 'Acme Engineering' });
+      const { token } = await createInvitation(handle.db, {
+        customerId: acme.id,
+        email: 'meera@acme.example',
+        displayName: 'Meera',
+        invitedByUserId: '7c1e0a11-0000-4000-8000-000000000001',
+        now: clock,
+      });
+      return token;
+    }
+
+    it('shows who it is for, then creates the account and signs the buyer in', async () => {
+      const token = await invited();
+      const look = await post('/storefront/v1/auth/invitation', { token });
+      expect(look.status).toBe(200);
+      expect(await look.json()).toEqual({
+        invitation: {
+          email: 'meera@acme.example',
+          displayName: 'Meera',
+          customerName: 'Acme Engineering',
+          expiresAt: '2026-11-09T09:00:00.000Z',
+        },
+      });
+
+      const accepted = await post('/storefront/v1/auth/accept-invitation', {
+        token,
+        password: PASSWORD,
+      });
+      expect(accepted.status).toBe(201);
+      expect(await accepted.json()).toMatchObject({
+        user: { email: 'meera@acme.example', displayName: 'Meera', realm: 'buyer' },
+      });
+      const cookie = sessionCookie(accepted);
+      expect(cookie).toMatch(/^__Host-muziris_buyer_session=/);
+      const me = await app().request('/storefront/v1/auth/me', { headers: { Cookie: cookie } });
+      expect(await me.json()).toMatchObject({ user: { email: 'meera@acme.example' } });
+
+      const again = await post('/storefront/v1/auth/accept-invitation', {
+        token,
+        password: PASSWORD,
+      });
+      expect(again.status).toBe(409);
+      expect(await again.json()).toMatchObject({ code: 'invitation_closed' });
+      expect(logs.join('')).not.toContain(token);
+    });
+
+    it('refuses an unknown token, a weak password and an expired invitation', async () => {
+      const token = await invited();
+      const unknown = await post('/storefront/v1/auth/invitation', { token: 'A'.repeat(43) });
+      expect(unknown.status).toBe(404);
+      const weak = await post('/storefront/v1/auth/accept-invitation', {
+        token,
+        password: 'short',
+      });
+      expect(weak.status).toBe(400);
+      expect(await weak.json()).toMatchObject({ code: 'password_policy' });
+      // The weak attempt made no account, so the invitation still works.
+      expect((await post('/storefront/v1/auth/invitation', { token })).status).toBe(200);
+      clock = new Date(clock.getTime() + 8 * 24 * 3_600_000);
+      const expired = await post('/storefront/v1/auth/invitation', { token });
+      expect(expired.status).toBe(410);
+      expect(await expired.json()).toMatchObject({ code: 'invitation_expired' });
+    });
+
+    it('limits attempts per token', async () => {
+      const token = await invited();
+      for (let i = 0; i < 10; i += 1) {
+        expect((await post('/storefront/v1/auth/invitation', { token })).status).toBe(200);
+      }
+      const limited = await post('/storefront/v1/auth/invitation', { token });
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get('retry-after')).not.toBeNull();
+    });
+
+    it('is not offered on the admin side', async () => {
+      const token = await invited();
+      expect((await post('/admin/v1/auth/invitation', { token })).status).toBe(404);
     });
   });
 });

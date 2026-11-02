@@ -6,6 +6,7 @@ import {
   createCustomerGroup,
   createInvitation,
   CustomerError,
+  findInvitation,
   findCustomer,
   linkBuyerUser,
   listAddresses,
@@ -18,6 +19,7 @@ import {
   newCustomerGroupSchema,
   newCustomerSchema,
   pageQuerySchema,
+  resendInvitation,
   revokeInvitation,
   setCustomerGroup,
   setCustomerParent,
@@ -30,6 +32,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
+import type { Emails } from './emails.js';
 import type { Logger } from './logger.js';
 import { HttpProblem } from './problem.js';
 
@@ -39,6 +42,8 @@ export interface CustomerRouteDependencies {
   now: () => Date;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
+  /** Queues the invitation email (ADR 0020). */
+  emails: Emails;
 }
 
 interface CustomerEnv {
@@ -181,6 +186,30 @@ export function customerRoutes(deps: CustomerRouteDependencies): Hono<CustomerEn
     return c.json({ customerGroup }, 201);
   });
 
+  /**
+   * Sends an invitation again, by email: a new token and link, and the old one stops working.
+   * The token is never in the response or a log.
+   */
+  app.post('/invitations/:invitationId/resend', need('customer.manage'), async (c) => {
+    const invitationId = idParam.parse(c.req.param('invitationId'));
+    const old = await findInvitation(deps.db, invitationId);
+    if (!old) throw new HttpProblem(404, 'invitation_not_found', 'No such invitation');
+    const customer = await existingCustomer(old.customerId);
+    const hooks = await deps.emails.invitation(customer.name);
+    const { invitation } = await translated(() =>
+      resendInvitation(
+        deps.db,
+        { invitationId, invitedByUserId: c.get('user').id, now: deps.now() },
+        hooks,
+      ),
+    );
+    deps.logger.info(
+      { ...actor(c), customerId: customer.id, invitationId: invitation.id, replaces: invitationId },
+      'customers.invitation_resent',
+    );
+    return c.json({ invitation }, 201);
+  });
+
   app.post('/invitations/:invitationId/revoke', need('customer.manage'), async (c) => {
     const invitationId = idParam.parse(c.req.param('invitationId'));
     const invitation = await translated(() => revokeInvitation(deps.db, invitationId, deps.now()));
@@ -278,27 +307,35 @@ export function customerRoutes(deps: CustomerRouteDependencies): Hono<CustomerEn
   });
 
   /**
-   * Invites a person to become a buyer user. The response carries the token once, for the
-   * accept link, because invitation emails are not built yet (week 4). It is never logged.
+   * Invites a person to become a buyer user. The invitation email carries the accept link
+   * (ADR 0020); the token is never in the response or a log.
    */
   app.post('/:customerId/invitations', need('customer.manage'), async (c) => {
     const customerId = idParam.parse(c.req.param('customerId'));
     const input = newInvitationBody.parse(await body(c));
-    const { invitation, token } = await translated(() =>
-      createInvitation(deps.db, {
-        customerId,
-        email: input.email,
-        displayName: input.displayName,
-        invitedByUserId: c.get('user').id,
-        now: deps.now(),
-        ...(input.expiresInHours === undefined ? {} : { ttlMs: input.expiresInHours * 3_600_000 }),
-      }),
+    const customer = await existingCustomer(customerId);
+    const hooks = await deps.emails.invitation(customer.name);
+    const { invitation } = await translated(() =>
+      createInvitation(
+        deps.db,
+        {
+          customerId,
+          email: input.email,
+          displayName: input.displayName,
+          invitedByUserId: c.get('user').id,
+          now: deps.now(),
+          ...(input.expiresInHours === undefined
+            ? {}
+            : { ttlMs: input.expiresInHours * 3_600_000 }),
+        },
+        hooks,
+      ),
     );
     deps.logger.info(
       { ...actor(c), customerId, invitationId: invitation.id },
       'customers.invitation_created',
     );
-    return c.json({ invitation, token }, 201);
+    return c.json({ invitation }, 201);
   });
 
   app.get('/:customerId/addresses', need('customer.view'), async (c) => {

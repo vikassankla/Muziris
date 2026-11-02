@@ -1,4 +1,4 @@
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import { findOrderForBuyer, type PaymentMethod } from '@muziris/orders';
 import { and, asc, eq } from 'drizzle-orm';
 import { payments, paymentTransactions, type Gateway, type PaymentStatus } from './db/schema.js';
@@ -243,11 +243,37 @@ export type ApplyEventResult =
  * Applies one verified gateway event: logs it once (a repeat is a duplicate and changes
  * nothing), checks its amount and currency against the payment, and moves the payment.
  */
+/**
+ * Called in the transaction that changes a payment's status, so what it writes (the payment
+ * emails, ADR 0020) commits or rolls back with the change.
+ */
+export interface PaymentHooks {
+  onStatusChanged?: (
+    tx: Transaction,
+    change: { payment: Payment; from: PaymentStatus; to: PaymentStatus },
+  ) => Promise<void>;
+}
+
+/** The payment a gateway reference belongs to, such as a webhook's PaymentIntent id. */
+export async function findPaymentByGatewayRef(
+  db: Database,
+  gateway: Gateway,
+  ref: string,
+): Promise<Payment | undefined> {
+  const [row] = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.gateway, gateway), eq(payments.gatewayRef, ref)))
+    .limit(1);
+  return row ? toPayment(row) : undefined;
+}
+
 export async function applyGatewayEvent(
   db: Database,
   gateway: Gateway,
   event: GatewayEvent,
   now: Date,
+  hooks: PaymentHooks = {},
 ): Promise<ApplyEventResult> {
   return db.transaction(async (tx): Promise<ApplyEventResult> => {
     const [row] =
@@ -309,11 +335,16 @@ export async function applyGatewayEvent(
       .where(eq(payments.id, row.id))
       .returning();
     if (!updated) throw new Error(`Payment ${row.id} vanished`);
-    return {
-      outcome,
-      payment: toPayment(updated),
-      changedTo: next.status === row.status ? undefined : next.status,
-    };
+    const payment = toPayment(updated);
+    const changedTo = next.status === row.status ? undefined : next.status;
+    if (changedTo !== undefined && hooks.onStatusChanged) {
+      await hooks.onStatusChanged(tx, {
+        payment,
+        from: row.status as PaymentStatus,
+        to: changedTo,
+      });
+    }
+    return { outcome, payment, changedTo };
   });
 }
 
@@ -329,6 +360,7 @@ export async function checkPayment(
   db: Database,
   clients: GatewayClients,
   input: { buyerUserId: string; websiteId: string; orderNumber: string; now: Date },
+  hooks: PaymentHooks = {},
 ): Promise<CheckPaymentResult> {
   const order = await findOrderForBuyer(db, input.buyerUserId, {
     websiteId: input.websiteId,
@@ -366,6 +398,7 @@ export async function checkPayment(
       effect: { kind: 'status', status: state.status },
     },
     input.now,
+    hooks,
   );
   if (applied.outcome === 'duplicate') {
     return { ok: true, payment: await findPaymentForOrder(db, order.id), changedTo: undefined };

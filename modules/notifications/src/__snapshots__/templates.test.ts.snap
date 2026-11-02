@@ -1,0 +1,139 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`email templates > renders buyer_invitation 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>You are invited to order from Kochi Bearings</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>You have been invited to order from Kochi Bearings for Acme Engineering. Choose a password to set up your account.</p><p><a href="https://shop.example.in/accept-invitation#token=abc" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">Accept the invitation</a></p><p>The link works once and expires on 27 Nov 2026, 12:00 pm IST. If you did not expect this email, you can ignore it.</p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "You are invited to order from Kochi Bearings",
+  "text": "Hello Asha Menon,
+
+You have been invited to order from Kochi Bearings for Acme Engineering. Choose a password to set up your account.
+
+Accept the invitation: https://shop.example.in/accept-invitation#token=abc
+
+The link works once and expires on 27 Nov 2026, 12:00 pm IST. If you did not expect this email, you can ignore it.
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders order_completed 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>Order MZ-000042 delivered</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>Your order has been delivered.</p><table role="presentation" cellpadding="4" cellspacing="0"><tr><td style="color:#555">Order</td><td><strong>MZ-000042</strong></td></tr><tr><td style="color:#555">Total</td><td><strong>₹57,364.00</strong></td></tr><tr><td style="color:#555">Your PO</td><td><strong>AEPL/PO/1184</strong></td></tr></table><p><a href="https://shop.example.in/orders/MZ-000042" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">View the order</a></p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "Order MZ-000042 delivered",
+  "text": "Hello Asha Menon,
+
+Your order has been delivered.
+
+Order: MZ-000042
+Total: ₹57,364.00
+Your PO: AEPL/PO/1184
+
+View the order: https://shop.example.in/orders/MZ-000042
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders order_confirmed 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>Order MZ-000042 confirmed</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>Your order is confirmed and will be prepared for shipping.</p><table role="presentation" cellpadding="4" cellspacing="0"><tr><td style="color:#555">Order</td><td><strong>MZ-000042</strong></td></tr><tr><td style="color:#555">Total</td><td><strong>₹57,364.00</strong></td></tr><tr><td style="color:#555">Your PO</td><td><strong>AEPL/PO/1184</strong></td></tr><tr><td style="color:#555">Payment due</td><td><strong>25 Nov 2026</strong></td></tr></table><p><a href="https://shop.example.in/orders/MZ-000042" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">View the order</a></p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "Order MZ-000042 confirmed",
+  "text": "Hello Asha Menon,
+
+Your order is confirmed and will be prepared for shipping.
+
+Order: MZ-000042
+Total: ₹57,364.00
+Your PO: AEPL/PO/1184
+Payment due: 25 Nov 2026
+
+View the order: https://shop.example.in/orders/MZ-000042
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders order_declined 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>Order MZ-000042 declined</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>We could not accept your order.</p><p>Reason: Out of stock until March</p><table role="presentation" cellpadding="4" cellspacing="0"><tr><td style="color:#555">Order</td><td><strong>MZ-000042</strong></td></tr><tr><td style="color:#555">Total</td><td><strong>₹57,364.00</strong></td></tr><tr><td style="color:#555">Your PO</td><td><strong>AEPL/PO/1184</strong></td></tr><tr><td style="color:#555">Payment due</td><td><strong>25 Nov 2026</strong></td></tr></table><p><a href="https://shop.example.in/orders/MZ-000042" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">View the order</a></p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "Order MZ-000042 declined",
+  "text": "Hello Asha Menon,
+
+We could not accept your order.
+
+Reason: Out of stock until March
+
+Order: MZ-000042
+Total: ₹57,364.00
+Your PO: AEPL/PO/1184
+Payment due: 25 Nov 2026
+
+View the order: https://shop.example.in/orders/MZ-000042
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders order_placed 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>Order MZ-000042 received</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>Thank you for your order. We will confirm it shortly.</p><table role="presentation" cellpadding="4" cellspacing="0"><tr><td style="color:#555">Order</td><td><strong>MZ-000042</strong></td></tr><tr><td style="color:#555">Total</td><td><strong>₹57,364.00</strong></td></tr><tr><td style="color:#555">Your PO</td><td><strong>AEPL/PO/1184</strong></td></tr><tr><td style="color:#555">Payment due</td><td><strong>25 Nov 2026</strong></td></tr></table><p><a href="https://shop.example.in/orders/MZ-000042" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">View the order</a></p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "Order MZ-000042 received",
+  "text": "Hello Asha Menon,
+
+Thank you for your order. We will confirm it shortly.
+
+Order: MZ-000042
+Total: ₹57,364.00
+Your PO: AEPL/PO/1184
+Payment due: 25 Nov 2026
+
+View the order: https://shop.example.in/orders/MZ-000042
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders order_received 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>New order MZ-000042 from Acme Engineering</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello,</p><p>A new order is waiting to be confirmed in the admin.</p><table role="presentation" cellpadding="4" cellspacing="0"><tr><td style="color:#555">Order</td><td><strong>MZ-000042</strong></td></tr><tr><td style="color:#555">Customer</td><td><strong>Acme Engineering</strong></td></tr><tr><td style="color:#555">Total</td><td><strong>₹57,364.00</strong></td></tr><tr><td style="color:#555">Payment</td><td><strong>On terms</strong></td></tr></table><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "New order MZ-000042 from Acme Engineering",
+  "text": "Hello,
+
+A new order is waiting to be confirmed in the admin.
+
+Order: MZ-000042
+Customer: Acme Engineering
+Total: ₹57,364.00
+Payment: On terms
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders payment_failed 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>Payment for order MZ-000042 did not go through</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>Your payment of ₹57,364.00 did not go through. You can try again from the order page.</p><p><a href="https://shop.example.in/orders/MZ-000042" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">Pay for the order</a></p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "Payment for order MZ-000042 did not go through",
+  "text": "Hello Asha Menon,
+
+Your payment of ₹57,364.00 did not go through. You can try again from the order page.
+
+Pay for the order: https://shop.example.in/orders/MZ-000042
+
+Kochi Bearings",
+}
+`;
+
+exports[`email templates > renders payment_received 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>Payment received for order MZ-000042</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>We received your payment of ₹57,364.00.</p><p><a href="https://shop.example.in/orders/MZ-000042" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">View the order</a></p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "Payment received for order MZ-000042",
+  "text": "Hello Asha Menon,
+
+We received your payment of ₹57,364.00.
+
+View the order: https://shop.example.in/orders/MZ-000042
+
+Kochi Bearings",
+}
+`;

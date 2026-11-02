@@ -17,6 +17,7 @@ import {
   type DatabaseHandle,
 } from '@muziris/db';
 import { createUser } from '@muziris/identity';
+import { ORDER_EMAIL_SETTING } from '@muziris/notifications';
 import { multiply } from '@muziris/money';
 import { PAYMENT_METHODS_SETTING, type TaxProvider } from '@muziris/orders';
 import { createGatewayClients, type PaymentGateways } from '@muziris/payments';
@@ -148,7 +149,7 @@ describe.skipIf(!url)(
 
     beforeEach(async () => {
       await handle.db.execute(
-        sql`truncate payment_transaction, payment, orders_order_tax_line, orders_order_line, orders_order_address, orders_order,
+        sql`truncate notification_outbox, payment_transaction, payment, orders_order_tax_line, orders_order_line, orders_order_address, orders_order,
         workflow_transition_log, workflow_instance, platform_config_value,
         pricing_combined_price, pricing_combined_price_list_target, pricing_combined_price_list,
         pricing_build_state, pricing_assignment, pricing_price, pricing_price_list,
@@ -254,6 +255,12 @@ describe.skipIf(!url)(
         'razorpay',
         'terms',
       ]);
+      await setSetting(
+        handle.db,
+        ORDER_EMAIL_SETTING,
+        { type: 'website', id: website.id },
+        'orders@muziris.example',
+      );
       await Promise.all([rebuildVisibility(handle.db), rebuildCombinedPrices(handle.db)]);
       const role = await createBuyerRole(handle.db, {
         code: 'orderer',
@@ -451,6 +458,24 @@ describe.skipIf(!url)(
         ['evt_1', 'applied'],
       ]);
       expect((await confirm()).status).toBe(200);
+
+      // Each change queued its email once (ADR 0020): the order to the buyer and the seller,
+      // the payment once however often the webhook came, and the confirmation.
+      const emails = await handle.db.execute<{ kind: string; recipient: string; subject: string }>(
+        sql`select kind, recipient, subject from notification_outbox order by kind`,
+      );
+      expect(emails.map((e) => e.kind)).toEqual([
+        'order_confirmed',
+        'order_placed',
+        'order_received',
+        'payment_received',
+      ]);
+      expect(emails.find((e) => e.kind === 'order_received')?.recipient).toBe(
+        'orders@muziris.example',
+      );
+      expect(emails.find((e) => e.kind === 'payment_received')?.subject).toBe(
+        `Payment received for order ${number}`,
+      );
       const again = await graphql(w.pune.cookie, START, { n: number });
       expect(at(again.body.data, 'startPayment', 'refusal', 'code')).toBe('ALREADY_PAID');
     });

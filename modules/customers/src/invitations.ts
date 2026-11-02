@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import { createUser, disableUser, isWellFormedToken, newUserSchema } from '@muziris/identity';
 import { and, asc, eq, gt, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -95,6 +95,14 @@ export interface CreatedInvitation {
   token: string;
 }
 
+export interface InvitationHooks {
+  /**
+   * Runs in the invitation's transaction, for the invitation email (ADR 0020): the email is
+   * queued only if the invitation commits. Throwing rolls the invitation back.
+   */
+  inTransaction?: (tx: Transaction, created: CreatedInvitation) => Promise<void>;
+}
+
 /**
  * Invites a person to become a buyer user of a customer. Any open invitation for the same
  * customer and email is revoked, so only the newest link works.
@@ -102,6 +110,7 @@ export interface CreatedInvitation {
 export async function createInvitation(
   db: Database,
   input: NewInvitation,
+  hooks: InvitationHooks = {},
 ): Promise<CreatedInvitation> {
   const values = newInvitationSchema.parse(input);
   await assertCustomerExists(db, values.customerId);
@@ -130,9 +139,59 @@ export async function createInvitation(
       })
       .returning();
     if (!inserted) throw new Error('Invitation insert returned no row');
+    if (hooks.inTransaction) {
+      await hooks.inTransaction(tx, { invitation: toInvitation(inserted), token });
+    }
     return inserted;
   });
   return { invitation: toInvitation(row), token };
+}
+
+/** An invitation by id, whatever its status. */
+export async function findInvitation(
+  db: Database,
+  invitationId: string,
+): Promise<Invitation | undefined> {
+  const id = z.uuid().safeParse(invitationId);
+  if (!id.success) return undefined;
+  const [row] = await db.select().from(invitations).where(eq(invitations.id, id.data)).limit(1);
+  return row ? toInvitation(row) : undefined;
+}
+
+/**
+ * Sends an invitation again: a new invitation with a new token, for the same customer, email
+ * and name and as long a life as the first, which revokes the old one. An invitation that was
+ * accepted or revoked is refused; an expired one can be sent again.
+ */
+export async function resendInvitation(
+  db: Database,
+  input: { invitationId: string; invitedByUserId: string; now: Date },
+  hooks: InvitationHooks = {},
+): Promise<CreatedInvitation> {
+  const id = z.uuid().safeParse(input.invitationId);
+  if (!id.success) throw new CustomerError('invitation_not_found', 'No such invitation');
+  const [row] = await db.select().from(invitations).where(eq(invitations.id, id.data)).limit(1);
+  if (!row) throw new CustomerError('invitation_not_found', 'No such invitation');
+  const status = invitationStatus(row, input.now);
+  if (status === 'accepted' || status === 'revoked') {
+    throw new CustomerError('invitation_closed', 'The invitation was already accepted or revoked');
+  }
+  const ttlMs = Math.min(
+    INVITATION_MAX_TTL_MS,
+    Math.max(INVITATION_MIN_TTL_MS, row.expiresAt.getTime() - row.createdAt.getTime()),
+  );
+  return createInvitation(
+    db,
+    {
+      customerId: row.customerId,
+      email: row.email,
+      displayName: row.displayName,
+      invitedByUserId: input.invitedByUserId,
+      now: input.now,
+      ttlMs,
+    },
+    hooks,
+  );
 }
 
 /** Revokes an open invitation. Accepted or already revoked invitations are refused. */

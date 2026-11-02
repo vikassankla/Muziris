@@ -50,7 +50,7 @@ describe.skipIf(!url)('customer routes against PostgreSQL', () => {
 
   beforeEach(async () => {
     await handle.db.execute(
-      sql`truncate customer_address, customer_invitation, customer_buyer_user, customer_customer,
+      sql`truncate notification_outbox, customer_address, customer_invitation, customer_buyer_user, customer_customer,
         customer_group, access_admin_user_role, access_admin_role_permission, access_admin_role,
         identity_session, identity_user, identity_rate_limit cascade`,
     );
@@ -299,25 +299,51 @@ describe.skipIf(!url)('customer routes against PostgreSQL', () => {
       expiresInHours: 48,
     });
     expect(invited.status).toBe(201);
-    const { invitation, token } = await json<{
-      invitation: { id: string; email: string; expiresAt: string };
-      token: string;
-    }>(invited);
+    const body = await json<{ invitation: { id: string; email: string; expiresAt: string } }>(
+      invited,
+    );
+    // The token goes out by email only (ADR 0020), never in the response.
+    expect(body).not.toHaveProperty('token');
+    const { invitation } = body;
     expect(invitation).toMatchObject({
       email: 'meera@acme.example',
       expiresAt: '2026-11-06T09:00:00.000Z',
     });
+    const outboxRows = () =>
+      handle.db.execute<{ recipient: string; kind: string; text_body: string }>(
+        sql`select recipient, kind, text_body from notification_outbox order by created_at, id`,
+      );
+    const [email] = await outboxRows();
+    expect(await outboxRows()).toHaveLength(1);
+    expect(email).toMatchObject({ recipient: 'meera@acme.example', kind: 'buyer_invitation' });
+    const token = /#token=([A-Za-z0-9_-]{43})/.exec(email?.text_body ?? '')?.[1] ?? '';
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(email?.text_body).toContain(`http://localhost:5174/accept-invitation#token=${token}`);
+
+    // Sending again makes a new link, by email, and stops the old one.
+    const resent = await call('POST', `/invitations/${invitation.id}/resend`, asha);
+    expect(resent.status).toBe(201);
+    const { invitation: second } = await json<{ invitation: { id: string } }>(resent);
+    expect(second.id).not.toBe(invitation.id);
+    const emails = await outboxRows();
+    expect(emails).toHaveLength(2);
+    const tokens = emails.map((e) => /#token=([A-Za-z0-9_-]{43})/.exec(e.text_body)?.[1]);
+    expect(new Set(tokens).size).toBe(2);
+    const stale = await call('POST', `/invitations/${invitation.id}/resend`, asha);
+    expect(stale.status).toBe(409);
+
     const pending = await json<{ invitations: { id: string }[] }>(
       await call('GET', `/${acme.id}/invitations`, asha),
     );
-    expect(pending.invitations.map((i) => i.id)).toContain(invitation.id);
+    const pendingIds = pending.invitations.map((i) => i.id);
+    expect(pendingIds).toContain(second.id);
+    expect(pendingIds).not.toContain(invitation.id);
 
-    const revoked = await call('POST', `/invitations/${invitation.id}/revoke`, asha);
+    const revoked = await call('POST', `/invitations/${second.id}/revoke`, asha);
     expect(await json(revoked)).toMatchObject({
       invitation: { revokedAt: '2026-11-04T09:00:00.000Z' },
     });
-    const again = await call('POST', `/invitations/${invitation.id}/revoke`, asha);
+    const again = await call('POST', `/invitations/${second.id}/revoke`, asha);
     expect(again.status).toBe(409);
     expect(await again.json()).toMatchObject({ code: 'invitation_closed' });
 

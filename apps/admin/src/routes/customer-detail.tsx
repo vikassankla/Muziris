@@ -11,6 +11,7 @@ import {
 import { ConfirmDialog } from '../components/confirm-dialog.js';
 import { ChangeCustomerDialog, NewCustomerSheet } from '../components/customer-dialogs.js';
 import { Breadcrumbs, Page, PageHeader } from '../components/page-header.js';
+import { ProblemAlert } from '../components/problem-view.js';
 import { EmptyState } from '../components/states.js';
 import { Badge, PlannedTag } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
@@ -34,6 +35,7 @@ import {
   listCustomers,
   listInvitations,
   listSubsidiaries,
+  resendInvitation,
   revokeInvitation,
   type Address,
   type BuyerRole,
@@ -183,6 +185,7 @@ function CustomerDetailPage() {
   const assignRoles = can(session, 'buyer_role.manage');
   const [dialog, setDialog] = useState<Dialogs>();
   const revoke = useSubmit();
+  const resend = useSubmit();
   const tab: Tab = search.tab ?? 'overview';
   const group = groups.find((g) => g.id === customer.groupId);
   const subsidiaries = tree.nodes.filter((n) => n.customer.parentId === customer.id).length;
@@ -466,6 +469,7 @@ function CustomerDetailPage() {
               </Button>
             ) : null}
           </div>
+          {resend.problem ? <ProblemAlert problem={resend.problem} /> : null}
           {invitations.items.length === 0 ? (
             <EmptyState
               icon={Mail}
@@ -502,15 +506,30 @@ function CustomerDetailPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {manage ? (
-                        <Button
-                          variant="ghost-destructive"
-                          size="sm"
-                          onClick={() => {
-                            setDialog({ kind: 'revoke', invitation });
-                          }}
-                        >
-                          Revoke
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={resend.pending}
+                            onClick={() =>
+                              void resend.submit(() => resendInvitation(invitation.id), {
+                                title: 'Invitation sent again',
+                                description: `${invitation.email} gets a new link; the old one no longer works`,
+                              })
+                            }
+                          >
+                            Send again
+                          </Button>
+                          <Button
+                            variant="ghost-destructive"
+                            size="sm"
+                            onClick={() => {
+                              setDialog({ kind: 'revoke', invitation });
+                            }}
+                          >
+                            Revoke
+                          </Button>
+                        </>
                       ) : null}
                     </TableCell>
                   </TableRow>

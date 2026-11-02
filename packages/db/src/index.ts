@@ -6,6 +6,9 @@ export { prepareTestDatabase } from './testing.js';
 
 export type Database = PostgresJsDatabase;
 
+/** An open transaction, for code that must write in the caller's transaction. */
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
 export interface DatabaseOptions {
   /** Connection string, for example postgres://user:pass@host:5432/db */
   url: string;

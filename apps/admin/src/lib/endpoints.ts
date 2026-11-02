@@ -355,19 +355,27 @@ export function listInvitations(
   );
 }
 
-/**
- * Invites a person. Until invitation emails exist (week 4) the answer carries the token once,
- * for the admin to pass on; the app shows it and never stores it.
- */
+/** Invites a person. The API emails the accept link (ADR 0020); the app never sees the token. */
 export function createInvitation(
   customerId: string,
   input: { email: string; displayName: string; expiresInHours?: number },
 ) {
   return api(
     `/customers/${id(customerId)}/invitations`,
-    z.object({ invitation: invitationSchema, token: z.string() }),
+    z.object({ invitation: invitationSchema }),
     { method: 'POST', body: input },
   );
+}
+
+/** Emails a new link for an invitation; the old link stops working. */
+export async function resendInvitation(invitationId: string) {
+  return (
+    await api(
+      `/customers/invitations/${id(invitationId)}/resend`,
+      z.object({ invitation: invitationSchema }),
+      { method: 'POST' },
+    )
+  ).invitation;
 }
 
 export async function revokeInvitation(invitationId: string) {
@@ -828,4 +836,47 @@ export function transitionOrder(
     method: 'POST',
     body: input,
   });
+}
+
+// Emails (ADR 0020)
+
+export const EMAIL_STATUSES = ['queued', 'sent', 'failed'] as const;
+export type EmailStatus = (typeof EMAIL_STATUSES)[number];
+
+const emailSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  recipient: z.string(),
+  locale: z.string(),
+  subject: z.string(),
+  status: z.enum(EMAIL_STATUSES),
+  attempts: z.number(),
+  nextAttemptAt: z.string(),
+  lastError: z.string().nullable(),
+  createdAt: z.string(),
+  sentAt: z.string().nullable(),
+});
+export type OutboxEmail = z.infer<typeof emailSchema>;
+
+/** Emails, newest first, without their bodies. */
+export function listEmails(
+  query: { after?: string | undefined; limit?: number; status?: EmailStatus | undefined },
+  signal?: AbortSignal,
+): Promise<Page<OutboxEmail>> {
+  return page(
+    '/notifications',
+    'emails',
+    emailSchema,
+    { ...pageQuery(query.after, query.limit ?? PAGE_SIZE), status: query.status },
+    signal,
+  );
+}
+
+/** Queues a failed email again, from its first attempt. */
+export async function retryEmail(emailId: string): Promise<OutboxEmail> {
+  return (
+    await api(`/notifications/${id(emailId)}/retry`, z.object({ email: emailSchema }), {
+      method: 'POST',
+    })
+  ).email;
 }

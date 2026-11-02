@@ -1,3 +1,4 @@
+import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
 import { paymentGatewaysFromEnv, type PaymentGateways } from '@muziris/payments';
 import { z } from 'zod';
 
@@ -39,6 +40,11 @@ const envSchema = z.object({
   STOREFRONT_ADHOC_QUERIES: z.enum(['allow', 'deny']).optional(),
   /** A JSON file of persisted storefront queries, hash to document, from the storefront build. */
   STOREFRONT_PERSISTED_QUERIES: z.string().min(1).optional(),
+  /** The code of the website the public storefront serves; invitation emails come from it. */
+  STOREFRONT_WEBSITE: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{1,62}$/)
+    .default('main'),
 });
 
 export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES'> & {
@@ -48,6 +54,8 @@ export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES'> & 
    * Live keys are refused unless PAYMENTS_LIVE=true.
    */
   payments: PaymentGateways;
+  /** SMTP_URL, MAIL_FROM and STOREFRONT_PUBLIC_URL (ADR 0020); all three required in production. */
+  mail: MailConfig;
 };
 
 /**
@@ -77,6 +85,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return {
     ...parsed,
     payments: paymentGatewaysFromEnv(source),
+    mail: mailConfigFromEnv(source, { production: parsed.NODE_ENV === 'production' }),
     STOREFRONT_ADHOC_QUERIES:
       parsed.STOREFRONT_ADHOC_QUERIES ?? (parsed.NODE_ENV === 'production' ? 'deny' : 'allow'),
   };

@@ -24,6 +24,7 @@ import {
   applyGatewayEvent,
   checkPayment,
   createGatewayClients,
+  findPaymentByGatewayRef,
   findPaymentForOrder,
   listPaymentTransactions,
   readRazorpayEvent,
@@ -277,6 +278,42 @@ describe.skipIf(!url)('payments against PostgreSQL', () => {
       ['evt_1', 'applied', 'paid'],
       ['evt_2', 'ignored', 'paid'],
     ]);
+  });
+
+  it('runs the status hook once per change, in the change transaction', async () => {
+    const w = await placedOrder();
+    const gateway = fakeRazorpay();
+    await start(gateway.clients, w);
+    const changes: string[] = [];
+    const hooks = {
+      onStatusChanged: (_tx: unknown, change: { from: string; to: string }) => {
+        changes.push(`${change.from}->${change.to}`);
+        return Promise.resolve();
+      },
+    };
+    const event = webhook('payment.captured', 'order_1', 'evt_1');
+    await expect(
+      applyGatewayEvent(handle.db, 'razorpay', event, NOW, {
+        onStatusChanged: () => Promise.reject(new Error('the email could not be queued')),
+      }),
+    ).rejects.toThrow('the email could not be queued');
+    // Rolled back with the hook: neither the status nor the log row stayed.
+    expect(await findPaymentForOrder(handle.db, w.order.id)).toMatchObject({ status: 'pending' });
+    await applyGatewayEvent(handle.db, 'razorpay', event, NOW, hooks);
+    await applyGatewayEvent(handle.db, 'razorpay', event, NOW, hooks);
+    await applyGatewayEvent(
+      handle.db,
+      'razorpay',
+      webhook('payment.failed', 'order_1', 'evt_2'),
+      NOW,
+      hooks,
+    );
+    expect(changes).toEqual(['pending->paid']);
+    expect(await findPaymentByGatewayRef(handle.db, 'razorpay', 'order_1')).toMatchObject({
+      orderId: w.order.id,
+      status: 'paid',
+    });
+    expect(await findPaymentByGatewayRef(handle.db, 'stripe', 'order_1')).toBeUndefined();
   });
 
   it('logs an event whose amount differs, or whose payment is unknown, and changes nothing', async () => {

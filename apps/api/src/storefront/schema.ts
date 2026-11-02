@@ -94,6 +94,7 @@ import {
   type GraphQLNullableOutputType,
 } from 'graphql';
 import { z } from 'zod';
+import type { Emails } from '../emails.js';
 import type { FieldCostExtensions } from './limits.js';
 import { createLoader, type Loader } from './loader.js';
 
@@ -121,6 +122,8 @@ export interface StorefrontContext {
   checkout: CheckoutDependencies | null;
   /** The configured payment gateways (ADR 0019); empty when none is. */
   payments: GatewayClients;
+  /** Queues the order and payment emails (ADR 0020); none are queued without it. */
+  emails: Emails | undefined;
   loaders: {
     product: Loader<string, Product | null>;
     /** Every category the buyer may see, read once per request. */
@@ -137,6 +140,7 @@ export function createContext(input: {
   website: Website;
   checkout: CheckoutDependencies | null;
   payments?: GatewayClients;
+  emails?: Emails;
 }): StorefrontContext {
   const { db, now, user, website, checkout } = input;
   const buyer: BuyerOnWebsite = { buyerUserId: user.id, websiteId: website.id };
@@ -149,6 +153,7 @@ export function createContext(input: {
     buyer,
     checkout,
     payments: input.payments ?? {},
+    emails: input.emails,
     loaders: {
       product: createLoader<string, Product | null>(
         async (ids) => {
@@ -1569,12 +1574,18 @@ const paymentMutations: Record<string, Field<unknown>> = {
         websiteId: ctx.website.id,
         number: args.orderNumber,
       });
-      const result = await checkPayment(ctx.db, ctx.payments, {
-        buyerUserId: ctx.user.id,
-        websiteId: ctx.website.id,
-        orderNumber: args.orderNumber,
-        now: ctx.now,
-      });
+      const hooks = ctx.emails && order ? await ctx.emails.payment(order, ctx.now) : {};
+      const result = await checkPayment(
+        ctx.db,
+        ctx.payments,
+        {
+          buyerUserId: ctx.user.id,
+          websiteId: ctx.website.id,
+          orderNumber: args.orderNumber,
+          now: ctx.now,
+        },
+        hooks,
+      );
       if (!result.ok) return { payment: null, refusal: { code: result.refusal } };
       return {
         payment: result.payment ?? (order ? notStarted(order) : null),
@@ -1593,9 +1604,16 @@ const mutation: Record<string, Field<unknown>> = {
     resolve: async (_root, args: CheckoutArgs, ctx) => {
       const request = checkoutRequest(placeOrderRequestSchema, args, ctx);
       if (!ctx.checkout) return { order: null, replayed: false, refusal: notConfigured };
+      // The order emails are queued in the order's transaction (ADR 0020).
+      const inTransaction = await ctx.emails?.orderPlaced(ctx.user, ctx.website, ctx.now);
       const result = await placeOrder(
         ctx.db,
-        { buyerUserId: ctx.user.id, request, now: ctx.now },
+        {
+          buyerUserId: ctx.user.id,
+          request,
+          now: ctx.now,
+          ...(inTransaction ? { inTransaction } : {}),
+        },
         ctx.checkout,
       );
       return result.ok

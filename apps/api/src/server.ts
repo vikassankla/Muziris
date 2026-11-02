@@ -1,8 +1,10 @@
 import { serve } from '@hono/node-server';
 import { createDatabase } from '@muziris/db';
+import { smtpTransport } from '@muziris/notifications';
 import { createGatewayClients } from '@muziris/payments';
 import { tableTaxProvider } from '@muziris/tax';
 import { createApp } from './app.js';
+import { startEmailSender } from './email-sender.js';
 import { loadEnv } from './env.js';
 import { createLogger } from './logger.js';
 import { loadPersistedQueries } from './storefront/persisted.js';
@@ -34,7 +36,16 @@ const app = createApp({
     persistedQueries,
     allowAdhocQueries: env.STOREFRONT_ADHOC_QUERIES === 'allow',
   },
+  mail: env.mail,
+  storefrontWebsite: env.STOREFRONT_WEBSITE,
 });
+
+// Emails are queued with their changes and sent from here (ADR 0020). Without SMTP_URL they
+// wait in the outbox until it is set.
+const transport =
+  env.mail.smtpUrl === undefined ? undefined : smtpTransport(env.mail.smtpUrl, env.mail.from);
+const sender = transport ? startEmailSender({ db: database.db, logger, transport }) : undefined;
+if (!transport) logger.warn('SMTP_URL is not set; emails are queued but not sent');
 
 const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (info) => {
   logger.info(
@@ -43,6 +54,7 @@ const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (
       host: env.HOST,
       nodeEnv: env.NODE_ENV,
       paymentGateways: Object.keys(env.payments),
+      emailSending: transport !== undefined,
     },
     'API listening',
   );
@@ -65,6 +77,8 @@ async function shutdown(signal: string): Promise<void> {
       resolve();
     });
   });
+  await sender?.stop();
+  transport?.close();
   await database.close();
   process.exit(0);
 }

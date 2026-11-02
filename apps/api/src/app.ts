@@ -1,4 +1,5 @@
 import type { Database } from '@muziris/db';
+import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
 import type { TaxProvider } from '@muziris/orders';
 import { configuredMethods, type GatewayClients, type PaymentGateways } from '@muziris/payments';
 import { Hono, type Context } from 'hono';
@@ -10,6 +11,8 @@ import { accessRoutes } from './access-routes.js';
 import { authRoutes } from './auth-routes.js';
 import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
+import { createEmails } from './emails.js';
+import { notificationRoutes } from './notification-routes.js';
 import { orderRoutes } from './order-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
@@ -49,6 +52,12 @@ export interface AppDependencies {
    * them checkout offers payment terms only, and the webhooks answer 404.
    */
   payments?: { gateways: PaymentGateways; clients: GatewayClients };
+  /**
+   * Mail configuration (ADR 0020) and the code of the website the storefront serves, whose
+   * name, locale and time zone invitations use. Development defaults when omitted.
+   */
+  mail?: MailConfig;
+  storefrontWebsite?: string;
 }
 
 export interface AppEnv {
@@ -165,6 +174,13 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     clientIp: deps.clientIp ?? ((c: Context) => resolveClientIp(c, deps.trustedProxyHops ?? 0)),
     trustedOrigins: allowedOrigins,
   };
+  const emails = createEmails({
+    db: deps.db,
+    logger: deps.logger,
+    mail: deps.mail ?? mailConfigFromEnv({}, { production: false }),
+    storefrontWebsite: deps.storefrontWebsite ?? 'main',
+  });
+  const emailDeps = { ...authDeps, emails };
   app.route('/admin/v1/auth', authRoutes('admin', authDeps));
   app.route('/storefront/v1/auth', authRoutes('buyer', authDeps));
   app.route(
@@ -180,13 +196,15 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
               paymentMethods: configuredMethods(deps.payments?.gateways ?? {}),
             },
       ...(deps.payments ? { payments: deps.payments.clients } : {}),
+      emails,
     }),
   );
-  app.route('/webhooks', webhookRoutes({ ...authDeps, gateways: deps.payments?.gateways ?? {} }));
+  app.route('/webhooks', webhookRoutes({ ...emailDeps, gateways: deps.payments?.gateways ?? {} }));
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
-  app.route('/admin/v1/customers', customerRoutes(authDeps));
-  app.route('/admin/v1/orders', orderRoutes(authDeps));
+  app.route('/admin/v1/customers', customerRoutes(emailDeps));
+  app.route('/admin/v1/notifications', notificationRoutes(authDeps));
+  app.route('/admin/v1/orders', orderRoutes(emailDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
   app.route('/admin/v1/tax', taxRoutes(authDeps));

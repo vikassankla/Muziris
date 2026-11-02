@@ -98,6 +98,38 @@ token sits in the outbox row and in the invitation, which stores only the token'
 - **Access to the endpoint** is limited per IP address and token, like sign-in. The token is
   never put in a log or sent to another service.
 
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **The token is in the URL fragment**, `/accept-invitation#token=…`, not the query. A browser
+  never sends the fragment to a server, so the token cannot reach an access log or a `Referer`
+  header. The page removes it from the address bar before calling the API.
+- **Two storefront endpoints.** `POST /storefront/v1/auth/invitation` looks the token up for the
+  page (email, name, customer, expiry), and `POST /storefront/v1/auth/accept-invitation`
+  accepts it. Both are limited to 30 calls per IP and 10 per token in 10 minutes. An unknown
+  token is a 404, an expired one a 410, an accepted or revoked one (or an email already in use)
+  a 409.
+- **Hooks read first, write in the transaction.** `placeOrder`, `transitionOrder`, the payment
+  status changes and the invitation calls take an optional hook that runs inside their
+  transaction. Everything an email needs is read before it starts, so a hook only renders and
+  inserts and holds no second connection.
+- **Invitations come from one website.** `STOREFRONT_WEBSITE` (default `main`) names the website
+  whose name and time zone an invitation uses. If it is missing, a warning is logged and the
+  email still goes.
+- **Each payment failure is told once.** The `payment_failed` key includes the time, since a
+  payment can fail more than once before it succeeds.
+- **A failed email that held a secret cannot be sent again**, because its body was emptied.
+  "Send again" on the invitation replaces it with a new token.
+- **The admin Emails page and two permissions.** System > Emails lists the outbox without
+  bodies (`notification.view`); "Send again" on a failed email needs `notification.manage`.
+- **Development defaults.** Without `MAIL_FROM` and `STOREFRONT_PUBLIC_URL`, localhost values
+  are used; without `SMTP_URL`, emails queue but the sender does not run. All three are required
+  in production.
+- **Error codes only.** A failed send keeps `smtp_<code>` or nodemailer's error code, never the
+  server's text, which can quote addresses.
+- The catalogue, keys, retry policy and configuration are in `docs/notifications.md`.
+
 ## Consequences
 
 - Invitations work end to end without an admin copying links, and buyers hear about their

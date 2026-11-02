@@ -18,6 +18,7 @@ export {
 export {
   applyGatewayEvent,
   checkPayment,
+  findPaymentByGatewayRef,
   findPaymentForOrder,
   listPaymentTransactions,
   nextStatus,
@@ -25,6 +26,7 @@ export {
   type ApplyEventResult,
   type CheckPaymentResult,
   type Payment,
+  type PaymentHooks,
   type PaymentRefusalCode,
   type PaymentStart,
   type PaymentTransaction,

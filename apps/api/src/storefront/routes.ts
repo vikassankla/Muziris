@@ -16,6 +16,7 @@ import { Hono, type Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { ZodError, z } from 'zod';
 import { requireSession, trustedOriginGuard, type AuthVariables } from '../auth-routes.js';
+import type { Emails } from '../emails.js';
 import type { Logger } from '../logger.js';
 import { limitErrors, MAX_DOCUMENT_LENGTH, measure } from './limits.js';
 import { SHA256_HEX, type PersistedQueries } from './persisted.js';
@@ -44,6 +45,8 @@ export interface StorefrontRouteDependencies {
   checkout: CheckoutDependencies | null;
   /** The configured payment gateways (ADR 0019). */
   payments?: GatewayClients;
+  /** Queues the order and payment emails (ADR 0020). */
+  emails?: Emails;
 }
 
 interface StorefrontEnv {
@@ -266,6 +269,7 @@ export function storefrontRoutes(deps: StorefrontRouteDependencies): Hono<Storef
           website,
           checkout: deps.checkout,
           ...(deps.payments ? { payments: deps.payments } : {}),
+          ...(deps.emails ? { emails: deps.emails } : {}),
         }),
       });
       const errors = (result.errors ?? []).map((e) =>

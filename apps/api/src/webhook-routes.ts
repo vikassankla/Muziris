@@ -1,7 +1,9 @@
 import { consumeRateLimit } from '@muziris/identity';
+import { findOrderById } from '@muziris/orders';
 import {
   applyGatewayEvent,
   EventError,
+  findPaymentByGatewayRef,
   readRazorpayEvent,
   readStripeEvent,
   verifyRazorpaySignature,
@@ -13,6 +15,7 @@ import {
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { AuthRouteDependencies, AuthVariables } from './auth-routes.js';
+import type { Emails } from './emails.js';
 import { HttpProblem } from './problem.js';
 
 // Payment gateway webhooks under /webhooks (ADR 0019): the API's only unauthenticated POST
@@ -27,6 +30,8 @@ const RATE_LIMIT = 600;
 
 export interface WebhookRouteDependencies extends AuthRouteDependencies {
   gateways: PaymentGateways;
+  /** Queues the payment emails in the payment's transaction (ADR 0020). */
+  emails: Emails;
 }
 
 interface WebhookEnv {
@@ -73,7 +78,12 @@ export function webhookRoutes(deps: WebhookRouteDependencies): Hono<WebhookEnv> 
       deps.logger.warn({ requestId: c.get('requestId'), gateway }, 'webhook.refused');
       throw new HttpProblem(400, 'webhook_refused', 'The webhook is not signed or not readable');
     }
-    const result = await applyGatewayEvent(deps.db, gateway, event, now);
+    // What the payment email needs is read first; the hook only queues it, in the transaction.
+    const payment =
+      event.ref === null ? undefined : await findPaymentByGatewayRef(deps.db, gateway, event.ref);
+    const order = payment ? await findOrderById(deps.db, payment.orderId) : undefined;
+    const hooks = await deps.emails.payment(order, now);
+    const result = await applyGatewayEvent(deps.db, gateway, event, now, hooks);
     deps.logger.info(
       {
         requestId: c.get('requestId'),
