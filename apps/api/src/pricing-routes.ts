@@ -1,8 +1,19 @@
 import type { AdminPermission } from '@muziris/access';
+import { findProductBySku, findProductsByIds } from '@muziris/catalog';
+import { toCsv } from '@muziris/csv';
+import { customerGroupNames, customerNames } from '@muziris/customers';
 import type { Database } from '@muziris/db';
-import { decimalToString, toDecimalString, type Money } from '@muziris/money';
+import {
+  compareDecimals,
+  decimalToString,
+  parseDecimal,
+  toDecimalString,
+  type Money,
+} from '@muziris/money';
+import { findOrganization, listWebsites } from '@muziris/platform';
 import {
   addPrice,
+  allPrices,
   assignmentChangesSchema,
   createAssignment,
   createPriceList,
@@ -11,6 +22,7 @@ import {
   deletePriceList,
   findPriceList,
   getBuildState,
+  importPrices,
   listAssignments,
   listAssignmentsQuerySchema,
   listPriceLists,
@@ -20,6 +32,8 @@ import {
   newAssignmentSchema,
   newPriceListSchema,
   newPriceSchema,
+  PRICE_CSV_COLUMNS,
+  PriceImportError,
   previewPrice,
   priceChangesSchema,
   pricePreviewQuerySchema,
@@ -30,18 +44,25 @@ import {
   updateAssignment,
   updatePrice,
   updatePriceList,
+  type Assignment,
   type ChainStep,
   type Price,
   type PricePreview,
   type PricingErrorCode,
 } from '@muziris/pricing';
+import { searchProductIds } from '@muziris/search';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
 import type { Logger } from './logger.js';
-import { HttpProblem } from './problem.js';
+import { HttpProblem, problemResponse, toProblem } from './problem.js';
+
+/** A price import's CSV may be up to 2 MB (ADR 0022); every other body has the global limit. */
+export const PRICE_IMPORT_MAX_BYTES = 2 * 1024 * 1024;
+export const LARGE_BODY_PATH = /^\/admin\/v1\/pricing\/price-lists\/[^/]+\/prices\/import$/;
 
 export interface PricingRouteDependencies {
   db: Database;
@@ -111,9 +132,14 @@ const listPriceListsQuery = z
   .object({ currency: queryText, after: queryText, limit: limitText })
   .transform((q) => listPriceListsQuerySchema.parse(defined(q)));
 
-const listPricesQuery = z
-  .object({ productId: queryText, unitCode: queryText, after: queryText, limit: limitText })
-  .transform((q) => listPricesQuerySchema.parse(defined(q)));
+const listPricesQuery = z.object({
+  /** An SKU, or words of a product name: the prices of the products that match. */
+  q: z.string().trim().min(1).max(100).optional(),
+  productId: queryText,
+  unitCode: queryText,
+  after: queryText,
+  limit: limitText,
+});
 
 const listAssignmentsQuery = z
   .object({
@@ -142,11 +168,28 @@ function amountJson(amount: Money): string {
   return toDecimalString(amount);
 }
 
-function priceJson(price: Price) {
+/** SKU and name by product id, from catalog's public interface, at most 1,000 ids a call. */
+async function productNames(
+  db: Database,
+  productIds: readonly string[],
+): Promise<Map<string, { sku: string; name: string }>> {
+  const ids = [...new Set(productIds)];
+  const names = new Map<string, { sku: string; name: string }>();
+  for (let start = 0; start < ids.length; start += 1000) {
+    for (const p of await findProductsByIds(db, ids.slice(start, start + 1000))) {
+      names.set(p.id, { sku: p.sku, name: p.name });
+    }
+  }
+  return names;
+}
+
+function priceJson(price: Price, product?: { sku: string; name: string }) {
   return {
     id: price.id,
     priceListId: price.priceListId,
     productId: price.productId,
+    sku: product?.sku ?? null,
+    productName: product?.name ?? null,
     unitCode: price.unitCode,
     minQuantity: price.minQuantity,
     amount: amountJson(price.amount),
@@ -261,9 +304,23 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
 
   app.get('/price-lists/:priceListId/prices', need('price_list.view'), async (c) => {
     const priceListId = idParam.parse(c.req.param('priceListId'));
-    const query = listPricesQuery.parse(c.req.query());
+    const { q, ...rest } = listPricesQuery.parse(c.req.query());
+    const query = listPricesQuerySchema.parse(defined(rest));
+    if (q !== undefined) {
+      // An exact SKU first, as the search index may not have a new product yet.
+      const exact = await findProductBySku(deps.db, q);
+      const found = await searchProductIds(deps.db, q);
+      query.productIds = [...new Set([...(exact ? [exact.id] : []), ...found])].slice(0, 1000);
+    }
     const page = await translated(() => listPrices(deps.db, priceListId, query));
-    return c.json({ prices: page.prices.map(priceJson), nextAfter: page.nextAfter });
+    const names = await productNames(
+      deps.db,
+      page.prices.map((p) => p.productId),
+    );
+    return c.json({
+      prices: page.prices.map((p) => priceJson(p, names.get(p.productId))),
+      nextAfter: page.nextAfter,
+    });
   });
 
   app.post('/price-lists/:priceListId/prices', need('price_list.manage'), async (c) => {
@@ -274,7 +331,15 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, priceListId, priceId: price.id },
       'pricing.price_added',
     );
-    return c.json({ price: priceJson(price) }, 201);
+    return c.json(
+      {
+        price: priceJson(
+          price,
+          (await productNames(deps.db, [price.productId])).get(price.productId),
+        ),
+      },
+      201,
+    );
   });
 
   app.patch('/prices/:priceId', need('price_list.manage'), async (c) => {
@@ -285,7 +350,12 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
       { requestId: c.get('requestId'), userId: c.get('user').id, priceId },
       'pricing.price_updated',
     );
-    return c.json({ price: priceJson(price) });
+    return c.json({
+      price: priceJson(
+        price,
+        (await productNames(deps.db, [price.productId])).get(price.productId),
+      ),
+    });
   });
 
   app.delete('/prices/:priceId', need('price_list.manage'), async (c) => {
@@ -298,9 +368,118 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
     return c.body(null, 204);
   });
 
-  app.get('/assignments', need('price_list.view'), async (c) =>
-    c.json(await listAssignments(deps.db, listAssignmentsQuery.parse(c.req.query()))),
+  /** Assignments with the names of their targets and websites beside the ids. */
+  async function withNames(list: readonly Assignment[]) {
+    const ofTarget = (target: Assignment['target']) =>
+      list.filter((a) => a.target === target).map((a) => a.targetId);
+    const organization = await findOrganization(deps.db);
+    const [customers, groups, websites] = await Promise.all([
+      customerNames(deps.db, ofTarget('customer')),
+      customerGroupNames(deps.db, ofTarget('customer_group')),
+      organization ? listWebsites(deps.db, organization.id) : Promise.resolve([]),
+    ]);
+    const websiteNames = new Map(websites.map((w) => [w.id, w.name]));
+    return list.map((a) => ({
+      ...a,
+      websiteName: websiteNames.get(a.websiteId) ?? null,
+      targetName:
+        (a.target === 'customer'
+          ? customers.get(a.targetId)
+          : a.target === 'customer_group'
+            ? groups.get(a.targetId)
+            : websiteNames.get(a.targetId)) ?? null,
+    }));
+  }
+
+  /**
+   * Imports prices from CSV (text/csv, at most 2 MB): every row, or with skipInvalid=true the
+   * valid ones. Refused rows come back by row number with a stable code.
+   */
+  app.post(
+    '/price-lists/:priceListId/prices/import',
+    need('price_list.manage'),
+    bodyLimit({
+      maxSize: PRICE_IMPORT_MAX_BYTES,
+      onError: () => {
+        throw new HttpProblem(413, 'payload_too_large', 'The file is larger than 2 MB');
+      },
+    }),
+    async (c) => {
+      const priceListId = idParam.parse(c.req.param('priceListId'));
+      if (!(c.req.header('content-type') ?? '').startsWith('text/csv')) {
+        throw new HttpProblem(415, 'unsupported_media_type', 'Send the prices as text/csv');
+      }
+      const skipInvalid = c.req.query('skipInvalid') === 'true';
+      const csv = await c.req.text();
+      try {
+        const result = await translated(() =>
+          importPrices(deps.db, priceListId, csv, { skipInvalid }),
+        );
+        deps.logger.info(
+          {
+            requestId: c.get('requestId'),
+            userId: c.get('user').id,
+            priceListId,
+            added: result.added,
+            updated: result.updated,
+            skipped: result.skipped.length,
+          },
+          'pricing.prices_imported',
+        );
+        return c.json(result);
+      } catch (error) {
+        if (!(error instanceof PriceImportError)) throw error;
+        const problem = {
+          ...toProblem(
+            c,
+            new HttpProblem(
+              422,
+              error.code === 'invalid_rows'
+                ? 'price_import_invalid_rows'
+                : 'price_import_invalid_file',
+              error.code === 'invalid_rows'
+                ? 'Some rows are not valid prices; nothing was imported'
+                : 'The file is not a price CSV',
+              error.message,
+            ),
+          ),
+          rows: error.rows,
+        };
+        return problemResponse(c, problem);
+      }
+    },
   );
+
+  /** Every price of a list as CSV, by SKU, unit and minimum quantity, ready to import again. */
+  app.get('/price-lists/:priceListId/prices.csv', need('price_list.view'), async (c) => {
+    const priceListId = idParam.parse(c.req.param('priceListId'));
+    const all = await translated(() => allPrices(deps.db, priceListId));
+    const names = await productNames(
+      deps.db,
+      all.map((p) => p.productId),
+    );
+    const rows = all
+      .flatMap((p) => {
+        const sku = names.get(p.productId)?.sku;
+        return sku === undefined ? [] : [{ sku, price: p }];
+      })
+      .sort(
+        (a, b) =>
+          a.sku.localeCompare(b.sku, 'en', { sensitivity: 'base' }) ||
+          a.price.unitCode.localeCompare(b.price.unitCode) ||
+          compareDecimals(parseDecimal(a.price.minQuantity), parseDecimal(b.price.minQuantity)),
+      )
+      .map(({ sku, price }) => [sku, price.unitCode, price.minQuantity, amountJson(price.amount)]);
+    return c.body(toCsv(PRICE_CSV_COLUMNS, rows), 200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="prices.csv"',
+    });
+  });
+
+  app.get('/assignments', need('price_list.view'), async (c) => {
+    const page = await listAssignments(deps.db, listAssignmentsQuery.parse(c.req.query()));
+    return c.json({ ...page, assignments: await withNames(page.assignments) });
+  });
 
   app.post('/assignments', need('price_list.manage'), async (c) => {
     const input = newAssignmentSchema.parse(await body(c));

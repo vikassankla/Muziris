@@ -141,6 +141,9 @@ importers:
       '@muziris/catalog':
         specifier: workspace:*
         version: link:../../modules/catalog
+      '@muziris/csv':
+        specifier: workspace:*
+        version: link:../../packages/csv
       '@muziris/customers':
         specifier: workspace:*
         version: link:../../modules/customers
