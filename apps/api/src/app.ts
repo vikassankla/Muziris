@@ -16,6 +16,7 @@ import { notificationRoutes } from './notification-routes.js';
 import { orderRoutes } from './order-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
+import { settingRoutes } from './setting-routes.js';
 import { shoppingListRoutes } from './shopping-list-routes.js';
 import { taxRoutes } from './tax-routes.js';
 import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
@@ -208,6 +209,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/orders', orderRoutes(emailDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
+  app.route('/admin/v1/settings', settingRoutes(authDeps));
   app.route('/admin/v1/tax', taxRoutes(authDeps));
   app.route('/admin/v1/shopping-lists', shoppingListRoutes(authDeps));
   app.route('/admin/v1/visibility', visibilityRoutes(authDeps));

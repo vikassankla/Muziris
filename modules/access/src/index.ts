@@ -21,6 +21,7 @@ export {
   assignBuyerRole,
   createBuyerRole,
   deleteBuyerRole,
+  findBuyerRole,
   getBuyerAccess,
   listBuyerRoles,
   listBuyerRolesQuerySchema,

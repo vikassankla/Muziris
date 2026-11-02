@@ -66,6 +66,21 @@ async function loadRole(db: Database, roleId: string) {
   return role;
 }
 
+/** A buyer role's id, code and name, without its grants; undefined when there is none. */
+export async function findBuyerRole(
+  db: Database,
+  roleId: string,
+): Promise<Pick<BuyerRole, 'id' | 'code' | 'name'> | undefined> {
+  const id = idSchema.safeParse(roleId);
+  if (!id.success) return undefined;
+  const [role] = await db
+    .select({ id: buyerRoles.id, code: buyerRoles.code, name: buyerRoles.name })
+    .from(buyerRoles)
+    .where(eq(buyerRoles.id, id.data))
+    .limit(1);
+  return role;
+}
+
 export const listBuyerRolesQuerySchema = z.object({
   /** Continue after this role id, from the previous page's nextAfter. */
   after: z.uuid().optional(),

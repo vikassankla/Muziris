@@ -11,7 +11,7 @@ import {
   type EmailData,
   type MailConfig,
 } from '@muziris/notifications';
-import type { Order, OrderTransition, PlacedOrder } from '@muziris/orders';
+import type { Order, OrderTransition, PaymentMethod, PlacedOrder } from '@muziris/orders';
 import type { Payment, PaymentHooks } from '@muziris/payments';
 import { findWebsite, findWebsiteByCode, getSetting, type Website } from '@muziris/platform';
 import type { Logger } from './logger.js';
@@ -29,9 +29,10 @@ export interface EmailDependencies {
   storefrontWebsite: string;
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   terms: 'On terms',
-  stripe: 'Card (Stripe)',
+  stripe_card: 'Card (Stripe)',
+  stripe_ach: 'US bank account (Stripe)',
   razorpay: 'Razorpay',
 };
 
@@ -151,7 +152,7 @@ export function createEmails(deps: EmailDependencies) {
               customerName: order.customerName,
               total: money(order.grandTotal),
               purchaseOrderNumber: order.purchaseOrderNumber,
-              paymentMethod: PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod,
+              paymentMethod: PAYMENT_METHOD_LABELS[order.paymentMethod],
             },
             ctx,
             now,
