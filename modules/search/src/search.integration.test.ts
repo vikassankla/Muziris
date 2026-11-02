@@ -26,6 +26,7 @@ import {
   indexProductsInCategory,
   MAX_RESULTS,
   rebuildSearchIndex,
+  searchProductIds,
   searchProducts,
   searchProductsForBuyer,
 } from './index.js';
@@ -201,6 +202,14 @@ describe.skipIf(!url)('search against PostgreSQL', () => {
         match: 'sku_exact',
         status: 'enabled',
       });
+    });
+
+    it('gives the ids of every match, best first, for filters on other screens', async () => {
+      const { product } = await catalog();
+      const page = await searchProducts(handle.db, { q: 'BRG-', limit: 50 });
+      const ids = await searchProductIds(handle.db, 'BRG-');
+      expect(ids).toEqual(page.results.map((r) => r.productId));
+      expect(ids).toContain(product('BRG-OLD-1').id);
     });
 
     it('lets an admin find disabled products, and filter on status live', async () => {

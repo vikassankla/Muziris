@@ -11,6 +11,8 @@ import { products } from './db/schema.js';
 import {
   adminSearchQuerySchema,
   escapeLike,
+  MAX_QUERY_LENGTH,
+  MAX_RESULTS,
   parseQuery,
   searchQuerySchema,
   type AdminSearchQuery,
@@ -219,4 +221,22 @@ export async function searchProducts(
     }),
     nextOffset,
   };
+}
+
+/**
+ * The ids of every product an admin search matches, best first, at most MAX_RESULTS. Other
+ * screens filter by it, such as a price list's prices by SKU or name (ADR 0022). Not scoped to
+ * a buyer: the caller has checked the admin's permission.
+ */
+export async function searchProductIds(db: Database, query: string): Promise<string[]> {
+  const q = z.string().trim().min(1).max(MAX_QUERY_LENGTH).parse(query);
+  const page = { limit: MAX_RESULTS, offset: 0 };
+  const scope: Scope = {
+    where: sql`true`,
+    join: sql``,
+    category: sql`s.category_id`,
+    status: sql`null::text`,
+  };
+  const { rows } = await run(db, searchStatement(parseQuery(q), page, scope), page);
+  return rows.map((row) => row.product_id);
 }

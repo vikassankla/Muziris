@@ -13,6 +13,8 @@ import {
   createBuyerUser,
   createCustomer,
   createCustomerGroup,
+  customerGroupNames,
+  customerNames,
   createInvitation,
   CustomerError,
   customerGroupMembership,
@@ -127,6 +129,12 @@ describe.skipIf(!url)('customers module against PostgreSQL', () => {
         code: 'distributors',
       });
       expect(await findCustomerGroup(handle.db, MISSING_ID)).toBeUndefined();
+      expect(await customerGroupNames(handle.db, [distributors.id, MISSING_ID])).toEqual(
+        new Map([[distributors.id, 'Distributors']]),
+      );
+      expect(await customerNames(handle.db, [acme.id, MISSING_ID])).toEqual(
+        new Map([[acme.id, 'Acme']]),
+      );
     });
 
     it('selects every customer with its group for other modules', async () => {

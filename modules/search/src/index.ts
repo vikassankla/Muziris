@@ -24,6 +24,7 @@ export {
   CLOSE_MATCH_THRESHOLD,
   MATCHES,
   searchProducts,
+  searchProductIds,
   searchProductsForBuyer,
   type AdminSearchHit,
   type Match,

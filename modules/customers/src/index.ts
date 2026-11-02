@@ -40,6 +40,8 @@ export {
 export {
   createCustomer,
   createCustomerGroup,
+  customerGroupNames,
+  customerNames,
   findCustomer,
   findCustomerGroup,
   listCustomerGroups,
