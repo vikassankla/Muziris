@@ -172,13 +172,23 @@ review).
     Price lists and a price list's page (prices with tiers, import, export, assignments), the
     build banner and the price preview. No migrations. Not done: the "vs. list price" column,
     import history, a check of the screens by hand.
+15. Tax screens, the readiness check and product tax codes (ADR 0023). **In review** (stacked
+    on item 14). This touches tax, so CLAUDE.md rule 4 asks for a second human review; the four
+    **(check)** items in ADR 0017 still need the tax adviser. Catalog gains `taxCodeUsage` and
+    a `missingTaxCode` products filter; the API gains `GET /admin/v1/tax/readiness?websiteId=`.
+    Admin: System > Tax for the top bar website (Readiness, Registration, Rates with the US CSV
+    import, and US Exemptions), a Tax section on the product page (HSN or SAC code with the GST
+    rate covering it, US tax category), a missing tax code filter on the products list, and
+    exemptions on the customer page. No migrations. Not done: a check of the screens by hand,
+    warnings for rates about to end.
 
 **Next (ahead of the plan):** the admin screens an operator needs to run the pilot without API
 calls by hand, in this order:
 
 1. Websites, settings and first-run setup (ADR 0021): in review, item 13.
 2. Price list screens, with CSV import and export (ADR 0022): in review, item 14.
-3. Tax screens, the readiness check, and the product tax code fields (ADR 0023).
+3. Tax screens, the readiness check, and the product tax code fields (ADR 0023): in review,
+   item 15.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

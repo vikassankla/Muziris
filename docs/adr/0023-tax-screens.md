@@ -78,6 +78,37 @@ the pilot.
 
 Nothing else changes in the tax engine, its rates or its refusals.
 
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **The screen follows the top bar.** `/tax` keeps the website in its URL (`?website=`) and
+  replaces it when the top bar's choice changes, so a link opens the same tabs. The
+  Exemptions tab shows for US websites only.
+- **Readiness answers** `{readiness: {websiteId, countryCode, day, ready, items}}`. Each item
+  has `code`, `ok`, `count` and up to 50 `examples`. The codes:
+  - India: `gst_registration_missing`, `products_missing_tax_code` (examples `{id, sku,
+name}`) and `tax_codes_without_rate` (examples `{code, productCount}`);
+  - US: `us_permit_missing` and `states_without_rate` (examples `{stateCode}`).
+- **A state counts as having a rate** only through a statewide rate (no ZIP prefix) in force
+  today. A state covered only by ZIP rates is flagged, since an address outside those ZIPs
+  would be refused.
+- **"Today"** is the day in the website's time zone, as checkout uses it.
+- **Catalog** gains `taxCodeUsage(db)` (enabled products only) and the `missingTaxCode`
+  filter on `listProducts`; the products list in the admin has a matching "No HSN or SAC
+  code" filter, which the readiness item links to.
+- **Rate dates** are picked as an inclusive last day; the page sends the API's exclusive
+  `validTo` (the day after). Rates show as Scheduled, In force or Ended. A rate can be ended
+  (its last day set or cleared) or deleted.
+- **The GST rate on the product page** is worked out in the browser from today's rates: the
+  longest prefix that matches the code. It is loaded only for admins with `tax.view`.
+- **The US rate import** shows the first 20 of the per-row errors the API returns
+  (`errors: [{path: "row N", message}]`).
+- **Exemptions** on the Tax screen name customers from the first 200; a customer beyond them
+  shows as "Customer", still linked. The customer page lists that customer's certificates
+  for admins with `tax.view` when a US website exists.
+- **No migrations.**
+
 ## Consequences
 
 - An admin can make a website ready to sell and see what is still missing before a buyer
