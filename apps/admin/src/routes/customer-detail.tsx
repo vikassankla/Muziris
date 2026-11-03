@@ -34,6 +34,7 @@ import {
   listBuyerUsers,
   listCustomers,
   listExemptions,
+  listOrders,
   listInvitations,
   listSubsidiaries,
   resendInvitation,
@@ -43,7 +44,8 @@ import {
   type Customer,
   type Invitation,
 } from '../lib/endpoints.js';
-import { formatDate } from '../lib/format.js';
+import { formatAmount, formatDate, formatDateTime } from '../lib/format.js';
+import { orderDisplay, STEP_LABELS, STEP_TONES } from '../lib/orders.js';
 import { can } from '../lib/session.js';
 import { useSession } from '../lib/session-context.js';
 import { useSubmit } from '../lib/use-submit.js';
@@ -51,11 +53,12 @@ import { useWebsite, useWebsites } from '../lib/website.js';
 import { authedRoute } from './authed.js';
 import { ExemptionsCard } from './tax.js';
 
-const TABS = ['overview', 'buyer-users', 'invitations', 'addresses'] as const;
+const TABS = ['overview', 'buyer-users', 'invitations', 'addresses', 'orders'] as const;
 type Tab = (typeof TABS)[number];
 
 /** Tabs the CustomerDetail board shows that wait for other modules. */
-const PLANNED_TABS = ['Orders', 'Quotes', 'Price lists', 'Settings overrides', 'Payment term'];
+const ORDERS_SHOWN = 25;
+const PLANNED_TABS = ['Quotes', 'Price lists', 'Settings overrides', 'Payment term'];
 
 interface DetailSearch {
   tab?: Tab;
@@ -128,18 +131,32 @@ export const customerDetailRoute = createRoute({
     const root = ancestors[0] ?? customer;
     const canRoles = context.session.permissions.has('buyer_role.view');
     const canTax = context.session.permissions.has('tax.view');
-    const [tree, groups, buyerUsers, invitations, addresses, known, buyerRoles, exemptions] =
-      await Promise.all([
-        loadTree(root, signal),
-        allCustomerGroups(signal),
-        listBuyerUsers(customer.id, undefined, signal),
-        listInvitations(customer.id, undefined, signal),
-        listAddresses(customer.id, undefined, signal),
-        listCustomers({ limit: 200 }, signal),
-        canRoles ? allBuyerRoles(signal) : Promise.resolve([] as BuyerRole[]),
-        // US exemption certificates (ADR 0023).
-        canTax ? listExemptions({ customerId: customer.id }, signal) : Promise.resolve(undefined),
-      ]);
+    const canOrders = context.session.permissions.has('order.view');
+    const [
+      tree,
+      groups,
+      buyerUsers,
+      invitations,
+      addresses,
+      known,
+      buyerRoles,
+      exemptions,
+      orders,
+    ] = await Promise.all([
+      loadTree(root, signal),
+      allCustomerGroups(signal),
+      listBuyerUsers(customer.id, undefined, signal),
+      listInvitations(customer.id, undefined, signal),
+      listAddresses(customer.id, undefined, signal),
+      listCustomers({ limit: 200 }, signal),
+      canRoles ? allBuyerRoles(signal) : Promise.resolve([] as BuyerRole[]),
+      // US exemption certificates (ADR 0023).
+      canTax ? listExemptions({ customerId: customer.id }, signal) : Promise.resolve(undefined),
+      // The customer's latest orders; the Orders screen has them all.
+      canOrders
+        ? listOrders({ customerId: customer.id, limit: ORDERS_SHOWN }, signal)
+        : Promise.resolve(undefined),
+    ]);
     return {
       customer,
       ancestors,
@@ -151,6 +168,7 @@ export const customerDetailRoute = createRoute({
       known: known.items,
       buyerRoles,
       exemptions,
+      orders,
     };
   },
   component: CustomerDetailPage,
@@ -272,6 +290,15 @@ function CustomerDetailPage() {
           <TabsTrigger value="addresses">
             Addresses <TabCount>{addresses.items.length}</TabCount>
           </TabsTrigger>
+          {data.orders ? (
+            <TabsTrigger value="orders">
+              Orders{' '}
+              <TabCount>
+                {data.orders.items.length}
+                {data.orders.nextAfter ? '+' : ''}
+              </TabCount>
+            </TabsTrigger>
+          ) : null}
           {PLANNED_TABS.map((label) => (
             <TabsTrigger key={label} value={`planned-${label}`} disabled>
               {label} <PlannedTag />
@@ -624,6 +651,61 @@ function CustomerDetailPage() {
             </div>
           )}
         </TabsContent>
+
+        {data.orders ? (
+          <TabsContent value="orders" className="mt-5 flex flex-col gap-4">
+            {data.orders.items.length === 0 ? (
+              <p className="text-muted-foreground">No orders yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <tr>
+                    <TableHead>Order</TableHead>
+                    <TableHead aria-sort="descending">Placed at</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Buyer PO</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </tr>
+                </TableHeader>
+                <TableBody>
+                  {data.orders.items.map((order) => {
+                    const ctx = orderDisplay(order.currency);
+                    return (
+                      <TableRow key={order.id}>
+                        <TableCell>
+                          <Link
+                            to="/orders/$orderId"
+                            params={{ orderId: order.id }}
+                            className="font-mono text-[12.5px] font-[550] text-foreground hover:underline"
+                          >
+                            {order.number}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDateTime(order.placedAt, ctx)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={STEP_TONES[order.step]}>{STEP_LABELS[order.step]}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {order.purchaseOrderNumber ?? 'None'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">
+                          {formatAmount(order.grandTotal, ctx)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+            {data.orders.nextAfter ? (
+              <p className="text-meta text-muted-foreground">
+                Showing the latest {ORDERS_SHOWN} orders.
+              </p>
+            ) : null}
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       {manage ? (

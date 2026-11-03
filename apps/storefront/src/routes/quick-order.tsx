@@ -219,7 +219,7 @@ function QuickOrderPage() {
                     <TableHead>Line</TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
-                    <TableHead className="text-right">Unit price</TableHead>
+                    <TableHead className="text-right">Price for 1</TableHead>
                   </tr>
                 </TableHeader>
                 <TableBody>
@@ -252,6 +252,11 @@ function QuickOrderPage() {
                   ))}
                 </TableBody>
               </Table>
+            ) : null}
+            {good.length > 0 ? (
+              <p className="m-0 text-xs text-muted-foreground">
+                Prices are for one primary unit. Quantity breaks apply at checkout.
+              </p>
             ) : null}
             {good.length > 0 ? (
               <div className="flex flex-wrap items-end gap-3 border-t pt-4">

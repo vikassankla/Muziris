@@ -81,6 +81,11 @@ export function formatDate(iso: string, ctx: DisplayContext): string {
   return formatter(ctx, false).format(new Date(iso));
 }
 
+/** A calendar day (YYYY-MM-DD) as "27 Oct 2026" or "Oct 27, 2026", with no time zone shift. */
+export function formatDay(day: string, ctx: DisplayContext): string {
+  return formatter({ ...ctx, timeZone: 'UTC' }, false).format(new Date(`${day}T00:00:00Z`));
+}
+
 /** "27 Oct 2026, 14:05 IST" or "Oct 27, 2026, 2:05 PM CT", in the website's time zone. */
 export function formatDateTime(iso: string, ctx: DisplayContext): string {
   return formatter(ctx, true).format(new Date(iso));
