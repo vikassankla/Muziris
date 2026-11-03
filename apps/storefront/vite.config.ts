@@ -41,6 +41,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
+    // Typing with user-event takes about 200 ms here but passed 5 seconds on a busy CI runner,
+    // where every package tests at once.
+    testTimeout: 15_000,
     env: { VITE_STOREFRONT_WEBSITE: 'main' },
     restoreMocks: true,
     unstubGlobals: true,
