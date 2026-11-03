@@ -214,10 +214,14 @@ review).
     0026 (two-factor sign-in for admins), accepted by Vikas in chat on 2026-11-03. Not built.
     ADR 0026 touches authentication and secrets, so its PR needs a second human review under
     CLAUDE.md rule 4.
+21. End-to-end journeys (ADR 0024). **In review** (branch `feature/e2e-journeys`). Package
+    `e2e/` with Playwright 1.64.1, `pnpm e2e`, and a CI job "End-to-end journeys" after the
+    checks. All five first journeys pass, three times over locally: invitation to order, prices
+    and tiers, shopping list reorder, catalog changes reach buyers, tax readiness. The Vite
+    configs read `MUZIRIS_API_TARGET`, so the journeys' API can run on its own port.
 
-**Next (ahead of the plan):** build ADR 0024 (Playwright buyer journeys in CI), then ADR 0025
-(the job runner), then ADR 0026 (admin two-factor sign-in). Then the hand-test follow-ups in
-item 16.
+**Next (ahead of the plan):** build ADR 0025 (the job runner), then ADR 0026 (admin two-factor
+sign-in). Then the hand-test follow-ups in item 16, each with a journey.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

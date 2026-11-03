@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "e2e": "pnpm --filter @muziris/e2e e2e",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "pnpm --filter @muziris/db migrate",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
