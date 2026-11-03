@@ -182,9 +182,9 @@ review).
     exemptions on the customer page. No migrations. Not done: a check of the screens by hand,
     warnings for rates about to end.
 
-16. Fixes from the hand test of items 13 to 15 on the Docker stack (2026-11-03). **In review**
-    (branch `fix/hand-test-findings`). This touches access control (setup creates buyer roles
-    and sets the default buyer role), so CLAUDE.md rule 4 asks for a second human review.
+16. Fixes from the hand test of items 13 to 15 on the Docker stack (2026-11-03). **Merged**
+    (PR 38, 2026-11-03, as 8489a88, approved by Vikas in chat, with no second review recorded
+    on GitHub; it touches access control, so CLAUDE.md rule 4 asks for one).
     - Setup adds the standard buyer roles **Buyer** and **Purchasing admin** when they are
       missing, and makes Buyer the organization's default buyer role when it created it. Before
       this, a fresh install had no buyer roles, so invited buyers could not order.
@@ -202,8 +202,22 @@ review).
     - Follow-ups: an order or add-to-list button on the storefront product page; names, not
       ids, in the customer's buyer users tab; admin screens for visibility rules.
 
-**Next (ahead of the plan):** known-answer tests for pricing and tax, then the MRO demo
-catalog and the install guide.
+17. Known-answer tests for a whole checkout (PR 39, merged 2026-11-03 as b0c5cb0, approved by
+    Vikas in chat, with no second review recorded; pricing and tax tests, so CLAUDE.md rule 4
+    asks for one): eight cases through `previewCheckout` and the stored tax tables, India
+    within and across states and US ZIP, state, no-permit and exemption cases.
+18. MRO demo catalog (PR 40, merged 2026-11-03 as ad25cfe): `demo:seed --website <code>` adds
+    10 categories and 37 products with list prices in INR and USD, breaks at 1, 10 and 100,
+    and runs the builds. No tax data.
+19. Install guide, first draft (PR 41, merged 2026-11-03 as 03c8331): `docs/install.md`.
+20. ADRs 0024 (end-to-end buyer journeys with Playwright), 0025 (job runner with pg-boss) and
+    0026 (two-factor sign-in for admins), accepted by Vikas in chat on 2026-11-03. Not built.
+    ADR 0026 touches authentication and secrets, so its PR needs a second human review under
+    CLAUDE.md rule 4.
+
+**Next (ahead of the plan):** build ADR 0024 (Playwright buyer journeys in CI), then ADR 0025
+(the job runner), then ADR 0026 (admin two-factor sign-in). Then the hand-test follow-ups in
+item 16.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
