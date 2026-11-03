@@ -48,7 +48,8 @@ same email is never queued twice.
   becomes `failed` and an error is logged. Admins can list failed emails and send one again.
 - The sender runs as a loop inside the API process, every 10 seconds, and is also available as
   `pnpm --filter @muziris/api notifications:send` for scripts. When the job runner arrives,
-  the loop moves into it unchanged.
+  the loop moves into it unchanged. (Done in ADR 0025: the `notifications.send` job runs every
+  minute and after each queued email commits; the 10-second loop is gone.)
 
 **Tokens don't stay in the database.** An email that carries a token (the invitation) has its
 body emptied once it is sent; the subject and recipient remain for the log. While it waits, the

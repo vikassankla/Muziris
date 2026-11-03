@@ -38,7 +38,8 @@ PostgreSQL (ADR 0002).
 - Every authenticated request costs one indexed query; last-seen is written at most once a
   minute per session.
 - Expired and revoked sessions and old rate-limit counters need a periodic cleanup job
-  (`deleteDeadSessions`, `pruneRateLimits`), to be scheduled when the job runner lands.
+  (`deleteDeadSessions`, `pruneRateLimits`). The `sessions.cleanup` job runs them hourly
+  (ADR 0025).
 - Multi-factor authentication and SSO (OIDC, SAML) are not in this decision. Admin MFA should
   come before the first production install.
 - Behind a load balancer, `TRUSTED_PROXY_HOPS` must be set correctly, or every user shares the

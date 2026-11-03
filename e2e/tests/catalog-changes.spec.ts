@@ -8,8 +8,8 @@ import { expect, quickOrderCheckout, signInBuyer, test } from './fixtures.js';
 // they run one at a time; the other journeys never build visibility.
 test.describe.configure({ mode: 'serial' });
 
-// Journey 4 (ADR 0024): a new product stays hidden from buyers until a visibility build, and the
-// admin app says so.
+// Journey 4 (ADR 0024): a new product reaches buyers through the visibility build its creation
+// queued (ADR 0025), and until then the admin app says a build is coming.
 test('catalog changes reach buyers', async ({ admin, shop, db }) => {
   const customer = await makeCustomer(db, { name: 'Deccan Pumps', buyer: true });
   const sku = `PIN-${randomUUID().slice(0, 6).toUpperCase()}`;
@@ -27,14 +27,18 @@ test('catalog changes reach buyers', async ({ admin, shop, db }) => {
 
   await admin.goto('/products');
   await expect(admin.getByText('Buyers do not see catalog changes yet')).toBeVisible();
+  await expect(
+    admin.getByText('A visibility build is queued and starts within seconds.'),
+  ).toBeVisible();
 
   await signInBuyer(shop, customer.email);
   await shop.goto(`/search?q=${encodeURIComponent(sku)}`);
   await expect(shop.getByText(`No results for “${sku}”`)).toBeVisible();
 
-  await admin.getByRole('button', { name: 'Build visibility now' }).click();
-  await expect(admin.getByText('Buyers do not see catalog changes yet')).toBeHidden();
-
+  // The build waits 15 seconds to gather a burst of edits, then runs; nobody presses anything.
+  await expect(admin.getByText('Buyers do not see catalog changes yet')).toBeHidden({
+    timeout: 40_000,
+  });
   await shop.reload();
   await expect(shop.getByRole('link', { name })).toBeVisible();
 });

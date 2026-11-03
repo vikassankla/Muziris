@@ -16,6 +16,10 @@ import { runSetup } from './setup.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 
+// Seeding runs the price, visibility and search builds, twice in the first case: about a second
+// alone, but several under the whole suite's parallel load.
+const SEED_TIMEOUT_MS = 20_000;
+
 describe.skipIf(!url)('the demo catalog against PostgreSQL', () => {
   let handle: DatabaseHandle;
 
@@ -71,52 +75,60 @@ describe.skipIf(!url)('the demo catalog against PostgreSQL', () => {
     return found.found ? toDecimalString(found.unitPrice) : found.reason;
   }
 
-  it('adds the catalog with tiered prices, visible at once, and changes nothing the second time', async () => {
-    const india = await website('main', 'IN');
-    const first = await seedDemoCatalog(handle.db, { websiteCode: 'main' });
-    expect(first).toMatchObject({
-      currency: 'INR',
-      categoriesAdded: DEMO_CATEGORIES.length,
-      productsAdded: DEMO_PRODUCTS.length,
-      priceListCreated: true,
-      pricesAdded: DEMO_PRODUCTS.length * 3,
-      visibleProductCount: DEMO_PRODUCTS.length,
-    });
-    const bearings = (await listCategories(handle.db)).find((c) => c.code === 'bearings');
-    const parent = (await listCategories(handle.db)).find((c) => c.code === 'power_transmission');
-    expect(bearings?.parentId).toBe(parent?.id);
-    expect(await findProductBySku(handle.db, 'BRG-6205-2RS')).toMatchObject({
-      status: 'enabled',
-      hsnSacCode: '84821011',
-      usTaxCategory: 'general',
-      categoryId: bearings?.id,
-    });
-    expect(await priceOf(india.id, 'BRG-6205-2RS', '1', 'INR')).toBe('450.00');
-    expect(await priceOf(india.id, 'BRG-6205-2RS', '99', 'INR')).toBe('430.00');
-    expect(await priceOf(india.id, 'BRG-6205-2RS', '100', 'INR')).toBe('410.00');
-    expect(await priceOf(india.id, 'LUB-GRS-EP2', '2.5', 'INR')).toBe('330.00');
+  it(
+    'adds the catalog with tiered prices, visible at once, and changes nothing the second time',
+    async () => {
+      const india = await website('main', 'IN');
+      const first = await seedDemoCatalog(handle.db, { websiteCode: 'main' });
+      expect(first).toMatchObject({
+        currency: 'INR',
+        categoriesAdded: DEMO_CATEGORIES.length,
+        productsAdded: DEMO_PRODUCTS.length,
+        priceListCreated: true,
+        pricesAdded: DEMO_PRODUCTS.length * 3,
+        visibleProductCount: DEMO_PRODUCTS.length,
+      });
+      const bearings = (await listCategories(handle.db)).find((c) => c.code === 'bearings');
+      const parent = (await listCategories(handle.db)).find((c) => c.code === 'power_transmission');
+      expect(bearings?.parentId).toBe(parent?.id);
+      expect(await findProductBySku(handle.db, 'BRG-6205-2RS')).toMatchObject({
+        status: 'enabled',
+        hsnSacCode: '84821011',
+        usTaxCategory: 'general',
+        categoryId: bearings?.id,
+      });
+      expect(await priceOf(india.id, 'BRG-6205-2RS', '1', 'INR')).toBe('450.00');
+      expect(await priceOf(india.id, 'BRG-6205-2RS', '99', 'INR')).toBe('430.00');
+      expect(await priceOf(india.id, 'BRG-6205-2RS', '100', 'INR')).toBe('410.00');
+      expect(await priceOf(india.id, 'LUB-GRS-EP2', '2.5', 'INR')).toBe('330.00');
 
-    expect(await seedDemoCatalog(handle.db, { websiteCode: 'main' })).toMatchObject({
-      categoriesAdded: 0,
-      productsAdded: 0,
-      priceListCreated: false,
-      pricesAdded: 0,
-      visibleProductCount: DEMO_PRODUCTS.length,
-    });
-  });
+      expect(await seedDemoCatalog(handle.db, { websiteCode: 'main' })).toMatchObject({
+        categoriesAdded: 0,
+        productsAdded: 0,
+        priceListCreated: false,
+        pricesAdded: 0,
+        visibleProductCount: DEMO_PRODUCTS.length,
+      });
+    },
+    SEED_TIMEOUT_MS,
+  );
 
-  it('prices a US website in dollars from its own list, sharing the products', async () => {
-    await website('main', 'IN');
-    await seedDemoCatalog(handle.db, { websiteCode: 'main' });
-    const us = await website('us', 'US');
-    expect(await seedDemoCatalog(handle.db, { websiteCode: 'us' })).toMatchObject({
-      currency: 'USD',
-      productsAdded: 0,
-      priceListCreated: true,
-      pricesAdded: DEMO_PRODUCTS.length * 3,
-    });
-    expect(await priceOf(us.id, 'BRG-6205-2RS', '100', 'USD')).toBe('11.95');
-  });
+  it(
+    'prices a US website in dollars from its own list, sharing the products',
+    async () => {
+      await website('main', 'IN');
+      await seedDemoCatalog(handle.db, { websiteCode: 'main' });
+      const us = await website('us', 'US');
+      expect(await seedDemoCatalog(handle.db, { websiteCode: 'us' })).toMatchObject({
+        currency: 'USD',
+        productsAdded: 0,
+        priceListCreated: true,
+        pricesAdded: DEMO_PRODUCTS.length * 3,
+      });
+      expect(await priceOf(us.id, 'BRG-6205-2RS', '100', 'USD')).toBe('11.95');
+    },
+    SEED_TIMEOUT_MS,
+  );
 
   it('says what to do first without setup or the website', async () => {
     await expect(seedDemoCatalog(handle.db, { websiteCode: 'main' })).rejects.toThrow(

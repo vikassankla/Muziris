@@ -1,7 +1,7 @@
 /**
  * Rebuilds every combined price list from the price lists and assignments, with the same
- * set-based build as the admin action (ADR 0011). For installs and scripts, until the job runner
- * runs builds on its own.
+ * set-based build the `pricing.build` job runs (ADR 0011, 0025). For installs and scripts: it runs
+ * at once, in this process, without the job runner.
  *
  *   pnpm --filter @muziris/api pricing:build
  */

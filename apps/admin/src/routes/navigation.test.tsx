@@ -142,24 +142,31 @@ describe('permission-aware navigation', () => {
     expect(list?.query.get('limit')).toBe('25');
   });
 
-  it('says when buyers do not see catalog changes yet, and builds visibility', async () => {
-    let built = false;
+  it('says when buyers do not see catalog changes yet, and queues the visibility build', async () => {
+    let stage: 'waiting' | 'queued' | 'built' = 'waiting';
     const requests = mockApi({
       ...signedIn(['product.view', 'visibility.view', 'visibility.manage']),
       'GET /catalog/categories': () => json({ categories: [] }),
       'GET /catalog/product-units': () => json({ productUnits: [] }),
       'GET /catalog/products': () => json({ products: [], nextAfter: null }),
-      'GET /visibility/build': () =>
-        json({
+      'GET /visibility/build': () => {
+        // Build now queues the build (ADR 0025); the next look finds it queued, the one after
+        // finds it done.
+        const job = stage === 'queued' ? 'queued' : 'idle';
+        const done = stage === 'built';
+        if (stage === 'queued') stage = 'built';
+        return json({
           build: {
-            pendingChanges: built ? 0 : 2,
-            catalogChangedSinceBuild: !built,
+            pendingChanges: done ? 0 : 2,
+            catalogChangedSinceBuild: !done,
             lastBuild: null,
+            job,
           },
-        }),
+        });
+      },
       'POST /visibility/build': () => {
-        built = true;
-        return json({ build: {} });
+        stage = 'queued';
+        return json({ build: { job: 'queued' } }, 202);
       },
     });
     renderApp('/products');
@@ -169,9 +176,17 @@ describe('permission-aware navigation', () => {
       ),
     ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Build visibility now' }));
-    await waitFor(() => {
-      expect(screen.queryByText(/Buyers do not see/)).toBeNull();
-    });
+    expect(
+      await screen.findByText('A visibility build is queued and starts within seconds.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Build visibility now' })).toBeNull();
+    // The banner looks again by itself while the build is queued.
+    await waitFor(
+      () => {
+        expect(screen.queryByText(/Buyers do not see/)).toBeNull();
+      },
+      { timeout: 6_000 },
+    );
     expect(requests.some((r) => r.method === 'POST' && r.path === '/visibility/build')).toBe(true);
   });
 

@@ -14,6 +14,7 @@ import { priceListDetailRoute } from './routes/price-list-detail.js';
 import { priceListsRoute } from './routes/price-lists.js';
 import { ordersRoute } from './routes/orders.js';
 import { emailsRoute } from './routes/emails.js';
+import { jobsRoute } from './routes/jobs.js';
 import { productDetailRoute } from './routes/product-detail.js';
 import { productUnitsRoute } from './routes/product-units.js';
 import { productsRoute } from './routes/products.js';
@@ -29,6 +30,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     ordersRoute,
     emailsRoute,
+    jobsRoute,
     orderDetailRoute,
     customersRoute,
     customerDetailRoute,

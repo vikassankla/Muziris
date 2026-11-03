@@ -19,6 +19,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { createLogger } from './logger.js';
+import { inlineJobs } from './test-jobs.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const PASSWORD = 'correct horse battery staple';
@@ -58,9 +59,11 @@ describe.skipIf(!url)('pricing routes against PostgreSQL', () => {
         done();
       },
     });
+    const logger = createLogger('info', stream);
     return createApp({
-      logger: createLogger('info', stream),
+      logger,
       db: handle.db,
+      jobs: inlineJobs({ db: handle.db, logger }).queue,
       pingDatabase: () => Promise.resolve(),
       corsOrigins: [ORIGIN],
       maxBodyBytes: 64 * 1024,
@@ -294,12 +297,16 @@ describe.skipIf(!url)('pricing routes against PostgreSQL', () => {
       build: { pendingChanges: 8, lastBuild: null },
     });
 
+    // Build now queues the build (ADR 0025); this test's queue runs it at once.
     const built = await call('POST', '/build', asha);
-    expect(built.status).toBe(200);
+    expect(built.status).toBe(202);
     // The website chain has one price. The group chain is split at the net list's dates: before
     // and after 2026 only the list price applies (one row each), during 2026 three tiers do.
-    expect(await json(built)).toMatchObject({
-      build: { combinedPriceListCount: 2, combinedPriceCount: 6 },
+    expect(await json(await call('GET', '/build', asha))).toMatchObject({
+      build: {
+        pendingChanges: 0,
+        lastBuild: { combinedPriceListCount: 2, combinedPriceCount: 6, builtBy: null },
+      },
     });
     expect(logs.some((l) => l.includes('pricing.combined_prices_built'))).toBe(true);
 

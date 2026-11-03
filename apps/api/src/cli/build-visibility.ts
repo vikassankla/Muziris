@@ -1,7 +1,7 @@
 /**
  * Rebuilds what every buyer may see from the visibility rules and the catalog, with the same
- * set-based build as the admin action (ADR 0012). For installs and scripts, and after catalog
- * changes, until the job runner runs builds on its own.
+ * set-based build the `visibility.build` job runs (ADR 0012, 0025). For installs and scripts, and
+ * after catalog changes made outside the admin API: it runs at once, without the job runner.
  *
  *   pnpm --filter @muziris/api visibility:build
  */

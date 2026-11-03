@@ -16,6 +16,7 @@ import type {
 } from '../lib/endpoints.js';
 import { isApiProblem, type ApiProblem } from '../lib/api.js';
 import { formatAmount, formatCount, formatDateTime, type DisplayContext } from '../lib/format.js';
+import { buildProgress, useRefreshWhileBuilding } from '../lib/jobs.js';
 import { useSubmit } from '../lib/use-submit.js';
 import { CURRENCY_DISPLAY, useWebsite, useWebsites } from '../lib/website.js';
 import { Combobox } from './combobox.js';
@@ -55,16 +56,19 @@ export function formatPrice(amount: string, currency: string, website: DisplayCo
 }
 
 /**
- * "N changes waiting for the price build", with "Build prices now" for a pricing manager.
- * Price changes reach buyers only after a build (ADR 0011).
+ * "N changes waiting for the price build". Price changes reach buyers only after a build (ADR
+ * 0011), which they queue (ADR 0025): the banner shows it queued, then running, then goes. With
+ * no build waiting, a pricing manager gets "Build prices now".
  */
 export function BuildBanner({ build, manage }: { build: PriceBuildState; manage: boolean }) {
   const website = useWebsite();
   const { pending, problem, submit } = useSubmit();
+  useRefreshWhileBuilding(build.job);
   if (build.pendingChanges === 0) return null;
   const count = build.pendingChanges;
+  const progress = buildProgress(build.job, 'price');
   return (
-    <Alert variant="warning" icon={<CircleAlert />}>
+    <Alert variant={progress ? 'info' : 'warning'} icon={<CircleAlert />}>
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <AlertTitle>
@@ -72,16 +76,20 @@ export function BuildBanner({ build, manage }: { build: PriceBuildState; manage:
             build
           </AlertTitle>
           <span className="text-meta">
-            Buyers see the prices of the last build
-            {build.lastBuild ? ` (${formatDateTime(build.lastBuild.builtAt, website)})` : ''}.
+            {progress ?? (
+              <>
+                Buyers see the prices of the last build
+                {build.lastBuild ? ` (${formatDateTime(build.lastBuild.builtAt, website)})` : ''}.
+              </>
+            )}
           </span>
         </div>
-        {manage ? (
+        {manage && !progress ? (
           <Button
             size="sm"
             disabled={pending}
             onClick={() => {
-              void submit(buildPrices, { title: 'Prices built' });
+              void submit(buildPrices, { title: 'Price build queued' });
             }}
           >
             <RefreshCw aria-hidden="true" />

@@ -46,8 +46,8 @@ const ASSIGNMENT = {
   createdAt: '2026-10-01T00:00:00.000Z',
   updatedAt: '2026-10-01T00:00:00.000Z',
 };
-const WAITING = { build: { pendingChanges: 3, lastBuild: null } };
-const BUILT = { build: { pendingChanges: 0, lastBuild: null } };
+const WAITING = { build: { pendingChanges: 3, lastBuild: null, job: 'idle' } };
+const BUILT = { build: { pendingChanges: 0, lastBuild: null, job: 'idle' } };
 
 const detail = {
   [`GET /pricing/price-lists/${LIST.id}`]: () => json({ priceList: LIST }),

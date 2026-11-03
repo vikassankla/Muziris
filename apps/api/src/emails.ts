@@ -1,6 +1,7 @@
 import type { CreatedInvitation, InvitationHooks } from '@muziris/customers';
 import type { Database, Transaction } from '@muziris/db';
 import { findUserById, type AuthenticatedUser } from '@muziris/identity';
+import type { JobQueue } from '@muziris/jobs';
 import { toDecimalString, type Money as AnyMoney } from '@muziris/money';
 import {
   ORDER_EMAIL_SETTING,
@@ -24,6 +25,8 @@ import type { Logger } from './logger.js';
 export interface EmailDependencies {
   db: Database;
   logger: Logger;
+  /** Sends the email soon after its change commits (ADR 0025), not at the next minute. */
+  jobs: JobQueue;
   mail: MailConfig;
   /** The code of the website the public storefront serves; invitations come from it. */
   storefrontWebsite: string;
@@ -74,6 +77,7 @@ export function createEmails(deps: EmailDependencies) {
       sensitive: SENSITIVE_KINDS.has(data.kind),
       now,
     });
+    await deps.jobs.enqueue('notifications.send', { db: tx });
   }
 
   /** Reads the buyer and website of an order, for an email about it. */

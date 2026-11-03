@@ -11,18 +11,19 @@ import {
   listVisibleProductsQuerySchema,
   newRuleSchema,
   previewVisibility,
-  rebuildVisibility,
   ruleChangesSchema,
   updateRule,
   visibilityPreviewQuerySchema,
   VisibilityError,
   type VisibilityErrorCode,
 } from '@muziris/visibility';
+import type { JobQueue } from '@muziris/jobs';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
+import { writeAndBuild } from './jobs.js';
 import type { Logger } from './logger.js';
 import { HttpProblem } from './problem.js';
 
@@ -30,6 +31,8 @@ export interface VisibilityRouteDependencies {
   db: Database;
   logger: Logger;
   now: () => Date;
+  /** Rule writes enqueue the visibility build in their transaction (ADR 0025). */
+  jobs: JobQueue;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
 }
@@ -62,6 +65,8 @@ async function translated<T>(action: () => Promise<T>): Promise<T> {
 }
 
 const idParam = z.uuid();
+
+const BUILD = ['visibility.build'] as const;
 
 /** Query strings carry text only; this turns the page size into a number. */
 const limitText = z
@@ -120,7 +125,7 @@ export function visibilityRoutes(deps: VisibilityRouteDependencies): Hono<Visibi
 
   app.post('/rules', need('visibility.manage'), async (c) => {
     const input = newRuleSchema.parse(await body(c));
-    const rule = await translated(() => createRule(deps.db, input));
+    const rule = await translated(() => writeAndBuild(deps, BUILD, (db) => createRule(db, input)));
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, ruleId: rule.id },
       'visibility.rule_created',
@@ -138,7 +143,9 @@ export function visibilityRoutes(deps: VisibilityRouteDependencies): Hono<Visibi
   app.patch('/rules/:ruleId', need('visibility.manage'), async (c) => {
     const ruleId = idParam.parse(c.req.param('ruleId'));
     const changes = ruleChangesSchema.parse(await body(c));
-    const rule = await translated(() => updateRule(deps.db, ruleId, changes));
+    const rule = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => updateRule(db, ruleId, changes)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, ruleId },
       'visibility.rule_updated',
@@ -148,7 +155,7 @@ export function visibilityRoutes(deps: VisibilityRouteDependencies): Hono<Visibi
 
   app.delete('/rules/:ruleId', need('visibility.manage'), async (c) => {
     const ruleId = idParam.parse(c.req.param('ruleId'));
-    await translated(() => deleteRule(deps.db, ruleId));
+    await translated(() => writeAndBuild(deps, BUILD, (db) => deleteRule(db, ruleId)));
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, ruleId },
       'visibility.rule_deleted',
@@ -156,20 +163,26 @@ export function visibilityRoutes(deps: VisibilityRouteDependencies): Hono<Visibi
     return c.body(null, 204);
   });
 
-  /** Whether rule changes are waiting for a build, and what the last build did. */
-  app.get('/build', need('visibility.view'), async (c) =>
-    c.json({ build: await getBuildState(deps.db) }),
-  );
-
   /**
-   * Runs the set-based visibility build and waits for it (ADR 0012). When the job runner lands,
-   * this enqueues the build job and answers 202 instead.
+   * Whether rule or catalog changes are waiting for a build, what the last build did, and
+   * whether a build is queued or running.
    */
+  app.get('/build', need('visibility.view'), async (c) => {
+    const [state, job] = await Promise.all([
+      getBuildState(deps.db),
+      deps.jobs.status('visibility.build'),
+    ]);
+    return c.json({ build: { ...state, job } });
+  });
+
+  /** Queues the visibility build now (ADR 0025); the worker runs it within seconds. */
   app.post('/build', need('visibility.manage'), async (c) => {
-    const userId = c.get('user').id;
-    const result = await rebuildVisibility(deps.db, { builtBy: userId });
-    deps.logger.info({ requestId: c.get('requestId'), userId, ...result }, 'visibility.built');
-    return c.json({ build: { ...result, builtBy: userId } });
+    await deps.jobs.enqueue('visibility.build');
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id },
+      'visibility.build_queued',
+    );
+    return c.json({ build: { job: await deps.jobs.status('visibility.build') } }, 202);
   });
 
   /** Why a customer can or cannot see a product or a category on a website. */

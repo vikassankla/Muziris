@@ -66,6 +66,39 @@ build commands stay as they are, for scripts.
 - **Idempotence.** Every handler is idempotent. Builds already are full rebuilds, and the email
   sender already claims each message once.
 
+### As built
+
+- **One package, `@muziris/jobs`,** holds pg-boss 12.38.0, the job names, the schedules and the
+  `JobQueue` interface (`enqueue(name, {db, delaySeconds})`, `status(name)`, `list()`). It is
+  the only code that imports pg-boss. Jobs carry no data: each handler reads what it needs.
+- **Handlers live in `apps/api/src/jobs.ts`,** and call the modules' existing functions
+  (`rebuildCombinedPrices`, `rebuildVisibility`, `rebuildSearchIndex`, `sendDueEmails`,
+  `deleteDeadSessions`, `pruneRateLimits`). The modules needed no change. The routes, not the
+  modules, enqueue the builds, inside the write's own transaction.
+- **A burst builds once.** The build queues use pg-boss's `stately` policy: at most one job
+  waiting and one running. A build waits 15 seconds before it starts, so further edits in that
+  time join the waiting job. "Build now" queues the same job and answers 202 with its state.
+- **Builds run as the system,** so a build started by a job records no admin (`builtBy` is
+  null).
+- **Emails.** Queuing an email also queues `notifications.send` in the same transaction, so it
+  goes once the change commits. The job also runs every minute, for retries. The 10-second
+  loop in the API is gone.
+- **Schedules** are in UTC: `notifications.send` every minute, `sessions.cleanup` at minute 17
+  of every hour, clearing rate-limit counters older than an hour. `sessions.cleanup` uses the
+  `exclusive` policy, so it never runs twice at once.
+- **Schema.** `pnpm db:migrate` installs or upgrades the `pgboss` schema and creates the
+  queues. The API and the worker start pg-boss with migration off.
+- **`workflow.timers` is not built.** No workflow has a time-based transition yet; the job comes
+  with the first one (quote expiry).
+- **`search.build`** runs only from "Build now" and the CLI; the catalog routes keep
+  reindexing one product at a time.
+- **The banners** on the price list and visibility screens say "A … build is queued and starts
+  within seconds" or "The … build is running", and refresh every 3 seconds until it is done.
+  **System > Jobs** lists jobs waiting or running and the last 50 failed, read-only.
+- **Two processes.** `JOB_WORKERS=false` keeps the API to enqueuing and reading status;
+  `pnpm --filter @muziris/api worker` runs the workers and the schedules, with `/health/live`
+  on `WORKER_PORT` (4001). Only processes with workers run pg-boss's maintenance and cron.
+
 ## Consequences
 
 - One new dependency (pg-boss). It needs a review of its licence (MIT) and its SQL. No new

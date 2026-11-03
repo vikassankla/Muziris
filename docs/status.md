@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-02
+Last updated: 2026-11-03
 
 ## Goal
 
@@ -147,7 +147,7 @@ review).
     each change, sent with `FOR UPDATE SKIP LOCKED`, retried after 1, 5, 30 and 120 minutes,
     with secret bodies emptied once sent or failed; eight templates (see
     `docs/notifications.md`); one new dependency, `nodemailer`. The sender runs in the API
-    process every 10 seconds when `SMTP_URL` is set, until pg-boss arrives, and as
+    process every 10 seconds when `SMTP_URL` is set (moved into the job runner, item 22), and as
     `notifications:send`. The admin API no longer returns invitation tokens: the email carries
     the link (`/accept-invitation#token=`), with "Send again" on the customer page. Storefront
     `/accept-invitation`; admin System > Emails (`notification.view`, `notification.manage`).
@@ -214,14 +214,23 @@ review).
     0026 (two-factor sign-in for admins), accepted by Vikas in chat on 2026-11-03. Not built.
     ADR 0026 touches authentication and secrets, so its PR needs a second human review under
     CLAUDE.md rule 4.
-21. End-to-end journeys (ADR 0024). **In review** (branch `feature/e2e-journeys`). Package
+21. End-to-end journeys (ADR 0024; PR 43, merged 2026-11-03 as 46f9d15). Package
     `e2e/` with Playwright 1.64.1, `pnpm e2e`, and a CI job "End-to-end journeys" after the
     checks. All five first journeys pass, three times over locally: invitation to order, prices
     and tiers, shopping list reorder, catalog changes reach buyers, tax readiness. The Vite
     configs read `MUZIRIS_API_TARGET`, so the journeys' API can run on its own port.
+22. Job runner (ADR 0025). **In review** (branch `feature/job-runner`). It touches pricing builds
+    and session clean-up, so CLAUDE.md rule 4 asks for a second human review. Package
+    `packages/jobs` with pg-boss 12.38.0 (MIT) in schema `pgboss`, installed by `db:migrate`.
+    Admin writes queue `pricing.build` and `visibility.build` in their own transaction, 15
+    seconds ahead, one build per burst; "Build now" answers 202. `notifications.send` replaces
+    the 10-second email loop; `sessions.cleanup` runs hourly. The API runs the workers unless
+    `JOB_WORKERS=false`, and then `pnpm --filter @muziris/api worker` does. New permission
+    `job.view` and a read-only System > Jobs screen. Journey 4 now waits for the queued build
+    instead of pressing "Build now". `workflow.timers` waits for the first time-based
+    transition.
 
-**Next (ahead of the plan):** build ADR 0025 (the job runner), then ADR 0026 (admin two-factor
-sign-in). Then the hand-test follow-ups in item 16, each with a journey.
+**Next (ahead of the plan):** ADR 0026 (admin two-factor sign-in). Then the hand-test follow-ups in item 16, each with a journey.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -242,10 +251,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   locale, time zone and units; exact money; price lists per currency) already work per country.
 
 - Admin two-factor sign-in before the first production install (ADR 0005).
-- A job runner (pg-boss) to schedule `deleteDeadSessions` and `pruneRateLimits`, to take over
-  the email sender from the API process (ADR 0020), and to run the combined price build after
-  price list edits (ADR 0011) and the visibility build after rule and catalog edits (ADR 0012). Until then an admin runs it
-  with `POST /admin/v1/pricing/build` or `pnpm --filter @muziris/api pricing:build`.
+- Job runner (ADR 0025): no admin action retries or removes a failed job; the Jobs screen only
+  lists them. pg-boss keeps finished jobs for its default retention.
 - Pricing (ADR 0011): the build is a full rebuild and makes price list writes wait while it
   runs; build only changed chains once catalogs grow. Changing the customer group of a
   customer with its own price lists stops its prices (`needs_rebuild`) until the next build.
@@ -254,13 +261,13 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Visibility (ADR 0012): the build is a full rebuild. Catalog changes are not counted as
   waiting changes: a new or newly enabled product, or a moved category, stays invisible until
   the next build (a disabled product disappears at once). Run `POST /admin/v1/visibility/build`
-  or `pnpm --filter @muziris/api visibility:build` after catalog work until the job runner
-  enqueues builds. Customers with their own rules each hold a full copy of their visible
+  or `pnpm --filter @muziris/api visibility:build` after catalog changes made outside the admin
+  API; changes through it queue a build (ADR 0025). Customers with their own rules each hold a full copy of their visible
   products; store differences from the website's result before the cloud MVP. The visible
   products list returns ids only. Not built: subsidiaries inheriting a parent's rules,
   scheduled rules, hiding products without a price.
 - Search (ADR 0013): the catalog routes reindex after writes because catalog has no hook;
-  move that into the job runner when it lands. Products changed outside the admin API, and
+  move that into an event when catalog has one (the job runner runs only the full build). Products changed outside the admin API, and
   category renames made outside it, need `POST /admin/v1/search/build` or
   `pnpm --filter @muziris/api search:build`. A buyer can find a visible product by the name of
   a category above it that is hidden from them (the result does not show that category).
@@ -274,8 +281,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   persisted query registry before production. No valid query in the first schema is deeper
   than 6 levels, so the depth limit of 8 guards later types.
 - `CODE_OF_CONDUCT.md` has no contact email yet.
-- Time-based workflow transitions (quote expiry) need the job runner to call
-  `performTransition` with the system actor.
+- Time-based workflow transitions (quote expiry) need a `workflow.timers` job (ADR 0025) to
+  call `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
 - The admin buyer users list returns identity user ids only; names and emails need a batch
