@@ -1,0 +1,30 @@
+{
+  "name": "@muziris/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "End-to-end buyer and admin journeys in a browser (ADR 0024). No product code.",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@muziris/access": "workspace:*",
+    "@muziris/catalog": "workspace:*",
+    "@muziris/customers": "workspace:*",
+    "@muziris/db": "workspace:*",
+    "@muziris/identity": "workspace:*",
+    "@muziris/orders": "workspace:*",
+    "@muziris/platform": "workspace:*",
+    "@muziris/pricing": "workspace:*",
+    "@muziris/search": "workspace:*",
+    "@muziris/tax": "workspace:*",
+    "@muziris/visibility": "workspace:*",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "tsx": "^4.23.15"
+  }
+}

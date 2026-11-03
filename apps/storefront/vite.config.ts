@@ -8,7 +8,8 @@ import { CONTENT_SECURITY_POLICY } from './src/lib/content-security-policy.js';
 // the API on one origin in development, so the buyer's __Host- session cookie is first-party
 // (ADR 0015). Add this dev server's origin to CORS_ORIGINS, and point the API's
 // STOREFRONT_PERSISTED_QUERIES at this app's persisted-queries.json.
-const API_TARGET = 'http://127.0.0.1:4000';
+// The end-to-end journeys (e2e/) run their own API elsewhere and set MUZIRIS_API_TARGET.
+const API_TARGET = process.env['MUZIRIS_API_TARGET'] ?? 'http://127.0.0.1:4000';
 
 /** Writes the content security policy into the built index.html (ADR 0019). */
 function contentSecurityPolicy(): Plugin {

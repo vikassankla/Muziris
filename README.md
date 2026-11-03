@@ -151,6 +151,20 @@ database next to it (for example `muziris_test_identity`) and empties its tables
 so point it at a server where those databases can be thrown away. The database user needs
 permission to create databases.
 
+### End-to-end journeys
+
+```sh
+pnpm --filter @muziris/e2e exec playwright install chromium   # once
+E2E_DATABASE_URL=postgres://user:pass@127.0.0.1:5432/muziris pnpm e2e
+```
+
+The journeys (ADR 0024, in `e2e/tests`) build the admin app and the storefront, start the API on
+port 4100 and both apps on 4180 and 4181, and drive them in Chromium. They need PostgreSQL and
+Mailpit, which `docker compose up -d` starts. Every run drops and creates the database
+`muziris_e2e` on the server `E2E_DATABASE_URL` points at (or else `TEST_DATABASE_URL`'s), and
+leaves every other database alone. Add `--ui` to watch them, or `--project chromium -g "tax"` to
+run one. A failed test keeps a trace: `pnpm --filter @muziris/e2e exec playwright show-trace`.
+
 ## Contributing and security
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Report vulnerabilities

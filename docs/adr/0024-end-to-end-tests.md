@@ -66,6 +66,31 @@ app and storefront, the real API and a fresh PostgreSQL database.
   network access, so their contract tests stay as they are.
 - Visual regression, load testing and a cross-browser matrix in CI.
 
+### As built
+
+- **Order of start-up.** Playwright's `webServer` runs `e2e/src/prepare.ts` before the API: it
+  drops and creates `muziris_e2e`, migrates it, runs the `setup` and `admin:create` commands as
+  an install does, and seeds the shared world (website `main` in Maharashtra, three products,
+  list prices, GST rates, shipping). The apps are built, then served by `vite preview`.
+- **Ports.** API 4100, admin app 4180, storefront 4181, clear of the dev servers and Docker. The
+  Vite configs read `MUZIRIS_API_TARGET` for their proxy, defaulting to the dev API on 4000.
+- **Production settings where they matter.** The storefront runs persisted queries only
+  (`STOREFRONT_ADHOC_QUERIES=deny`), and the browser keeps the `__Host-` cookies because the
+  apps are on `localhost`.
+- **One admin sign-in.** A setup project signs the administrator in once and shares the
+  cookies, since sign-in is limited to 20 attempts per address in 10 minutes. Buyers sign in per
+  test. Many more journeys will need that limit raised for this suite.
+- **Journeys that change what buyers see run one at a time.** A visibility build is for the
+  whole catalog, so journeys 3, 4 and 5 are in `catalog-changes.spec.ts` in serial mode, and no
+  other journey builds visibility.
+- **Tax readiness on the main website.** The storefront build serves one website, so journey 5
+  uses a product of its own whose HSN code no rate covers, rather than a new website. The admin
+  adds the rate on the Tax screen, and checkout goes through.
+- **Shopping list reorder.** The withdrawn line is a product disabled after the list is saved.
+  The list says it can no longer be ordered, and checkout leaves it out.
+- **Not covered yet.** Journey 1 does not show that a buyer is kept out of another customer's
+  catalog; visibility rules have no admin screens yet (status item 16).
+
 ## Consequences
 
 - One new dev dependency, `@playwright/test`, and a browser download in CI (about 150 MB,
