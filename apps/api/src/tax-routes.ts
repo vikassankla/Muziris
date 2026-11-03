@@ -1,5 +1,7 @@
 import type { AdminPermission } from '@muziris/access';
+import { taxCodeUsage } from '@muziris/catalog';
 import type { Database } from '@muziris/db';
+import { findWebsite } from '@muziris/platform';
 import {
   addExemption,
   addGstRate,
@@ -11,7 +13,9 @@ import {
   deleteUsRate,
   endGstRate,
   endUsRate,
+  gstRateFor,
   importUsRates,
+  localDay,
   listExemptions,
   listGstRates,
   listRegistrations,
@@ -99,6 +103,55 @@ export function taxRoutes(deps: TaxRouteDependencies): Hono<TaxEnv> {
   });
   app.use('*', trustedOriginGuard(deps.trustedOrigins));
   app.use('*', requireSession('admin', deps));
+
+  /**
+   * What would refuse checkout on a website today (ADR 0023): its registration, and in India the
+   * products without a tax code and the codes no rate covers; in the US the states with a permit
+   * and no statewide rate. Each item has a stable code, a count and up to 50 examples.
+   */
+  app.get('/readiness', need('tax.view'), async (c) => {
+    const { websiteId } = z.object({ websiteId: z.uuid() }).parse(c.req.query());
+    const website = await findWebsite(deps.db, websiteId);
+    if (!website) throw new HttpProblem(404, 'website_not_found', 'No such website');
+    const day = localDay(deps.now(), website.timeZone);
+    const registrations = await listRegistrations(deps.db, website.id);
+    const items: { code: string; ok: boolean; count: number; examples: unknown[] }[] = [];
+    const item = (code: string, examples: unknown[], count = examples.length) => {
+      items.push({ code, ok: count === 0, count, examples: examples.slice(0, 50) });
+    };
+    if (website.countryCode === 'IN') {
+      const gst = registrations.filter((r) => r.regime === 'gst');
+      item('gst_registration_missing', [], gst.length === 0 ? 1 : 0);
+      const [usage, rates] = await Promise.all([
+        taxCodeUsage(deps.db),
+        listGstRates(deps.db, { on: day }),
+      ]);
+      item('products_missing_tax_code', usage.missing.examples, usage.missing.count);
+      item(
+        'tax_codes_without_rate',
+        usage.codes.filter((u) => gstRateFor(u.code, rates, day) === undefined),
+      );
+    } else if (website.countryCode === 'US') {
+      const permits = registrations.filter((r) => r.regime === 'us_sales_tax');
+      item('us_permit_missing', [], permits.length === 0 ? 1 : 0);
+      const rates = await listUsRates(deps.db, { on: day });
+      item(
+        'states_without_rate',
+        permits
+          .filter((p) => !rates.some((r) => r.stateCode === p.regionCode && r.zipPrefix === null))
+          .map((p) => ({ stateCode: p.regionCode })),
+      );
+    }
+    return c.json({
+      readiness: {
+        websiteId: website.id,
+        countryCode: website.countryCode,
+        day,
+        ready: items.every((i) => i.ok),
+        items,
+      },
+    });
+  });
 
   // Registrations
 

@@ -1,5 +1,5 @@
 import type { Database } from '@muziris/db';
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   productAttributesSchema,
@@ -132,6 +132,8 @@ export const listProductsQuerySchema = z.object({
   categoryId: z.uuid().optional(),
   includeSubcategories: z.boolean().default(false),
   status: z.enum(PRODUCT_STATUSES).optional(),
+  /** Only products without an HSN or SAC code (ADR 0023). */
+  missingTaxCode: z.boolean().default(false),
   /** Continue after this SKU, from the previous page's nextAfter. */
   after: skuSchema.optional(),
   limit: z.int().min(1).max(200).default(50),
@@ -316,6 +318,45 @@ export async function findProductsBySkus(
   );
 }
 
+export interface TaxCodeUsage {
+  /** Enabled products without an HSN or SAC code, and the first of them by SKU. */
+  missing: { count: number; examples: { id: string; sku: string; name: string }[] };
+  /** Every HSN or SAC code an enabled product uses, with how many use it. */
+  codes: { code: string; productCount: number }[];
+}
+
+/**
+ * The tax codes of enabled products, for the tax readiness check (ADR 0023): which products
+ * have none, and which codes are in use.
+ */
+export async function taxCodeUsage(db: Database, examples = 50): Promise<TaxCodeUsage> {
+  const enabled = eq(products.status, 'enabled');
+  const [missingCount, missing, codes] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(products)
+      .where(and(enabled, isNull(products.hsnSacCode))),
+    db
+      .select({ id: products.id, sku: products.sku, name: products.name })
+      .from(products)
+      .where(and(enabled, isNull(products.hsnSacCode)))
+      .orderBy(sql`lower(${products.sku})`)
+      .limit(z.int().min(0).max(200).parse(examples)),
+    db
+      .select({ code: products.hsnSacCode, productCount: sql<number>`count(*)::int` })
+      .from(products)
+      .where(and(enabled, isNotNull(products.hsnSacCode)))
+      .groupBy(products.hsnSacCode)
+      .orderBy(products.hsnSacCode),
+  ]);
+  return {
+    missing: { count: missingCount[0]?.count ?? 0, examples: missing },
+    codes: codes.flatMap((c) =>
+      c.code === null ? [] : [{ code: c.code, productCount: c.productCount }],
+    ),
+  };
+}
+
 /**
  * An SQL select of every product's id, category id (null for none) and status, as the columns
  * `product_id`, `category_id` and `status`, without surrounding parentheses. Visibility builds
@@ -373,6 +414,7 @@ async function listProductsWhere(
     );
   }
   if (q.status !== undefined) conditions.push(eq(products.status, q.status));
+  if (q.missingTaxCode) conditions.push(isNull(products.hsnSacCode));
   if (q.after !== undefined) conditions.push(sql`lower(${products.sku}) > lower(${q.after})`);
 
   const rows = await db

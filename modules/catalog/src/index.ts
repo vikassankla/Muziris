@@ -59,6 +59,7 @@ export {
   productUnitsSchema,
   setProductUnits,
   skuSchema,
+  taxCodeUsage,
   updateProduct,
   type ListProductsQuery,
   type NewProduct,
@@ -69,6 +70,7 @@ export {
   type UsTaxCategory,
   type ProductType,
   type ProductUnitsInput,
+  type TaxCodeUsage,
 } from './products.js';
 export {
   isValidUnitPrecision,

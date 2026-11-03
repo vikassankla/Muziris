@@ -6,6 +6,7 @@ import {
   KeyRound,
   Mail,
   Package,
+  Receipt,
   Ruler,
   Settings,
   ShieldCheck,
@@ -29,7 +30,8 @@ export type NavTo =
   | '/buyer-roles'
   | '/emails'
   | '/websites'
-  | '/settings';
+  | '/settings'
+  | '/tax';
 
 export interface NavItem {
   to: NavTo;
@@ -98,6 +100,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { to: '/websites', label: 'Websites', icon: Globe, permission: 'website.view' },
       { to: '/settings', label: 'Settings', icon: Settings, permission: 'setting.view' },
+      { to: '/tax', label: 'Tax', icon: Receipt, permission: 'tax.view' },
       { to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' },
     ],
   },

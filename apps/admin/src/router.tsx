@@ -19,6 +19,7 @@ import { productUnitsRoute } from './routes/product-units.js';
 import { productsRoute } from './routes/products.js';
 import { rootRoute } from './routes/root.js';
 import { settingsRoute } from './routes/settings.js';
+import { taxRoute } from './routes/tax.js';
 import { signInRoute } from './routes/sign-in.js';
 import { websitesRoute } from './routes/websites.js';
 
@@ -44,6 +45,7 @@ const routeTree = rootRoute.addChildren([
     priceListDetailRoute,
     websitesRoute,
     settingsRoute,
+    taxRoute,
   ]),
 ]);
 

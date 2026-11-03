@@ -41,10 +41,12 @@ import { flattenCategories } from '../lib/categories.js';
 import {
   getProduct,
   listCategories,
+  listGstRates,
   listProductUnits,
   setProductUnits,
   updateProduct,
   type AttributeValue,
+  type GstRate,
   type Product,
 } from '../lib/endpoints.js';
 import { formatDateTime, formatQuantity } from '../lib/format.js';
@@ -52,20 +54,25 @@ import { fieldErrors } from '../lib/form.js';
 import { can } from '../lib/session.js';
 import { useSession } from '../lib/session-context.js';
 import { useSubmit } from '../lib/use-submit.js';
-import { useWebsite } from '../lib/website.js';
+import { useWebsite, useWebsites } from '../lib/website.js';
 import { authedRoute } from './authed.js';
 
 export const productDetailRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/products/$productId',
-  loader: async ({ params, abortController }) => {
+  loader: async ({ params, abortController, context }) => {
     const signal = abortController.signal;
-    const [product, categories, units] = await Promise.all([
+    // Today's GST rates show which rate covers the product's code (ADR 0023).
+    const today = new Date().toISOString().slice(0, 10);
+    const [product, categories, units, gstRates] = await Promise.all([
       getProduct(params.productId, signal),
       listCategories(signal),
       listProductUnits(signal),
+      context.session.permissions.has('tax.view')
+        ? listGstRates({ on: today }, signal)
+        : Promise.resolve(undefined),
     ]);
-    return { product, categories: flattenCategories(categories), units };
+    return { product, categories: flattenCategories(categories), units, gstRates };
   },
   component: ProductDetailPage,
 });
@@ -89,6 +96,9 @@ interface Draft {
   primaryUnitCode: string;
   unitCodes: string[];
   attributes: AttributeRow[];
+  /** Empty for none. */
+  hsnSacCode: string;
+  usTaxCategory: 'general' | 'exempt' | null;
 }
 
 function textOf(value: AttributeValue): string {
@@ -103,6 +113,8 @@ function draftOf(product: Product): Draft {
     categoryId: product.categoryId,
     primaryUnitCode: product.primaryUnitCode,
     unitCodes: product.units.map((u) => u.code),
+    hsnSacCode: product.hsnSacCode ?? '',
+    usTaxCategory: product.usTaxCategory,
     attributes: Object.entries(product.attributes).map(([key, value], index) => ({
       id: index,
       key,
@@ -131,6 +143,9 @@ function changesOf(product: Product, draft: Draft) {
   if (draft.name !== product.name) general.name = draft.name;
   if (draft.status !== product.status) general.status = draft.status;
   if (draft.categoryId !== product.categoryId) general.categoryId = draft.categoryId;
+  const hsnSacCode = draft.hsnSacCode.trim() === '' ? null : draft.hsnSacCode.trim();
+  if (hsnSacCode !== product.hsnSacCode) general.hsnSacCode = hsnSacCode;
+  if (draft.usTaxCategory !== product.usTaxCategory) general.usTaxCategory = draft.usTaxCategory;
   const attributes = attributesOf(draft.attributes);
   if (JSON.stringify(attributes) !== JSON.stringify(product.attributes))
     general.attributes = attributes;
@@ -160,8 +175,32 @@ function attributeErrors(rows: readonly AttributeRow[]): Map<number, string> {
   return errors;
 }
 
+/** Catalog's rule (ADR 0017): an HSN code of 4, 6 or 8 digits, or a SAC code of 6 starting 99. */
+const HSN_SAC = /^(\d{4}|\d{6}|\d{8})$/;
+
+function hsnError(code: string): string | undefined {
+  const c = code.trim();
+  if (c === '' || HSN_SAC.test(c)) return undefined;
+  return 'Use an HSN code of 4, 6 or 8 digits, or a SAC code of 6 digits starting 99.';
+}
+
+/** The GST rate that covers a code today: the longest matching prefix. */
+function gstHint(code: string, rates: readonly GstRate[] | undefined): string | undefined {
+  const c = code.trim();
+  if (rates === undefined || !HSN_SAC.test(c)) return undefined;
+  const best = rates
+    .filter((r) => c.startsWith(r.codePrefix))
+    .sort((a, b) => b.codePrefix.length - a.codePrefix.length)[0];
+  return best
+    ? `GST ${best.ratePercent}% today, from the rate for ${best.codePrefix}.`
+    : 'No GST rate covers this code today, so checkout refuses it.';
+}
+
 function ProductDetailPage() {
-  const { product, categories, units } = productDetailRoute.useLoaderData();
+  const { product, categories, units, gstRates } = productDetailRoute.useLoaderData();
+  const websites = useWebsites();
+  const sellsInIndia = websites.some((w) => w.countryCode === 'IN');
+  const sellsInUs = websites.some((w) => w.countryCode === 'US');
   const session = useSession();
   const website = useWebsite();
   const manage = can(session, 'product.manage');
@@ -378,6 +417,66 @@ function ProductDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {sellsInIndia || sellsInUs ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tax</CardTitle>
+            <span className="text-meta text-muted-foreground">
+              Checkout refuses a product without the code its website needs
+            </span>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            {sellsInIndia ? (
+              <Field
+                label="HSN or SAC code"
+                optional
+                error={errors['hsnSacCode'] ?? hsnError(draft.hsnSacCode)}
+                hint={gstHint(draft.hsnSacCode, gstRates)}
+              >
+                {(props) => (
+                  <Input
+                    {...props}
+                    className="num"
+                    inputMode="numeric"
+                    maxLength={8}
+                    disabled={!manage}
+                    value={draft.hsnSacCode}
+                    onChange={(e) => {
+                      set({ hsnSacCode: e.target.value });
+                    }}
+                  />
+                )}
+              </Field>
+            ) : null}
+            {sellsInUs ? (
+              <Field
+                label="US tax category"
+                hint="Exempt products are sold without US sales tax."
+                error={errors['usTaxCategory']}
+              >
+                {({ id }) => (
+                  <Select
+                    value={draft.usTaxCategory ?? 'general'}
+                    disabled={!manage}
+                    onValueChange={(value) => {
+                      set({ usTaxCategory: value as 'general' | 'exempt' });
+                    }}
+                  >
+                    <SelectTrigger id={id}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General (taxable)</SelectItem>
+                      <SelectItem value="exempt">Exempt</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </Field>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

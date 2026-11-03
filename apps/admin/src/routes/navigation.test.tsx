@@ -21,8 +21,8 @@ describe('permission-aware navigation', () => {
     [['customer.manage'], ['Home']],
     [['price_list.view'], ['Home', 'Price lists']],
     [
-      ['website.view', 'setting.view'],
-      ['Home', 'Websites', 'Settings'],
+      ['website.view', 'setting.view', 'tax.view'],
+      ['Home', 'Websites', 'Settings', 'Tax'],
     ],
     [['order.view'], ['Home', 'Orders']],
     [

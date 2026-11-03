@@ -33,6 +33,7 @@ import {
   listAddresses,
   listBuyerUsers,
   listCustomers,
+  listExemptions,
   listInvitations,
   listSubsidiaries,
   resendInvitation,
@@ -46,8 +47,9 @@ import { formatDate } from '../lib/format.js';
 import { can } from '../lib/session.js';
 import { useSession } from '../lib/session-context.js';
 import { useSubmit } from '../lib/use-submit.js';
-import { useWebsite } from '../lib/website.js';
+import { useWebsite, useWebsites } from '../lib/website.js';
 import { authedRoute } from './authed.js';
+import { ExemptionsCard } from './tax.js';
 
 const TABS = ['overview', 'buyer-users', 'invitations', 'addresses'] as const;
 type Tab = (typeof TABS)[number];
@@ -125,8 +127,9 @@ export const customerDetailRoute = createRoute({
     }
     const root = ancestors[0] ?? customer;
     const canRoles = context.session.permissions.has('buyer_role.view');
-    const [tree, groups, buyerUsers, invitations, addresses, known, buyerRoles] = await Promise.all(
-      [
+    const canTax = context.session.permissions.has('tax.view');
+    const [tree, groups, buyerUsers, invitations, addresses, known, buyerRoles, exemptions] =
+      await Promise.all([
         loadTree(root, signal),
         allCustomerGroups(signal),
         listBuyerUsers(customer.id, undefined, signal),
@@ -134,8 +137,9 @@ export const customerDetailRoute = createRoute({
         listAddresses(customer.id, undefined, signal),
         listCustomers({ limit: 200 }, signal),
         canRoles ? allBuyerRoles(signal) : Promise.resolve([] as BuyerRole[]),
-      ],
-    );
+        // US exemption certificates (ADR 0023).
+        canTax ? listExemptions({ customerId: customer.id }, signal) : Promise.resolve(undefined),
+      ]);
     return {
       customer,
       ancestors,
@@ -146,6 +150,7 @@ export const customerDetailRoute = createRoute({
       addresses,
       known: known.items,
       buyerRoles,
+      exemptions,
     };
   },
   component: CustomerDetailPage,
@@ -181,6 +186,7 @@ function CustomerDetailPage() {
   const navigate = useNavigate();
   const session = useSession();
   const website = useWebsite();
+  const sellsInUs = useWebsites().some((w) => w.countryCode === 'US');
   const manage = can(session, 'customer.manage');
   const assignRoles = can(session, 'buyer_role.manage');
   const [dialog, setDialog] = useState<Dialogs>();
@@ -386,6 +392,13 @@ function CustomerDetailPage() {
               ) : null}
             </CardContent>
           </Card>
+          {data.exemptions !== undefined && sellsInUs ? (
+            <ExemptionsCard
+              exemptions={data.exemptions}
+              manage={can(session, 'tax.manage')}
+              customerId={customer.id}
+            />
+          ) : null}
         </TabsContent>
 
         <TabsContent value="buyer-users" className="mt-5 flex flex-col gap-4">
