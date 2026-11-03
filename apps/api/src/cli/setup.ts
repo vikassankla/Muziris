@@ -2,7 +2,7 @@
  * Prepares an empty install (ADR 0021): creates the organization and the standard product units.
  * Running it again changes nothing.
  *
- *   pnpm --filter @muziris/api setup --organization "Acme Industrial Supply"
+ *   pnpm --filter @muziris/api run setup --organization "Acme Industrial Supply"
  */
 import { parseArgs } from 'node:util';
 import { createDatabase } from '@muziris/db';
@@ -37,7 +37,7 @@ try {
   );
   process.stdout.write(
     'Next: pnpm --filter @muziris/api admin:create --email <email> --name "<name>", then sign\n' +
-      'in to the admin app and create the first website under Settings > Websites.\n',
+      'in to the admin app and create the first website under System > Websites.\n',
   );
 } catch (error) {
   process.stderr.write(

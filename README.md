@@ -41,7 +41,7 @@ cp .env.example .env          # then replace every CHANGE_ME value
 docker compose up -d          # PostgreSQL 18, S3-compatible storage, mail catcher
 pnpm install
 pnpm db:migrate
-pnpm --filter @muziris/api setup --organization "Your Company"
+pnpm --filter @muziris/api run setup --organization "Your Company"
 pnpm --filter @muziris/api admin:create --email you@example.com --name "Your Name"
 pnpm --filter @muziris/api dev
 ```
@@ -51,6 +51,30 @@ pnpm --filter @muziris/api dev
 be run again safely. Then create the first website and its settings in the admin app, under
 System > Websites and System > Settings. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
+
+### Everything in Docker, for testing
+
+To try the whole application without Node.js, run it in Docker. This is a test setup, not a
+production one: the API runs with `NODE_ENV=development` and dev dependencies.
+
+```sh
+cp .env.example .env          # then replace every CHANGE_ME value
+docker compose --profile app up -d --build --wait
+docker compose exec api pnpm --filter @muziris/api admin:create --email you@example.com --name "Your Name"
+```
+
+- The admin app is at http://localhost:8080 and the storefront at http://localhost:8081. nginx
+  serves both and passes `/admin/v1` and `/storefront/v1` to the API, so each stays on one
+  origin.
+- Outgoing email appears at http://localhost:8025.
+- The `migrate` service applies the migrations and runs `setup` on every start, then exits.
+  Set `ORGANIZATION_NAME` in `.env` to name the organization; it defaults to "Muziris Test".
+- The storefront serves the website whose code is `STOREFRONT_WEBSITE` (default `main`). Create
+  a website with that code in the admin app, then rebuild with `--build` if you change it.
+- Stripe and Razorpay test keys in `.env` reach the API; without them checkout offers payment
+  terms only.
+- After changing the code, run the same `up` command again to rebuild.
+- `docker compose --profile app down` stops everything. Add `-v` to delete the database too.
 
 ### The admin app
 

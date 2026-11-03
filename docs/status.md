@@ -36,7 +36,7 @@ Decisions are recorded in `docs/adr/0001` to `0023`. ADRs 0006 (access control),
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. ADRs 0021 (websites, settings and first-run setup), 0022 (price list screens) and 0023 (tax screens) are proposed, in review. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. ADRs 0021 (websites, settings and first-run setup), 0022 (price list screens) and 0023 (tax screens) are merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -153,18 +153,18 @@ review).
     `/accept-invitation`; admin System > Emails (`notification.view`, `notification.manage`).
     Not done: a check against Mailpit by hand, bounce handling.
 
-13. Websites, settings and first-run setup (ADR 0021). **In review** (stacked on the ADR pull
-    request). This touches access control (a buyer role granted on acceptance) and settings that
+13. Websites, settings and first-run setup (ADR 0021). **Merged** (PR 34, 2026-11-03, as
+    5c05644, approved by Vikas in chat, with no second review recorded on GitHub). This touches access control (a buyer role granted on acceptance) and settings that
     steer payments, so CLAUDE.md rule 4 asks for a second human review. The setup CLI
-    (`pnpm --filter @muziris/api setup --organization "<name>"`) creates the organization and
+    (`pnpm --filter @muziris/api run setup --organization "<name>"`) creates the organization and
     the standard product units; `/admin/v1/websites` and `/admin/v1/settings` list, create and
     change websites and override or clear settings at one scope, recording who did it
     (migration `0017`). The default buyer role is a setting, stored on the invitation (migration
     `0018`) and granted when it is accepted. Admin: a real website switcher, System > Websites
     and System > Settings, a buyer role in the invite dialog. Not done: feature toggles, a
     check of the screens by hand.
-14. Price list screens with CSV import and export (ADR 0022). **In review** (stacked on item
-    13). This touches pricing, so CLAUDE.md rule 4 asks for a second human review. A shared
+14. Price list screens with CSV import and export (ADR 0022). **Merged** (PR 35, 2026-11-03,
+    as 7284121, approved by Vikas in chat, with no second review recorded on GitHub). This touches pricing, so CLAUDE.md rule 4 asks for a second human review. A shared
     `@muziris/csv` package (also used by the US tax rate import); batch lookups by id in catalog
     and customers, and `searchProductIds` in search. The pricing API gains SKUs and names beside
     ids, `q` search on prices, `POST .../prices/import` (text/csv, at most 2 MB and 10,000
@@ -172,8 +172,8 @@ review).
     Price lists and a price list's page (prices with tiers, import, export, assignments), the
     build banner and the price preview. No migrations. Not done: the "vs. list price" column,
     import history, a check of the screens by hand.
-15. Tax screens, the readiness check and product tax codes (ADR 0023). **In review** (stacked
-    on item 14). This touches tax, so CLAUDE.md rule 4 asks for a second human review; the four
+15. Tax screens, the readiness check and product tax codes (ADR 0023). **Merged** (PR 36,
+    2026-11-03, as 091f85d, approved by Vikas in chat, with no second review recorded on GitHub). This touches tax, so CLAUDE.md rule 4 asks for a second human review; the four
     **(check)** items in ADR 0017 still need the tax adviser. Catalog gains `taxCodeUsage` and
     a `missingTaxCode` products filter; the API gains `GET /admin/v1/tax/readiness?websiteId=`.
     Admin: System > Tax for the top bar website (Readiness, Registration, Rates with the US CSV
@@ -182,13 +182,8 @@ review).
     exemptions on the customer page. No migrations. Not done: a check of the screens by hand,
     warnings for rates about to end.
 
-**Next (ahead of the plan):** the admin screens an operator needs to run the pilot without API
-calls by hand, in this order:
-
-1. Websites, settings and first-run setup (ADR 0021): in review, item 13.
-2. Price list screens, with CSV import and export (ADR 0022): in review, item 14.
-3. Tax screens, the readiness check, and the product tax code fields (ADR 0023): in review,
-   item 15.
+**Next (ahead of the plan):** check the admin screens of items 13 to 15 by hand, on the
+Docker test stack (`docker compose --profile app up -d --build --wait`; see the README).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

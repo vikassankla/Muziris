@@ -3,6 +3,25 @@
 # Every port is bound to 127.0.0.1 so nothing is reachable from your network.
 name: muziris
 
+x-api-env: &api-env
+  DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-muziris}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # The browser reaches the API through nginx (web) on these origins.
+  CORS_ORIGINS: http://localhost:8080,http://localhost:8081
+  TRUSTED_PROXY_HOPS: 1
+  SMTP_URL: smtp://mailpit:1025
+  MAIL_FROM: ${MAIL_FROM:-Muziris <no-reply@muziris.localhost>}
+  STOREFRONT_PUBLIC_URL: http://localhost:8081
+  STOREFRONT_WEBSITE: ${STOREFRONT_WEBSITE:-main}
+  STOREFRONT_PERSISTED_QUERIES: ../storefront/persisted-queries.json
+  # Test-mode payment keys pass through from .env when set (ADR 0019).
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+  RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+  RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+
 services:
   postgres:
     image: postgres:18-alpine
@@ -38,6 +57,57 @@ services:
     ports:
       - '127.0.0.1:1025:1025'
       - '127.0.0.1:8025:8025'
+
+  # The application itself, for testing in Docker (docker/app.Dockerfile). Off unless asked for:
+  #   docker compose --profile app up --build
+  # Admin app on http://localhost:8080, storefront on http://localhost:8081.
+
+  # Applies migrations and prepares the install (organization and product units), then exits.
+  # Both are safe to run again.
+  migrate:
+    profiles: [app]
+    image: muziris-app-api
+    build: { context: ., dockerfile: docker/app.Dockerfile, target: api }
+    environment:
+      <<: *api-env
+      # The organization setup creates on an empty install; ignored once one exists.
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:-Muziris Test}
+    command:
+      - sh
+      - -c
+      - pnpm db:migrate && pnpm --filter @muziris/api run setup --organization "$$ORGANIZATION_NAME"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    profiles: [app]
+    image: muziris-app-api
+    restart: unless-stopped
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      mailpit: { condition: service_started }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    profiles: [app]
+    image: muziris-app-web
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+      target: web
+      args:
+        VITE_STOREFRONT_WEBSITE: ${STOREFRONT_WEBSITE:-main}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8080:8080'
+      - '127.0.0.1:8081:8081'
+    depends_on:
+      api: { condition: service_healthy }
 
 volumes:
   postgres-data:
