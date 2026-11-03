@@ -138,7 +138,7 @@ export function totalRows(
   ];
   if (!isZero(totals.discount))
     rows.push({ label: 'Discount', value: `−${money(totals.discount)}` });
-  rows.push({ label: `Shipping (${totals.shippingMethod})`, value: money(totals.shipping) });
+  rows.push({ label: 'Shipping', value: money(totals.shipping) });
   if (!isZero(totals.shippingDiscount)) {
     rows.push({ label: 'Shipping discount', value: `−${money(totals.shippingDiscount)}` });
   }

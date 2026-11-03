@@ -1,6 +1,6 @@
 /**
- * Prepares an empty install (ADR 0021): creates the organization and the standard product units.
- * Running it again changes nothing.
+ * Prepares an empty install (ADR 0021): creates the organization, the standard product units and
+ * buyer roles, and makes Buyer the default buyer role. Running it again changes nothing.
  *
  *   pnpm --filter @muziris/api run setup --organization "Acme Industrial Supply"
  */
@@ -35,6 +35,14 @@ try {
       ? `Added product units: ${result.unitsAdded.join(', ')}\n`
       : 'The standard product units are already there\n',
   );
+  process.stdout.write(
+    result.buyerRolesAdded.length > 0
+      ? `Added buyer roles: ${result.buyerRolesAdded.join(', ')}\n`
+      : 'The standard buyer roles are already there\n',
+  );
+  if (result.defaultBuyerRoleSet) {
+    process.stdout.write('Invited buyers now get the Buyer role when they accept\n');
+  }
   process.stdout.write(
     'Next: pnpm --filter @muziris/api admin:create --email <email> --name "<name>", then sign\n' +
       'in to the admin app and create the first website under System > Websites.\n',

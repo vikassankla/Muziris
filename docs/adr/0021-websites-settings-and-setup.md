@@ -132,6 +132,13 @@ Where the build differs from the plan above, or settles something it left open:
   organization when there is none and adds the standard product units (each and pack, whole
   numbers; kg, m and l to 3 decimal places) that are missing. Run again, it changes nothing.
   Without an organization and without `--organization` it stops and says so.
+- **Standard buyer roles** (added after the hand test): setup also adds the buyer roles
+  `buyer` (orders and RFQs for the customer, its own shopping lists and quotes, and the
+  customer's addresses to read) and `purchasing_admin` (all of it for the customer, plus its
+  addresses and buyer users) when they are missing. Neither reaches subsidiaries, and both are
+  ordinary roles an admin may change. When setup creates `buyer` and the organization has no
+  default buyer role, it makes `buyer` the default, so invited buyers can order at once. A
+  later run that puts back a deleted role leaves the default as the admin set it.
 - **Listing websites needs only a session.** Every admin screen formats money and dates by
   the website in the top bar, so any signed-in admin may list websites. Reading one needs
   `website.view`; creating or changing one needs `website.manage`.

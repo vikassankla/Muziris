@@ -7,7 +7,7 @@ import {
   type ProductAttributes,
 } from './attributes.js';
 import { categorySubtreeIds } from './categories.js';
-import { products, productSoldIn, productUnits } from './db/schema.js';
+import { categories, products, productSoldIn, productUnits } from './db/schema.js';
 import {
   CatalogError,
   isForeignKeyViolation,
@@ -364,6 +364,18 @@ export async function taxCodeUsage(db: Database, examples = 50): Promise<TaxCode
  */
 export function productCategoryAndStatus(): SQL {
   return sql`select id as product_id, category_id, status from ${products}`;
+}
+
+/**
+ * When a product or a category was last added or changed; null for an empty catalog. Visibility
+ * compares it with its last build, since its build reads products and categories.
+ */
+export async function lastCatalogChange(db: Database): Promise<Date | null> {
+  const [row] = await db.execute<{ at: Date | string | null }>(
+    sql`select greatest((select max(updated_at) from ${products}),
+          (select max(updated_at) from ${categories})) as at`,
+  );
+  return row?.at === undefined || row.at === null ? null : new Date(row.at);
 }
 
 /**

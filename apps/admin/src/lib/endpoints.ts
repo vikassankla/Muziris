@@ -1275,6 +1275,29 @@ export function buildPrices() {
   return api('/pricing/build', z.unknown(), { method: 'POST' });
 }
 
+const visibilityBuildSchema = z.object({
+  pendingChanges: z.number(),
+  catalogChangedSinceBuild: z.boolean(),
+  lastBuild: z
+    .object({
+      builtAt: z.string(),
+      builtBy: z.string().nullable(),
+      visibleProductCount: z.number(),
+    })
+    .nullable(),
+});
+export type VisibilityBuildState = z.infer<typeof visibilityBuildSchema>;
+
+export async function getVisibilityBuild(signal?: AbortSignal) {
+  return (await api('/visibility/build', z.object({ build: visibilityBuildSchema }), { signal }))
+    .build;
+}
+
+/** Builds what each buyer may see now and waits for it (ADR 0012). */
+export function buildVisibility() {
+  return api('/visibility/build', z.unknown(), { method: 'POST' });
+}
+
 const tierSchema = z.object({ minQuantity: z.string(), unitPrice: z.string() });
 
 const previewSchema = z.object({

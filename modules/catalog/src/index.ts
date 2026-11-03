@@ -47,6 +47,7 @@ export {
   findProductsWithin,
   listProducts,
   listProductsWithin,
+  lastCatalogChange,
   listProductsQuerySchema,
   MAX_PRODUCT_UNITS,
   newProductSchema,
