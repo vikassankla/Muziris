@@ -1,6 +1,6 @@
 # 0026: Two-factor sign-in for admins
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-03
 
 ## Context

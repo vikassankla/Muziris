@@ -1,6 +1,6 @@
 # 0024: End-to-end buyer journeys with Playwright
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-03
 
 ## Context
