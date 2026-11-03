@@ -229,6 +229,8 @@ review).
     `job.view` and a read-only System > Jobs screen. Journey 4 now waits for the queued build
     instead of pressing "Build now". `workflow.timers` waits for the first time-based
     transition.
+23. Storefront tests get 15 seconds each (PR 45, merged 2026-11-03 as 1170236): the sign-in
+    test ran past vitest's 5-second default on CI and failed main.
 
 **Next (ahead of the plan):** ADR 0026 (admin two-factor sign-in). Then the hand-test follow-ups in item 16, each with a journey.
 
