@@ -32,11 +32,11 @@ spec: https://claude.ai/artifact/JeDtT4LfexVuHnyac3XGgV
 | Payments   | Stripe and Razorpay in test mode: one payment per order, signed webhooks, gateway event log, Pay now in the storefront  | `modules/payments`       |
 | Emails     | Outbox queued with each change, SMTP sender with retries, eight templates, invitations accepted from the email link     | `modules/notifications`  |
 
-Decisions are recorded in `docs/adr/0001` to `0020`. ADRs 0006 (access control), 0007
+Decisions are recorded in `docs/adr/0001` to `0023`. ADRs 0006 (access control), 0007
 (workflow engine), 0008 (customers) and 0009 (catalog) are merged with status proposed. ADR 0010
 (admin routes for customers and buyer roles, paged admin lists) is merged with status proposed.
 ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. ADR 0013 (search) is merged with status proposed. ADR 0014 (storefront GraphQL API) is merged
-with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. Every admin list endpoint is paged with
+with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. ADRs 0021 (websites, settings and first-run setup), 0022 (price list screens) and 0023 (tax screens) are proposed, in review. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
 ## Next, in order (pilot plan)
@@ -153,6 +153,14 @@ review).
     `/accept-invitation`; admin System > Emails (`notification.view`, `notification.manage`).
     Not done: a check against Mailpit by hand, bounce handling.
 
+**Next (ahead of the plan):** the admin screens an operator needs to run the pilot without API
+calls by hand, in this order:
+
+1. Websites, settings and first-run setup (ADR 0021). It also settles the default buyer role:
+   a setting, applied when an invitation is accepted.
+2. Price list screens, with CSV import and export (ADR 0022).
+3. Tax screens, the readiness check, and the product tax code fields (ADR 0023).
+
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
 workflow, emails.
@@ -208,8 +216,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
-- Decide the default buyer role for invited buyer users (ADR 0006, ADR 0008). The admin
-  routes (ADR 0010) assign none; an admin assigns buyer roles by hand for now.
+- The default buyer role for invited buyer users (ADR 0006, ADR 0008) is proposed in
+  ADR 0021 as a setting. Until it is built, an admin assigns buyer roles by hand.
 - The admin buyer users list returns identity user ids only; names and emails need a batch
   lookup in identity's public interface.
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
