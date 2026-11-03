@@ -1,0 +1,1 @@
+ALTER TABLE "platform_config_value" ADD COLUMN "updated_by_user_id" uuid;

@@ -59,6 +59,7 @@ export async function setSetting<T>(
   definition: SettingDefinition<T>,
   scope: Scope,
   value: T,
+  options: { updatedByUserId?: string } = {},
 ): Promise<void> {
   if (!definition.allowedScopes.includes(scope.type)) {
     throw new SettingScopeNotAllowedError(definition.key, scope.type);
@@ -71,10 +72,15 @@ export async function setSetting<T>(
       scopeId: scope.type === 'global' ? null : scope.id,
       key: definition.key,
       value: parsed,
+      updatedByUserId: options.updatedByUserId ?? null,
     })
     .onConflictDoUpdate({
       target: [configValues.scopeType, configValues.scopeId, configValues.key],
-      set: { value: parsed, updatedAt: sql`now()` },
+      set: {
+        value: parsed,
+        updatedByUserId: options.updatedByUserId ?? null,
+        updatedAt: sql`now()`,
+      },
     });
 }
 

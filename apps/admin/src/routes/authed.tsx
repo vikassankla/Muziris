@@ -11,10 +11,10 @@ import {
 import { RouteError } from '../components/problem-view.js';
 import { PendingPage } from '../components/states.js';
 import { isApiProblem } from '../lib/api.js';
-import { signOut } from '../lib/endpoints.js';
+import { listWebsites, signOut, type Website } from '../lib/endpoints.js';
 import { forgetSession, loadSession, sessionWasActive } from '../lib/session.js';
 import { SessionContext } from '../lib/session-context.js';
-import { DEFAULT_WEBSITE, WebsiteContext, type WebsiteChoice } from '../lib/website.js';
+import { currentWebsite, WebsiteContext } from '../lib/website.js';
 import { rootRoute } from './root.js';
 
 /**
@@ -27,7 +27,15 @@ export const authedRoute = createRoute({
   id: '_authed',
   beforeLoad: async ({ location, abortController }) => {
     try {
-      return { session: await loadSession(abortController.signal) };
+      const session = await loadSession(abortController.signal);
+      // The top bar's websites. Without them the screens still work, in India's formats.
+      const websites: Website[] = await listWebsites(abortController.signal).catch(
+        (error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') throw error;
+          return [];
+        },
+      );
+      return { session, websites };
     } catch (error) {
       if (isApiProblem(error) && error.status === 401) {
         throw redirect({
@@ -47,11 +55,12 @@ export const authedRoute = createRoute({
 });
 
 function AuthedLayout() {
-  const { session } = authedRoute.useRouteContext();
+  const { session, websites } = authedRoute.useRouteContext();
   const navigate = useNavigate();
   const router = useRouter();
   const frame = useFrameState();
-  const [website, setWebsite] = useState<WebsiteChoice>(DEFAULT_WEBSITE);
+  const [chosenId, setWebsite] = useState<string | undefined>();
+  const website = currentWebsite(websites, chosenId);
 
   useShortcuts({
     palette: () => {
@@ -78,7 +87,7 @@ function AuthedLayout() {
 
   return (
     <SessionContext.Provider value={session}>
-      <WebsiteContext.Provider value={{ website, setWebsite }}>
+      <WebsiteContext.Provider value={{ website, websites, setWebsite }}>
         <div className="flex min-h-screen bg-background">
           <Sidebar
             session={session}
@@ -91,6 +100,7 @@ function AuthedLayout() {
             <TopBar
               session={session}
               website={website}
+              websites={websites}
               onWebsite={setWebsite}
               onOpenPalette={() => {
                 frame.setPaletteOpen(true);

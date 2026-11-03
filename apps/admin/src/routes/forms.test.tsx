@@ -136,6 +136,7 @@ const INVITATION = {
   email: 'neha@example.in',
   displayName: 'Neha Shah',
   invitedByUserId: 'a',
+  buyerRoleId: null,
   createdAt: '2026-10-28T00:00:00.000Z',
   expiresAt: '2026-11-04T00:00:00.000Z',
   acceptedAt: null,
@@ -166,6 +167,42 @@ describe('invitations', () => {
       expiresInHours: 168,
     });
     expectOnlyPreferencesStored();
+  });
+
+  it('sends the buyer role chosen in the dialog', async () => {
+    const requests = mockApi({
+      ...customerApi(['customer.view', 'customer.manage', 'buyer_role.view']),
+      'GET /access/buyer-roles': () =>
+        json({
+          buyerRoles: [
+            {
+              id: 'br1',
+              code: 'orderer',
+              name: 'Orderer',
+              description: '',
+              isBuiltIn: false,
+              grants: [],
+            },
+          ],
+          nextAfter: null,
+        }),
+      [`POST /customers/${CUSTOMER_ID}/invitations`]: () => json({ invitation: INVITATION }, 201),
+    });
+    renderApp(`/customers/${CUSTOMER_ID}?tab=invitations&new=true`);
+    const user = userEvent.setup();
+    const dialog = await screen.findByRole('dialog', { name: 'Invite a buyer user' });
+    fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Neha Shah' } });
+    fireEvent.change(within(dialog).getByLabelText('Email'), {
+      target: { value: 'neha@example.in' },
+    });
+    await user.click(within(dialog).getByRole('combobox', { name: 'Buyer role' }));
+    await user.click(await screen.findByRole('option', { name: 'Orderer' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitation' }));
+    await waitFor(() => {
+      expect(requests.find((r) => r.method === 'POST')?.body).toMatchObject({
+        buyerRoleId: 'br1',
+      });
+    });
   });
 
   it('sends an open invitation again', async () => {

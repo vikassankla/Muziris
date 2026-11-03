@@ -16,11 +16,13 @@ import { notificationRoutes } from './notification-routes.js';
 import { orderRoutes } from './order-routes.js';
 import { pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
+import { settingRoutes } from './setting-routes.js';
 import { shoppingListRoutes } from './shopping-list-routes.js';
 import { taxRoutes } from './tax-routes.js';
 import { storefrontRoutes, WEBSITE_HEADER, type StorefrontOptions } from './storefront/routes.js';
 import { visibilityRoutes } from './visibility-routes.js';
 import { webhookRoutes } from './webhook-routes.js';
+import { websiteRoutes } from './website-routes.js';
 import { resolveClientIp } from './client-ip.js';
 import type { Logger } from './logger.js';
 import { HttpProblem, problemResponse, toProblem } from './problem.js';
@@ -180,7 +182,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     mail: deps.mail ?? mailConfigFromEnv({}, { production: false }),
     storefrontWebsite: deps.storefrontWebsite ?? 'main',
   });
-  const emailDeps = { ...authDeps, emails };
+  const emailDeps = { ...authDeps, emails, storefrontWebsite: deps.storefrontWebsite ?? 'main' };
   app.route('/admin/v1/auth', authRoutes('admin', authDeps));
   app.route('/storefront/v1/auth', authRoutes('buyer', authDeps));
   app.route(
@@ -207,9 +209,11 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/orders', orderRoutes(emailDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
+  app.route('/admin/v1/settings', settingRoutes(authDeps));
   app.route('/admin/v1/tax', taxRoutes(authDeps));
   app.route('/admin/v1/shopping-lists', shoppingListRoutes(authDeps));
   app.route('/admin/v1/visibility', visibilityRoutes(authDeps));
+  app.route('/admin/v1/websites', websiteRoutes(authDeps));
 
   app.notFound((c) =>
     problemResponse(c, toProblem(c, new HttpProblem(404, 'not_found', 'No such resource'))),

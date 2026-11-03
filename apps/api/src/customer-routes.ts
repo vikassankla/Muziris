@@ -1,4 +1,4 @@
-import type { AdminPermission } from '@muziris/access';
+import { findBuyerRole, type AdminPermission } from '@muziris/access';
 import {
   addAddress,
   createBuyerUser,
@@ -27,6 +27,7 @@ import {
 } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import { EmailTakenError, PasswordPolicyError } from '@muziris/identity';
+import { findOrganization, findWebsiteByCode, getSetting } from '@muziris/platform';
 import { Hono, type Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
@@ -35,6 +36,7 @@ import { requireSession, trustedOriginGuard } from './auth-routes.js';
 import type { Emails } from './emails.js';
 import type { Logger } from './logger.js';
 import { HttpProblem } from './problem.js';
+import { DEFAULT_BUYER_ROLE } from './settings.js';
 
 export interface CustomerRouteDependencies {
   db: Database;
@@ -44,6 +46,8 @@ export interface CustomerRouteDependencies {
   trustedOrigins: ReadonlySet<string>;
   /** Queues the invitation email (ADR 0020). */
   emails: Emails;
+  /** The code of the website the storefront serves; its default buyer role applies (ADR 0021). */
+  storefrontWebsite?: string;
 }
 
 interface CustomerEnv {
@@ -134,6 +138,11 @@ const linkBuyerUserBody = z.object({ email: z.string().max(254) });
 const newInvitationBody = z.object({
   email: z.string().max(254),
   displayName: z.string().max(200),
+  /**
+   * The buyer role given on accepting: null for none, left out for the
+   * customers.default_buyer_role setting (ADR 0021).
+   */
+  buyerRoleId: z.uuid().nullable().optional(),
   /** How long the invitation stays open; the module's default (seven days) when omitted. */
   expiresInHours: z
     .int()
@@ -150,6 +159,21 @@ export function customerRoutes(deps: CustomerRouteDependencies): Hono<CustomerEn
   const app = new Hono<CustomerEnv>();
   const need = (permission: AdminPermission) => requirePermission(permission, deps);
   const body = (c: { req: { json: () => Promise<unknown> } }) => c.req.json().catch(() => ({}));
+
+  /** The customers.default_buyer_role setting for the storefront's website; null if unset or gone. */
+  async function defaultBuyerRole(): Promise<string | null> {
+    const [organization, website] = await Promise.all([
+      findOrganization(deps.db),
+      findWebsiteByCode(deps.db, deps.storefrontWebsite ?? 'main'),
+    ]);
+    const { value } = await getSetting(deps.db, DEFAULT_BUYER_ROLE, {
+      ...(organization ? { organizationId: organization.id } : {}),
+      ...(website ? { websiteId: website.id } : {}),
+    });
+    if (value === null) return null;
+    return (await findBuyerRole(deps.db, value)) ? value : null;
+  }
+
   /** Who did it, for audit log lines. Never bodies, emails or tokens. */
   const actor = (c: Context<CustomerEnv>) => ({
     requestId: c.get('requestId'),
@@ -314,6 +338,11 @@ export function customerRoutes(deps: CustomerRouteDependencies): Hono<CustomerEn
     const customerId = idParam.parse(c.req.param('customerId'));
     const input = newInvitationBody.parse(await body(c));
     const customer = await existingCustomer(customerId);
+    const buyerRoleId =
+      input.buyerRoleId === undefined ? await defaultBuyerRole() : input.buyerRoleId;
+    if (buyerRoleId !== null && !(await findBuyerRole(deps.db, buyerRoleId))) {
+      throw new HttpProblem(404, 'buyer_role_not_found', 'No such buyer role');
+    }
     const hooks = await deps.emails.invitation(customer.name);
     const { invitation } = await translated(() =>
       createInvitation(
@@ -323,6 +352,7 @@ export function customerRoutes(deps: CustomerRouteDependencies): Hono<CustomerEn
           email: input.email,
           displayName: input.displayName,
           invitedByUserId: c.get('user').id,
+          buyerRoleId,
           now: deps.now(),
           ...(input.expiresInHours === undefined
             ? {}

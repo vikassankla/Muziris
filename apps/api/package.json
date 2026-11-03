@@ -11,6 +11,7 @@
     "notifications:send": "tsx --env-file-if-exists=../../.env src/cli/send-emails.ts",
     "pricing:build": "tsx --env-file-if-exists=../../.env src/cli/build-prices.ts",
     "search:build": "tsx --env-file-if-exists=../../.env src/cli/build-search.ts",
+    "setup": "tsx --env-file-if-exists=../../.env src/cli/setup.ts",
     "storefront:schema": "tsx src/cli/print-storefront-schema.ts",
     "visibility:build": "tsx --env-file-if-exists=../../.env src/cli/build-visibility.ts",
     "typecheck": "tsc -p tsconfig.json",

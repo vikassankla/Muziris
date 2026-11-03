@@ -1,4 +1,4 @@
-import type { Database } from '@muziris/db';
+import type { Database, Transaction } from '@muziris/db';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { assertUserInRealm } from './admin-roles.js';
@@ -63,6 +63,21 @@ async function loadRole(db: Database, roleId: string) {
     .where(eq(buyerRoles.id, idSchema.parse(roleId)))
     .limit(1);
   if (!role) throw new AccessControlError('role_not_found', 'No such buyer role');
+  return role;
+}
+
+/** A buyer role's id, code and name, without its grants; undefined when there is none. */
+export async function findBuyerRole(
+  db: Database,
+  roleId: string,
+): Promise<Pick<BuyerRole, 'id' | 'code' | 'name'> | undefined> {
+  const id = idSchema.safeParse(roleId);
+  if (!id.success) return undefined;
+  const [role] = await db
+    .select({ id: buyerRoles.id, code: buyerRoles.code, name: buyerRoles.name })
+    .from(buyerRoles)
+    .where(eq(buyerRoles.id, id.data))
+    .limit(1);
   return role;
 }
 
@@ -200,6 +215,28 @@ export async function assignBuyerRole(
     .insert(buyerUserRoles)
     .values({ buyerUserId: userId, roleId: role.id })
     .onConflictDoNothing();
+}
+
+/**
+ * Gives a buyer role to a buyer user created in the same transaction, as when an invitation is
+ * accepted (ADR 0021). False when the role no longer exists, so accepting does not fail on it.
+ */
+export async function grantBuyerRoleOnAcceptance(
+  tx: Database | Transaction,
+  buyerUserId: string,
+  roleId: string,
+): Promise<boolean> {
+  const [role] = await tx
+    .select({ id: buyerRoles.id })
+    .from(buyerRoles)
+    .where(eq(buyerRoles.id, idSchema.parse(roleId)))
+    .limit(1);
+  if (!role) return false;
+  await tx
+    .insert(buyerUserRoles)
+    .values({ buyerUserId: idSchema.parse(buyerUserId), roleId: role.id })
+    .onConflictDoNothing();
+  return true;
 }
 
 export async function unassignBuyerRole(

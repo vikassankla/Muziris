@@ -207,8 +207,19 @@ export function LinkBuyerUserDialog({ open, onOpenChange, customerId, customerNa
  * Invite a buyer user. The API emails them a link to set a password (ADR 0020); the token is
  * never shown here.
  */
-export function InviteDialog({ open, onOpenChange, customerId, customerName }: DialogProps) {
+/** The invite dialog's buyer role choice: the settings default, none, or a role's id. */
+const DEFAULT_ROLE = '__default';
+const NO_ROLE = '__none';
+
+export function InviteDialog({
+  open,
+  onOpenChange,
+  customerId,
+  customerName,
+  roles,
+}: DialogProps & { roles: readonly BuyerRole[] }) {
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState(DEFAULT_ROLE);
   const [displayName, setDisplayName] = useState('');
   const [days, setDays] = useState('7');
   const { pending, problem, setProblem, submit } = useSubmit();
@@ -217,7 +228,14 @@ export function InviteDialog({ open, onOpenChange, customerId, customerName }: D
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = await submit(
-      () => createInvitation(customerId, { email, displayName, expiresInHours: Number(days) * 24 }),
+      () =>
+        createInvitation(customerId, {
+          email,
+          displayName,
+          expiresInHours: Number(days) * 24,
+          // Left out, the API uses the customers.default_buyer_role setting (ADR 0021).
+          ...(role === DEFAULT_ROLE ? {} : { buyerRoleId: role === NO_ROLE ? null : role }),
+        }),
       { title: 'Invitation sent', description: `${email} will get an email with a link` },
     );
     if (result) close();
@@ -226,6 +244,7 @@ export function InviteDialog({ open, onOpenChange, customerId, customerName }: D
   function close() {
     setEmail('');
     setDisplayName('');
+    setRole(DEFAULT_ROLE);
     setProblem(undefined);
     onOpenChange(false);
   }
@@ -274,6 +293,32 @@ export function InviteDialog({ open, onOpenChange, customerId, customerName }: D
                   setEmail(e.target.value);
                 }}
               />
+            )}
+          </Field>
+          <Field
+            label="Buyer role"
+            hint="Given when they accept. The default comes from Settings > Customers."
+            error={
+              problem?.code === 'buyer_role_not_found'
+                ? 'That buyer role no longer exists.'
+                : undefined
+            }
+          >
+            {({ id }) => (
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger id={id}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_ROLE}>The default buyer role</SelectItem>
+                  <SelectItem value={NO_ROLE}>No buyer role</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </Field>
           <Field

@@ -1,0 +1,1 @@
+ALTER TABLE "customer_invitation" ADD COLUMN "buyer_role_id" uuid;

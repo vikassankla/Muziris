@@ -44,6 +44,7 @@ const invitationSchema = z.object({
   email: z.string(),
   displayName: z.string(),
   invitedByUserId: z.string(),
+  buyerRoleId: z.string().nullable(),
   createdAt: z.string(),
   expiresAt: z.string(),
   acceptedAt: z.string().nullable(),
@@ -358,7 +359,13 @@ export function listInvitations(
 /** Invites a person. The API emails the accept link (ADR 0020); the app never sees the token. */
 export function createInvitation(
   customerId: string,
-  input: { email: string; displayName: string; expiresInHours?: number },
+  input: {
+    email: string;
+    displayName: string;
+    expiresInHours?: number;
+    /** null for none; left out for the default buyer role setting. */
+    buyerRoleId?: string | null;
+  },
 ) {
   return api(
     `/customers/${id(customerId)}/invitations`,
@@ -879,4 +886,142 @@ export async function retryEmail(emailId: string): Promise<OutboxEmail> {
       method: 'POST',
     })
   ).email;
+}
+
+// Websites (ADR 0021)
+
+const websiteSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  name: z.string(),
+  countryCode: z.string(),
+  defaultCurrency: z.string(),
+  defaultLocale: z.string(),
+  timeZone: z.string(),
+  unitSystem: z.enum(['metric', 'imperial']),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+export type Website = z.infer<typeof websiteSchema>;
+
+/** Every website, by code; any signed-in admin may list them. */
+export async function listWebsites(signal?: AbortSignal): Promise<Website[]> {
+  return (await api('/websites', z.object({ websites: z.array(websiteSchema) }), { signal }))
+    .websites;
+}
+
+export async function createWebsite(input: {
+  code: string;
+  name: string;
+  countryCode: string;
+  defaultCurrency: string;
+  defaultLocale: string;
+  timeZone: string;
+  unitSystem: 'metric' | 'imperial';
+}): Promise<Website> {
+  return (
+    await api('/websites', z.object({ website: websiteSchema }), { method: 'POST', body: input })
+  ).website;
+}
+
+/** Code, country and currency are fixed; the rest can change. */
+export async function updateWebsite(
+  websiteId: string,
+  changes: Partial<
+    Pick<Website, 'name' | 'defaultLocale' | 'timeZone' | 'unitSystem' | 'isActive'>
+  >,
+): Promise<Website> {
+  return (
+    await api(`/websites/${id(websiteId)}`, z.object({ website: websiteSchema }), {
+      method: 'PATCH',
+      body: changes,
+    })
+  ).website;
+}
+
+// Settings (ADR 0021)
+
+export const SCOPE_TYPES = [
+  'customer',
+  'customer_group',
+  'website',
+  'organization',
+  'global',
+] as const;
+export type ScopeType = (typeof SCOPE_TYPES)[number];
+
+const editorSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('integer'),
+    min: z.number(),
+    max: z.number(),
+    unit: z.string().optional(),
+  }),
+  z.object({ kind: z.literal('money') }),
+  z.object({ kind: z.literal('text'), pattern: z.string().optional() }),
+  z.object({ kind: z.literal('email'), allowEmpty: z.boolean() }),
+  z.object({
+    kind: z.literal('choices'),
+    multiple: z.boolean(),
+    options: z.array(z.object({ value: z.string(), label: z.string() })),
+  }),
+  z.object({ kind: z.literal('boolean') }),
+  z.object({ kind: z.literal('buyer_role') }),
+]);
+export type SettingEditor = z.infer<typeof editorSchema>;
+
+const settingSchema = z.object({
+  key: z.string(),
+  group: z.string(),
+  label: z.string(),
+  description: z.string(),
+  editor: editorSchema,
+  allowedScopes: z.array(z.enum(SCOPE_TYPES)),
+  defaultValue: z.unknown(),
+  value: z.unknown(),
+  source: z.enum([...SCOPE_TYPES, 'default']),
+});
+export type Setting = z.infer<typeof settingSchema>;
+
+export interface SettingContext {
+  websiteId?: string | undefined;
+  customerGroupId?: string | undefined;
+  customerId?: string | undefined;
+}
+
+/** Every setting an admin may change, with its effective value and source for the context. */
+export async function listSettings(
+  context: SettingContext,
+  signal?: AbortSignal,
+): Promise<Setting[]> {
+  return (
+    await api('/settings', z.object({ settings: z.array(settingSchema) }), {
+      signal,
+      query: {
+        websiteId: context.websiteId,
+        customerGroupId: context.customerGroupId,
+        customerId: context.customerId,
+      },
+    })
+  ).settings;
+}
+
+/** Overrides a setting at one scope; organization and global take no id. */
+export async function setSettingValue(
+  key: string,
+  scope: { type: ScopeType; id?: string },
+  value: unknown,
+): Promise<void> {
+  await api(`/settings/${id(key)}`, z.unknown(), { method: 'PUT', body: { scope, value } });
+}
+
+/** Clears an override, so the setting falls back to the next scope. */
+export async function clearSettingValue(
+  key: string,
+  scope: { type: ScopeType; id?: string },
+): Promise<void> {
+  await api(`/settings/${id(key)}`, z.unknown(), {
+    method: 'DELETE',
+    query: { scope: scope.type, scopeId: scope.id },
+  });
 }

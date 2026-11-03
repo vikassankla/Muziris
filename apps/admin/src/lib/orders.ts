@@ -2,7 +2,7 @@ import { moneyFromDecimal, sum, toDecimalString } from '@muziris/money';
 import { GST_STATE_CODES, US_STATES } from './address-rules.js';
 import type { Order, OrderAddress, OrderStep, PaymentMethod, PaymentStatus } from './endpoints.js';
 import type { DisplayContext } from './format.js';
-import { PLACEHOLDER_WEBSITES } from './website.js';
+import { CURRENCY_DISPLAY } from './website.js';
 
 // How orders read in the admin: step names and tones, transition buttons, and the display
 // context an order's own currency implies.
@@ -39,11 +39,12 @@ export function transitionLabel(transition: string): string {
 
 /**
  * An order is shown in its own currency's format, whatever website the top bar is set to:
- * INR the Indian way in IST, USD the US way. There is no websites API to say more yet.
+ * INR the Indian way in IST, USD the US way in Central time.
  */
 export function orderDisplay(currency: string): DisplayContext {
-  const match = PLACEHOLDER_WEBSITES.find((w) => w.currency === currency);
-  return match ?? { locale: 'en-IN', currency: 'INR', timeZone: 'Asia/Kolkata' };
+  return currency === 'USD'
+    ? { ...CURRENCY_DISPLAY.USD, timeZone: 'America/Chicago' }
+    : { ...CURRENCY_DISPLAY.INR, timeZone: 'Asia/Kolkata' };
 }
 
 /** An order address as printed lines: label, street, city with region, GSTIN when held. */

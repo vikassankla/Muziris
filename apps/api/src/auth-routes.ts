@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { grantBuyerRoleOnAcceptance } from '@muziris/access';
 import {
   acceptInvitation,
   CustomerError,
@@ -312,12 +313,32 @@ export function authRoutes(
       let email;
       try {
         ({ email } = await findPendingInvitation(deps.db, body.token, now));
-        buyer = await acceptInvitation(deps.db, {
-          token: body.token,
-          password: body.password,
-          now,
-          ...(body.displayName === undefined ? {} : { displayName: body.displayName }),
-        });
+        buyer = await acceptInvitation(
+          deps.db,
+          {
+            token: body.token,
+            password: body.password,
+            now,
+            ...(body.displayName === undefined ? {} : { displayName: body.displayName }),
+          },
+          {
+            // The invitation's buyer role (ADR 0021), in the transaction that links the buyer.
+            inTransaction: async (tx, { buyerUser, invitation }) => {
+              if (invitation.buyerRoleId === null) return;
+              const granted = await grantBuyerRoleOnAcceptance(
+                tx,
+                buyerUser.userId,
+                invitation.buyerRoleId,
+              );
+              if (!granted) {
+                deps.logger.warn(
+                  { requestId: c.get('requestId'), invitationId: invitation.id },
+                  'auth.invitation_role_missing',
+                );
+              }
+            },
+          },
+        );
       } catch (error) {
         throw invitationProblem(error);
       }

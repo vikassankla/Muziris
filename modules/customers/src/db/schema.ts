@@ -90,6 +90,8 @@ export const invitations = pgTable(
     tokenHash: text('token_hash').notNull().unique(),
     /** The identity user (admin or buyer) who sent it. */
     invitedByUserId: uuid('invited_by_user_id').notNull(),
+    // The buyer role given on acceptance (ADR 0021); an access role id, with no foreign key.
+    buyerRoleId: uuid('buyer_role_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),

@@ -1,11 +1,13 @@
 import {
   Building2,
   FolderTree,
+  Globe,
   House,
   KeyRound,
   Mail,
   Package,
   Ruler,
+  Settings,
   ShieldCheck,
   ShoppingCart,
   Users,
@@ -23,7 +25,9 @@ export type NavTo =
   | '/product-units'
   | '/admin-roles'
   | '/buyer-roles'
-  | '/emails';
+  | '/emails'
+  | '/websites'
+  | '/settings';
 
 export interface NavItem {
   to: NavTo;
@@ -40,7 +44,7 @@ export interface NavGroup {
 
 /**
  * The sidebar, grouped as on the Sidebar board. Sections the board shows but that have no API
- * yet (Sales: RFQs, quotes; Pricing; Admin users; Websites; Settings) are left out
+ * yet (Sales: RFQs, quotes; Pricing; Admin users) are left out
  * rather than shown empty; docs/status.md lists them.
  */
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -83,7 +87,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   },
   {
     label: 'System',
-    items: [{ to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' }],
+    items: [
+      { to: '/websites', label: 'Websites', icon: Globe, permission: 'website.view' },
+      { to: '/settings', label: 'Settings', icon: Settings, permission: 'setting.view' },
+      { to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' },
+    ],
   },
 ];
 

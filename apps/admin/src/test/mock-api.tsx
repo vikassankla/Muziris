@@ -43,12 +43,41 @@ export const ADMIN = {
   displayName: 'Asha Rao',
 } as const;
 
+/** The websites every signed-in test sees in the top bar; India comes first, as before. */
+export const WEBSITES = [
+  {
+    id: '7c1e0a11-0000-4000-8000-0000000000e1',
+    code: 'acme-in',
+    name: 'India',
+    countryCode: 'IN',
+    defaultCurrency: 'INR',
+    defaultLocale: 'en-IN',
+    timeZone: 'Asia/Kolkata',
+    unitSystem: 'metric',
+    isActive: true,
+    createdAt: '2026-10-01T00:00:00.000Z',
+  },
+  {
+    id: '7c1e0a11-0000-4000-8000-0000000000e2',
+    code: 'acme-us',
+    name: 'United States',
+    countryCode: 'US',
+    defaultCurrency: 'USD',
+    defaultLocale: 'en-US',
+    timeZone: 'America/Chicago',
+    unitSystem: 'imperial',
+    isActive: true,
+    createdAt: '2026-10-01T00:00:00.000Z',
+  },
+] as const;
+
 /** Handlers for a signed-in admin holding `permissions`, with empty lists for side data. */
 export function signedIn(permissions: string[]): Record<string, Handler> {
   return {
     'GET /auth/me': () => json({ user: ADMIN }),
     'GET /access/me': () => json({ permissions }),
     'GET /customers/groups': () => json({ customerGroups: [], nextAfter: null }),
+    'GET /websites': () => json({ websites: WEBSITES }),
   };
 }
 

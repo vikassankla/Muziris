@@ -79,6 +79,7 @@ export {
   newInvitationSchema,
   resendInvitation,
   revokeInvitation,
+  type AcceptInvitationHooks,
   type AcceptInvitationInput,
   type CreatedInvitation,
   type Invitation,

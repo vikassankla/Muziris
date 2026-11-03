@@ -5,6 +5,7 @@ import {
   runMigrations,
   type DatabaseHandle,
 } from '@muziris/db';
+import { createBuyerRole, deleteBuyerRole, getBuyerAccess } from '@muziris/access';
 import { createCustomer, createInvitation } from '@muziris/customers';
 import { createUser, SESSION_POLICIES } from '@muziris/identity';
 import { sql } from 'drizzle-orm';
@@ -30,7 +31,8 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
 
   beforeEach(async () => {
     await handle.db.execute(
-      sql`truncate customer_invitation, customer_buyer_user, customer_customer, identity_session,
+      sql`truncate customer_invitation, customer_buyer_user, customer_customer,
+        access_buyer_user_role, access_buyer_role_permission, access_buyer_role, identity_session,
         identity_user, identity_rate_limit cascade`,
     );
     clock = new Date('2026-11-02T09:00:00.000Z');
@@ -264,17 +266,45 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
   });
 
   describe('accepting an invitation (ADR 0020)', () => {
-    async function invited() {
+    async function invited(buyerRoleId: string | null = null) {
       const acme = await createCustomer(handle.db, { name: 'Acme Engineering' });
       const { token } = await createInvitation(handle.db, {
         customerId: acme.id,
         email: 'meera@acme.example',
         displayName: 'Meera',
         invitedByUserId: '7c1e0a11-0000-4000-8000-000000000001',
+        buyerRoleId,
         now: clock,
       });
       return token;
     }
+
+    it("gives the buyer the invitation's buyer role, and accepts even if the role is gone", async () => {
+      const role = await createBuyerRole(handle.db, {
+        code: 'orderer',
+        name: 'Orderer',
+        grants: [{ permission: 'order.place', accessLevel: 'my_customer' }],
+      });
+      const accepted = await post('/storefront/v1/auth/accept-invitation', {
+        token: await invited(role.id),
+        password: PASSWORD,
+      });
+      const { user } = (await accepted.json()) as { user: { id: string } };
+      expect((await getBuyerAccess(handle.db, user.id)).get('order.place')).toBe('my_customer');
+
+      await handle.db.execute(
+        sql`truncate customer_invitation, customer_buyer_user, customer_customer, identity_user cascade`,
+      );
+      const gone = await createBuyerRole(handle.db, { code: 'gone', name: 'Gone', grants: [] });
+      const token = await invited(gone.id);
+      await deleteBuyerRole(handle.db, gone.id);
+      const second = await post('/storefront/v1/auth/accept-invitation', {
+        token,
+        password: PASSWORD,
+      });
+      expect(second.status).toBe(201);
+      expect(logs.join('')).toContain('auth.invitation_role_missing');
+    });
 
     it('shows who it is for, then creates the account and signs the buyer in', async () => {
       const token = await invited();

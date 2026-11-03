@@ -87,6 +87,8 @@ export const configValues = pgTable(
     scopeId: uuid('scope_id'),
     key: text('key').notNull(),
     value: decodedJsonb('value').notNull(),
+    // The admin who last set it (ADR 0021); null for values set by code or before the column.
+    updatedByUserId: uuid('updated_by_user_id'),
     ...timestamps,
   },
   (t) => [
