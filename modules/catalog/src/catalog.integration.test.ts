@@ -18,6 +18,8 @@ import {
   findProduct,
   findProductBySku,
   findProductBySkuWithin,
+  findProductsByIds,
+  findProductsBySkus,
   findProductsBySkusWithin,
   findProductsWithin,
   findProductUnit,
@@ -285,6 +287,12 @@ describe.skipIf(!url)('catalog module against PostgreSQL', () => {
       expect(await findProduct(handle.db, product.id)).toEqual(product);
       expect(await findProductBySku(handle.db, 'blt-m8-40')).toEqual(product);
       expect(await findProduct(handle.db, MISSING_ID)).toBeUndefined();
+      expect(await findProductsByIds(handle.db, [product.id, MISSING_ID, product.id])).toEqual([
+        product,
+      ]);
+      expect(await findProductsBySkus(handle.db, ['blt-m8-40', 'NOPE', 'not a sku!'])).toEqual([
+        product,
+      ]);
     });
 
     it('refuses a SKU taken in any letter case, and writes nothing', async () => {

@@ -141,6 +141,9 @@ importers:
       '@muziris/catalog':
         specifier: workspace:*
         version: link:../../modules/catalog
+      '@muziris/csv':
+        specifier: workspace:*
+        version: link:../../packages/csv
       '@muziris/customers':
         specifier: workspace:*
         version: link:../../modules/customers
@@ -448,6 +451,9 @@ importers:
       '@muziris/catalog':
         specifier: workspace:*
         version: link:../catalog
+      '@muziris/csv':
+        specifier: workspace:*
+        version: link:../../packages/csv
       '@muziris/customers':
         specifier: workspace:*
         version: link:../customers
@@ -535,6 +541,9 @@ importers:
 
   modules/tax:
     dependencies:
+      '@muziris/csv':
+        specifier: workspace:*
+        version: link:../../packages/csv
       '@muziris/customers':
         specifier: workspace:*
         version: link:../customers
@@ -593,6 +602,8 @@ importers:
       zod:
         specifier: ^4.6.7
         version: 4.6.7
+
+  packages/csv: {}
 
   packages/db:
     dependencies:

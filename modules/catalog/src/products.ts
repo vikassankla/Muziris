@@ -278,6 +278,44 @@ export async function findProduct(db: Database, productId: string): Promise<Prod
   return product;
 }
 
+/** Products by id, in no particular order; ids that match no product are left out. */
+export async function findProductsByIds(
+  db: Database,
+  productIds: readonly string[],
+): Promise<Product[]> {
+  const ids = [...new Set(z.array(idSchema).max(1000).parse(productIds))];
+  if (ids.length === 0) return [];
+  return withUnits(db, await db.select().from(products).where(inArray(products.id, ids)));
+}
+
+/**
+ * Products by SKU in any letter case, for imports. SKUs that are not valid or match no product
+ * are left out.
+ */
+export async function findProductsBySkus(
+  db: Database,
+  skus: readonly string[],
+): Promise<Product[]> {
+  const wanted = [
+    ...new Set(
+      z
+        .array(z.string())
+        .max(10_000)
+        .parse(skus)
+        .filter((sku) => skuSchema.safeParse(sku).success)
+        .map((sku) => sku.toLowerCase()),
+    ),
+  ];
+  if (wanted.length === 0) return [];
+  return withUnits(
+    db,
+    await db
+      .select()
+      .from(products)
+      .where(inArray(sql`lower(${products.sku})`, wanted)),
+  );
+}
+
 /**
  * An SQL select of every product's id, category id (null for none) and status, as the columns
  * `product_id`, `category_id` and `status`, without surrounding parentheses. Visibility builds

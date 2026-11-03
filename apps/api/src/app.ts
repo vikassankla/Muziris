@@ -4,6 +4,7 @@ import type { TaxProvider } from '@muziris/orders';
 import { configuredMethods, type GatewayClients, type PaymentGateways } from '@muziris/payments';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { except } from 'hono/combine';
 import { cors } from 'hono/cors';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
@@ -14,7 +15,7 @@ import { customerRoutes } from './customer-routes.js';
 import { createEmails } from './emails.js';
 import { notificationRoutes } from './notification-routes.js';
 import { orderRoutes } from './order-routes.js';
-import { pricingRoutes } from './pricing-routes.js';
+import { LARGE_BODY_PATH, pricingRoutes } from './pricing-routes.js';
 import { searchRoutes } from './search-routes.js';
 import { settingRoutes } from './setting-routes.js';
 import { shoppingListRoutes } from './shopping-list-routes.js';
@@ -146,14 +147,16 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     }),
   );
 
+  // A price import takes up to 2 MB of CSV and sets its own limit (ADR 0022).
+  const limitBody = bodyLimit({
+    maxSize: deps.maxBodyBytes,
+    onError: () => {
+      throw new HttpProblem(413, 'payload_too_large', 'The request body is too large');
+    },
+  });
   app.use(
     '*',
-    bodyLimit({
-      maxSize: deps.maxBodyBytes,
-      onError: () => {
-        throw new HttpProblem(413, 'payload_too_large', 'The request body is too large');
-      },
-    }),
+    except((c) => LARGE_BODY_PATH.test(c.req.path), limitBody),
   );
 
   app.get('/health/live', (c) => c.json({ status: 'ok' }));

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@muziris/catalog": "workspace:*",
+    "@muziris/csv": "workspace:*",
     "@muziris/customers": "workspace:*",
     "@muziris/db": "workspace:*",
     "@muziris/money": "workspace:*",

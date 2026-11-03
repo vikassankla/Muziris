@@ -163,12 +163,21 @@ review).
     `0018`) and granted when it is accepted. Admin: a real website switcher, System > Websites
     and System > Settings, a buyer role in the invite dialog. Not done: feature toggles, a
     check of the screens by hand.
+14. Price list screens with CSV import and export (ADR 0022). **In review** (stacked on item
+    13). This touches pricing, so CLAUDE.md rule 4 asks for a second human review. A shared
+    `@muziris/csv` package (also used by the US tax rate import); batch lookups by id in catalog
+    and customers, and `searchProductIds` in search. The pricing API gains SKUs and names beside
+    ids, `q` search on prices, `POST .../prices/import` (text/csv, at most 2 MB and 10,000
+    rows, all or nothing unless `skipInvalid=true`) and `GET .../prices.csv`. Admin: Pricing >
+    Price lists and a price list's page (prices with tiers, import, export, assignments), the
+    build banner and the price preview. No migrations. Not done: the "vs. list price" column,
+    import history, a check of the screens by hand.
 
 **Next (ahead of the plan):** the admin screens an operator needs to run the pilot without API
 calls by hand, in this order:
 
 1. Websites, settings and first-run setup (ADR 0021): in review, item 13.
-2. Price list screens, with CSV import and export (ADR 0022).
+2. Price list screens, with CSV import and export (ADR 0022): in review, item 14.
 3. Tax screens, the readiness check, and the product tax code fields (ADR 0023).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
@@ -234,10 +243,9 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin app: designed in `docs/design/admin` but waiting on APIs: RFQs,
   QuoteEditor, the Home dashboard widgets,
   Admin users, and the customer detail tabs for orders, quotes, price lists, settings
-  overrides and payment term (the Settings screen covers a customer's overrides). Their sidebar items stay hidden until the APIs exist. The
-  PriceLists and PriceListDetail APIs are in review (`/admin/v1/pricing`); their screens are
-  not built. They need customer and website names beside the ids the API returns, and SKU
-  search, CSV import and the "vs. list price" column are not in the API.
+  overrides and payment term (the Settings screen covers a customer's overrides). Their sidebar
+  items stay hidden until the APIs exist. The price list screens have no "vs. list price"
+  column, import history or Activity tab (ADR 0022).
 - Admin app: API gaps the boards assume. No search, totals or counts on admin lists (so no
   "1 to 25 of 1,284" and no per-row subsidiary or buyer user counts); no customer rename or
   delete; buyer users carry user ids only (no names, emails, roles or last sign-in); no list of

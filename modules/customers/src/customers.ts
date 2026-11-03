@@ -1,5 +1,5 @@
 import type { Database } from '@muziris/db';
-import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { customerGroups, customers } from './db/schema.js';
 import {
@@ -246,4 +246,32 @@ export async function setCustomerGroup(
     }
     throw error;
   }
+}
+
+/** Customer names by id, for screens that show other modules' references. */
+export async function customerNames(
+  db: Database,
+  customerIds: readonly string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(z.array(idSchema).max(1000).parse(customerIds))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: customers.id, name: customers.name })
+    .from(customers)
+    .where(inArray(customers.id, ids));
+  return new Map(rows.map((r) => [r.id, r.name]));
+}
+
+/** Customer group names by id. */
+export async function customerGroupNames(
+  db: Database,
+  groupIds: readonly string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(z.array(idSchema).max(1000).parse(groupIds))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: customerGroups.id, name: customerGroups.name })
+    .from(customerGroups)
+    .where(inArray(customerGroups.id, ids));
+  return new Map(rows.map((r) => [r.id, r.name]));
 }

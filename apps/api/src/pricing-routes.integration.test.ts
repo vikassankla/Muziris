@@ -388,6 +388,72 @@ describe.skipIf(!url)('pricing routes against PostgreSQL', () => {
     expect(await res.json()).toMatchObject({ code });
   });
 
+  it('imports and exports prices as CSV, and finds them by SKU or name with names beside ids', async () => {
+    const w = await usWorld();
+    await createProduct(handle.db, {
+      sku: 'abc-1',
+      name: 'Hex key',
+      primaryUnitCode: 'each',
+    });
+    const asha = await signedInAdmin('asha@acme.example', ['price_list.view', 'price_list.manage']);
+    const { priceList } = await json<{ priceList: { id: string } }>(
+      await call('POST', '/price-lists', asha, { name: 'US list price', currency: 'USD' }),
+    );
+    const upload = (csv: string, query = '', type = 'text/csv') =>
+      app().request(`/admin/v1/pricing/price-lists/${priceList.id}/prices/import${query}`, {
+        method: 'POST',
+        headers: { Cookie: asha, Origin: ORIGIN, 'Content-Type': type },
+        body: csv,
+      });
+    const csv =
+      'sku,unit,min_quantity,price\nBRG-6205-2RS,each,1,6.40\nBRG-6205-2RS,each,100,5.10\n' +
+      'ABC-1,each,1,2\nNOPE,each,1,1\n';
+
+    expect((await upload(csv, '', 'application/json')).status).toBe(415);
+    const refused = await upload(csv);
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toMatchObject({
+      code: 'price_import_invalid_rows',
+      rows: [{ row: 4, sku: 'NOPE', code: 'unknown_sku' }],
+    });
+    const skipped = await upload(csv, '?skipInvalid=true');
+    expect(await skipped.json()).toMatchObject({ added: 3, updated: 0, skipped: [{ row: 4 }] });
+    expect(logs.join('')).toContain('pricing.prices_imported');
+    expect(logs.join('')).not.toContain('6.40');
+
+    const big = 'sku,unit,min_quantity,price\n' + 'BRG-6205-2RS,each,1,6.40\n'.repeat(90_000);
+    expect((await upload(big)).status).toBe(413);
+
+    const exported = await call('GET', `/price-lists/${priceList.id}/prices.csv`, asha);
+    expect(exported.headers.get('content-type')).toContain('text/csv');
+    expect(await exported.text()).toBe(
+      'sku,unit,min_quantity,price\r\nabc-1,each,1,2.00\r\n' +
+        'BRG-6205-2RS,each,1,6.40\r\nBRG-6205-2RS,each,100,5.10\r\n',
+    );
+
+    const found = await json<{ prices: { sku: string; productName: string }[] }>(
+      await call('GET', `/price-lists/${priceList.id}/prices?q=brg-6205-2rs`, asha),
+    );
+    expect(found.prices.map((p) => [p.sku, p.productName])).toEqual([
+      ['BRG-6205-2RS', 'Ball bearing 6205-2RS'],
+      ['BRG-6205-2RS', 'Ball bearing 6205-2RS'],
+    ]);
+
+    const assigned = await call('POST', '/assignments', asha, {
+      priceListId: priceList.id,
+      websiteId: w.website.id,
+      target: 'customer',
+      targetId: w.customer.id,
+      priority: 1,
+    });
+    expect(assigned.status).toBe(201);
+    expect(
+      await json(await call('GET', `/assignments?priceListId=${priceList.id}`, asha)),
+    ).toMatchObject({
+      assignments: [{ targetName: 'Gulf Coast Industrial Supply', websiteName: 'Muziris US' }],
+    });
+  });
+
   it('refuses to change a price list currency, and an assignment in another currency', async () => {
     const w = await usWorld();
     const asha = await signedInAdmin('asha@acme.example', ['price_list.manage']);

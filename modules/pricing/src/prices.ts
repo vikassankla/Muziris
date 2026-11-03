@@ -8,7 +8,7 @@ import {
   type Decimal,
   type Money,
 } from '@muziris/money';
-import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { recordChange } from './changes.js';
 import { priceLists, prices } from './db/schema.js';
@@ -60,6 +60,8 @@ export type PriceChanges = z.input<typeof priceChangesSchema>;
 
 export const listPricesQuerySchema = pageQuerySchema.extend({
   productId: z.uuid().optional(),
+  /** Only these products, such as the matches of a search; at most 1,000. */
+  productIds: z.array(z.uuid()).max(1000).optional(),
   unitCode: z.string().min(1).max(32).optional(),
 });
 
@@ -113,7 +115,7 @@ export async function productUnitOf(
   return unit;
 }
 
-function toPrice(row: typeof prices.$inferSelect, currency: CurrencyCode): Price {
+export function toPrice(row: typeof prices.$inferSelect, currency: CurrencyCode): Price {
   return {
     id: row.id,
     priceListId: row.priceListId,
@@ -213,6 +215,10 @@ export async function listPrices(
   if (!list) throw new PricingError('price_list_not_found', 'No such price list');
   const conditions: SQL[] = [eq(prices.priceListId, list.id)];
   if (q.productId !== undefined) conditions.push(eq(prices.productId, q.productId));
+  if (q.productIds !== undefined) {
+    if (q.productIds.length === 0) return { prices: [], nextAfter: null };
+    conditions.push(inArray(prices.productId, q.productIds));
+  }
   if (q.unitCode !== undefined) conditions.push(eq(prices.unitCode, q.unitCode));
   if (q.after !== undefined) {
     conditions.push(
@@ -228,4 +234,16 @@ export async function listPrices(
     .limit(q.limit + 1);
   const { items, nextAfter } = toPage(rows, q.limit, (r) => r.id);
   return { prices: items.map((row) => toPrice(row, list.currency)), nextAfter };
+}
+
+/** Every price of a price list, for the CSV export; ordered as listPrices orders them. */
+export async function allPrices(db: Database, priceListId: string): Promise<Price[]> {
+  const list = await findPriceList(db, idSchema.parse(priceListId));
+  if (!list) throw new PricingError('price_list_not_found', 'No such price list');
+  const rows = await db
+    .select()
+    .from(prices)
+    .where(eq(prices.priceListId, list.id))
+    .orderBy(asc(prices.productId), asc(prices.unitCode), asc(prices.minQuantity), asc(prices.id));
+  return rows.map((row) => toPrice(row, list.currency));
 }

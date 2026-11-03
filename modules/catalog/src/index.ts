@@ -41,6 +41,8 @@ export {
   findProduct,
   findProductBySku,
   findProductBySkuWithin,
+  findProductsByIds,
+  findProductsBySkus,
   findProductsBySkusWithin,
   findProductsWithin,
   listProducts,
