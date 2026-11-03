@@ -156,7 +156,7 @@ review).
 13. Websites, settings and first-run setup (ADR 0021). **In review** (stacked on the ADR pull
     request). This touches access control (a buyer role granted on acceptance) and settings that
     steer payments, so CLAUDE.md rule 4 asks for a second human review. The setup CLI
-    (`pnpm --filter @muziris/api setup --organization "<name>"`) creates the organization and
+    (`pnpm --filter @muziris/api run setup --organization "<name>"`) creates the organization and
     the standard product units; `/admin/v1/websites` and `/admin/v1/settings` list, create and
     change websites and override or clear settings at one scope, recording who did it
     (migration `0017`). The default buyer role is a setting, stored on the invitation (migration

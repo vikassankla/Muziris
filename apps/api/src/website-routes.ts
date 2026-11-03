@@ -76,7 +76,7 @@ export function websiteRoutes(deps: WebsiteRouteDependencies): Hono<WebsiteEnv> 
         409,
         'organization_missing',
         'This install has no organization yet',
-        'Run pnpm --filter @muziris/api setup --organization "<name>" first',
+        'Run pnpm --filter @muziris/api run setup --organization "<name>" first',
       );
     }
     return found;

@@ -28,7 +28,7 @@ customer, customer group, website, organization, then global (ADR 0003).
 
 ### First-run setup
 
-`pnpm --filter @muziris/api setup --organization "Acme Industrial Supply"` prepares an empty
+`pnpm --filter @muziris/api run setup --organization "Acme Industrial Supply"` prepares an empty
 install. It is idempotent: each step runs only if its result is missing.
 
 1. It creates the organization. One install runs one business (README), so a second
@@ -128,7 +128,7 @@ customer hierarchy (ADR 0003).
 
 Where the build differs from the plan above, or settles something it left open:
 
-- **Setup** is `pnpm --filter @muziris/api setup --organization "<name>"`. It creates the
+- **Setup** is `pnpm --filter @muziris/api run setup --organization "<name>"`. It creates the
   organization when there is none and adds the standard product units (each and pack, whole
   numbers; kg, m and l to 3 decimal places) that are missing. Run again, it changes nothing.
   Without an organization and without `--organization` it stops and says so.

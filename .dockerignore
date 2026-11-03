@@ -1,0 +1,13 @@
+# Keep the build context small and free of secrets: dependencies are installed in the image,
+# and configuration comes from the environment at run time.
+.git
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+**/*.log
+.env
+.env.*
+!.env.example
+.claude
+.DS_Store
