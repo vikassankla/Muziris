@@ -2,6 +2,8 @@ import { Writable } from 'node:stream';
 import {
   assignAdminRole,
   createAdminRole,
+  deleteBuyerRole,
+  listBuyerRoles,
   SYSTEM_ADMIN_ACCESS,
   type AdminPermission,
 } from '@muziris/access';
@@ -13,10 +15,12 @@ import {
   type DatabaseHandle,
 } from '@muziris/db';
 import { createUser } from '@muziris/identity';
+import { getSetting } from '@muziris/platform';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { createLogger } from './logger.js';
+import { DEFAULT_BUYER_ROLE } from './settings.js';
 import { runSetup, SetupError } from './setup.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -44,7 +48,8 @@ describe.skipIf(!url)('setup and website routes against PostgreSQL', () => {
 
   beforeEach(async () => {
     await handle.db.execute(
-      sql`truncate catalog_product_unit, platform_config_value, platform_website,
+      sql`truncate catalog_product_unit, access_buyer_role_permission, access_buyer_role,
+        platform_config_value, platform_website,
         platform_organization, access_admin_user_role, access_admin_role_permission,
         access_admin_role, identity_session, identity_user, identity_rate_limit cascade`,
     );
@@ -108,9 +113,16 @@ describe.skipIf(!url)('setup and website routes against PostgreSQL', () => {
     expect(first).toMatchObject({
       organizationCreated: true,
       unitsAdded: ['each', 'pack', 'kg', 'm', 'l'],
+      buyerRolesAdded: ['buyer', 'purchasing_admin'],
+      defaultBuyerRoleSet: true,
     });
     const second = await runSetup(handle.db, { organizationName: 'Another business' });
-    expect(second).toMatchObject({ organizationCreated: false, unitsAdded: [] });
+    expect(second).toMatchObject({
+      organizationCreated: false,
+      unitsAdded: [],
+      buyerRolesAdded: [],
+      defaultBuyerRoleSet: false,
+    });
     expect(second.organization).toMatchObject({
       id: first.organization.id,
       name: 'Acme Industrial Supply',
@@ -120,6 +132,32 @@ describe.skipIf(!url)('setup and website routes against PostgreSQL', () => {
       name: 'Kilogram',
       precision: 3,
     });
+
+    const { buyerRoles } = await listBuyerRoles(handle.db);
+    const buyer = buyerRoles.find((role) => role.code === 'buyer');
+    expect(buyer?.grants).toContainEqual({ permission: 'order.place', accessLevel: 'my_customer' });
+    expect(buyer?.grants.map((g) => g.permission)).not.toContain('buyer_user.manage');
+    // No standard role reaches a customer's subsidiaries.
+    expect(buyerRoles.flatMap((role) => role.grants).map((g) => g.accessLevel)).not.toContain(
+      'my_customer_and_subsidiaries',
+    );
+    const scope = { organizationId: first.organization.id };
+    expect((await getSetting(handle.db, DEFAULT_BUYER_ROLE, scope)).value).toBe(buyer?.id);
+  });
+
+  it('puts back a deleted buyer role, and leaves the default buyer role an admin changed', async () => {
+    const { organization } = await runSetup(handle.db, { organizationName: 'Acme' });
+    const scope = { organizationId: organization.id };
+    const { buyerRoles } = await listBuyerRoles(handle.db);
+    const admin = buyerRoles.find((role) => role.code === 'purchasing_admin');
+    await handle.db.execute(sql`delete from platform_config_value`);
+    await deleteBuyerRole(handle.db, admin!.id);
+
+    expect(await runSetup(handle.db, {})).toMatchObject({
+      buyerRolesAdded: ['purchasing_admin'],
+      defaultBuyerRoleSet: false,
+    });
+    expect((await getSetting(handle.db, DEFAULT_BUYER_ROLE, scope)).value).toBeNull();
   });
 
   it('creates, lists and changes websites, with code, country and currency fixed', async () => {

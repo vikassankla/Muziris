@@ -362,7 +362,11 @@ describe.skipIf(!url)('visibility against PostgreSQL', () => {
 
   it('counts rule changes until a build, and records what the build did', async () => {
     const w = await world();
-    expect(await getBuildState(handle.db)).toEqual({ pendingChanges: 0, lastBuild: null });
+    expect(await getBuildState(handle.db)).toEqual({
+      pendingChanges: 0,
+      catalogChangedSinceBuild: true,
+      lastBuild: null,
+    });
 
     const rule = await addRule(w, { target: 'website', subject: 'power', visibility: 'hidden' });
     await updateRule(handle.db, rule.id, { visibility: 'visible' });
@@ -382,11 +386,18 @@ describe.skipIf(!url)('visibility against PostgreSQL', () => {
       visibleProductCount: 2,
     });
     const state = await getBuildState(handle.db);
-    expect(state.pendingChanges).toBe(0);
+    expect(state).toMatchObject({ pendingChanges: 0, catalogChangedSinceBuild: false });
     expect(state.lastBuild).toMatchObject({ builtBy: admin.id, contextCount: 2 });
 
     await deleteRule(handle.db, rule.id);
     expect((await getBuildState(handle.db)).pendingChanges).toBe(1);
+
+    // A product changed after the build is flagged, not counted.
+    await updateProduct(handle.db, w.product.id, { name: 'Bearing 6205, sealed' });
+    expect(await getBuildState(handle.db)).toMatchObject({
+      pendingChanges: 1,
+      catalogChangedSinceBuild: true,
+    });
   });
 
   it('refuses rules for missing records and a second rule for the same subject and target', async () => {

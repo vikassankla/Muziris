@@ -62,7 +62,7 @@ import {
   type TaxRegistration,
   type UsRate,
 } from '../lib/endpoints.js';
-import { formatCount } from '../lib/format.js';
+import { formatCount, formatDay, type DisplayContext } from '../lib/format.js';
 import { fieldErrors } from '../lib/form.js';
 import { can } from '../lib/session.js';
 import { useSession } from '../lib/session-context.js';
@@ -140,10 +140,10 @@ function todayIn(timeZone: string): string {
 }
 
 /** A rate's period in words; the API's validTo is the first day it no longer applies. */
-function period(rate: { validFrom: string; validTo: string | null }): string {
+function period(rate: { validFrom: string; validTo: string | null }, ctx: DisplayContext): string {
   return rate.validTo === null
-    ? `From ${rate.validFrom}`
-    : `${rate.validFrom} to ${addDays(rate.validTo, -1)}`;
+    ? `From ${formatDay(rate.validFrom, ctx)}`
+    : `${formatDay(rate.validFrom, ctx)} to ${formatDay(addDays(rate.validTo, -1), ctx)}`;
 }
 
 function RateState({
@@ -326,6 +326,13 @@ const ITEM_TITLES: Record<string, { ok: string; missing: string }> = {
   },
 };
 
+/** Items that list things; a missing registration is one thing, so it shows no count. */
+const COUNTED = new Set([
+  'products_missing_tax_code',
+  'tax_codes_without_rate',
+  'states_without_rate',
+]);
+
 function exampleText(code: string, example: Record<string, unknown>): string {
   const text = (key: string) => {
     const value = example[key];
@@ -411,7 +418,7 @@ function ReadinessTab({
                 <div className="flex flex-1 flex-col gap-1">
                   <span className="font-semibold">
                     {item.ok ? (titles?.ok ?? item.code) : (titles?.missing ?? item.code)}
-                    {!item.ok && item.count > 0 ? (
+                    {!item.ok && COUNTED.has(item.code) ? (
                       <span className="num ml-2 text-muted-foreground">
                         {formatCount(item.count, website)}
                       </span>
@@ -431,7 +438,7 @@ function ReadinessTab({
         </CardContent>
       </Card>
       <p className="text-meta text-muted-foreground">
-        As of {readiness.day}, in the website’s time zone.
+        As of {formatDay(readiness.day, website)}, in the website’s time zone.
       </p>
     </div>
   );
@@ -706,6 +713,7 @@ function GstRatesCard({
   manage: boolean;
   today: string;
 }) {
+  const website = useWebsite();
   const [adding, setAdding] = useState(false);
   const [codePrefix, setCodePrefix] = useState('');
   const [ratePercent, setRatePercent] = useState('');
@@ -760,7 +768,7 @@ function GstRatesCard({
                 <TableRow key={rate.id}>
                   <TableCell className="num">{rate.codePrefix}</TableCell>
                   <TableCell className="num text-right">{rate.ratePercent}%</TableCell>
-                  <TableCell>{period(rate)}</TableCell>
+                  <TableCell>{period(rate, website)}</TableCell>
                   <TableCell>
                     <RateState rate={rate} today={today} />
                   </TableCell>
@@ -991,6 +999,7 @@ function UsRatesCard({
   manage: boolean;
   today: string;
 }) {
+  const website = useWebsite();
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [stateCode, setStateCode] = useState('');
@@ -1072,7 +1081,7 @@ function UsRatesCard({
                   </TableCell>
                   <TableCell className="num text-right">{rate.ratePercent}%</TableCell>
                   <TableCell>{rate.shippingTaxable ? 'Taxable' : 'Not taxable'}</TableCell>
-                  <TableCell>{period(rate)}</TableCell>
+                  <TableCell>{period(rate, website)}</TableCell>
                   <TableCell>
                     <RateState rate={rate} today={today} />
                   </TableCell>
@@ -1206,6 +1215,7 @@ export function ExemptionsCard({
   /** Set on a customer's page: certificates are added for this customer. */
   customerId?: string;
 }) {
+  const website = useWebsite();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Exemption | undefined>();
@@ -1269,7 +1279,11 @@ export function ExemptionsCard({
                   <TableCell>{stateName(e.stateCode)}</TableCell>
                   <TableCell className="font-mono text-[12.5px]">{e.certificateNumber}</TableCell>
                   <TableCell>
-                    {e.expiresOn ?? <span className="text-muted-foreground">No expiry</span>}
+                    {e.expiresOn === null ? (
+                      <span className="text-muted-foreground">No expiry</span>
+                    ) : (
+                      formatDay(e.expiresOn, website)
+                    )}
                   </TableCell>
                   {manage ? (
                     <TableCell className="text-right">

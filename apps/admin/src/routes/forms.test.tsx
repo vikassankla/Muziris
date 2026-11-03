@@ -97,6 +97,38 @@ describe('new customer', () => {
   });
 });
 
+describe('customer orders', () => {
+  it('lists the customer’s latest orders on its Orders tab', async () => {
+    const requests = mockApi({
+      ...customerApi(['customer.view', 'order.view']),
+      'GET /orders': () =>
+        json({
+          orders: [
+            {
+              id: '0b8f5a52-0000-4000-8000-0000000000a1',
+              number: 'MZ-000001',
+              websiteId: '7c1e0a11-0000-4000-8000-0000000000e1',
+              customerId: CUSTOMER_ID,
+              customerName: CUSTOMER.name,
+              placedBy: '0b8f5a52-0000-4000-8000-0000000000b1',
+              step: 'confirmed',
+              purchaseOrderNumber: 'PO-77',
+              grandTotal: '48380.00',
+              currency: 'INR',
+              placedAt: '2026-11-03T04:29:00.000Z',
+            },
+          ],
+          nextAfter: null,
+        }),
+    });
+    renderApp(`/customers/${CUSTOMER_ID}?tab=orders`);
+    expect(await screen.findByRole('link', { name: 'MZ-000001' })).toBeTruthy();
+    expect(screen.getByText('PO-77')).toBeTruthy();
+    expect(screen.getByText('₹48,380.00')).toBeTruthy();
+    expect(requests.find((r) => r.path === '/orders')?.query.get('customerId')).toBe(CUSTOMER_ID);
+  });
+});
+
 describe('address form', () => {
   async function openAddressSheet() {
     renderApp(`/customers/${CUSTOMER_ID}?tab=addresses`);

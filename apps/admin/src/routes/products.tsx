@@ -4,6 +4,7 @@ import { Breadcrumbs, Page, PageHeader } from '../components/page-header.js';
 import { Pager } from '../components/pager.js';
 import { NewProductSheet } from '../components/product-sheet.js';
 import { EmptyState, NoResults } from '../components/states.js';
+import { VisibilityBuildBanner } from '../components/visibility.js';
 import { Badge, Tag } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import {
@@ -22,7 +23,12 @@ import {
   TableRow,
 } from '../components/ui/table.js';
 import { flattenCategories } from '../lib/categories.js';
-import { listCategories, listProducts, listProductUnits } from '../lib/endpoints.js';
+import {
+  getVisibilityBuild,
+  listCategories,
+  listProducts,
+  listProductUnits,
+} from '../lib/endpoints.js';
 import { listSearch, withNew, type ListSearch } from '../lib/search.js';
 import { can } from '../lib/session.js';
 import { useSession } from '../lib/session-context.js';
@@ -59,9 +65,10 @@ export const productsRoute = createRoute({
     status: search.status,
     missingTaxCode: search.missingTaxCode,
   }),
-  loader: async ({ deps, abortController }) => {
+  loader: async ({ deps, abortController, context }) => {
     const signal = abortController.signal;
-    const [page, categories, units] = await Promise.all([
+    const canVisibility = context.session.permissions.has('visibility.view');
+    const [page, categories, units, build] = await Promise.all([
       listProducts(
         {
           after: deps.after,
@@ -74,17 +81,19 @@ export const productsRoute = createRoute({
       ),
       listCategories(signal),
       listProductUnits(signal),
+      canVisibility ? getVisibilityBuild(signal) : undefined,
     ]);
-    return { page, categories: flattenCategories(categories), units };
+    return { page, categories: flattenCategories(categories), units, build };
   },
   component: ProductsPage,
 });
 
 function ProductsPage() {
-  const { page, categories, units } = productsRoute.useLoaderData();
+  const { page, categories, units, build } = productsRoute.useLoaderData();
   const search = productsRoute.useSearch();
   const navigate = useNavigate();
-  const manage = can(useSession(), 'product.manage');
+  const session = useSession();
+  const manage = can(session, 'product.manage');
   const path = new Map(categories.map((c) => [c.node.id, c.path]));
   const unitName = new Map(units.map((u) => [u.code, u.name]));
   const filtered =
@@ -132,6 +141,9 @@ function ProductsPage() {
         description="Everything you sell, with its product units and attributes."
         actions={newButton}
       />
+      {build ? (
+        <VisibilityBuildBanner build={build} manage={can(session, 'visibility.manage')} />
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={search.categoryId ?? ANY}

@@ -123,6 +123,7 @@ describe('tax', () => {
     // Read-only without tax.manage.
     await userEvent.click(screen.getByRole('tab', { name: 'Rates' }));
     expect(await screen.findByText('8482')).toBeTruthy();
+    expect(screen.getByText('From 1 Apr 2025')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add rate' })).toBeNull();
   });
 

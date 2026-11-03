@@ -20,6 +20,7 @@ import { runOperation } from '../lib/api.js';
 import { formatPrice } from '../lib/format.js';
 import { signInOn401 } from '../lib/guard.js';
 import { formatDateTime, formatDay, STEP_LABELS, STEP_TONES, totalRows } from '../lib/orders.js';
+import { regionLabel } from '../lib/regions.js';
 import {
   Order,
   Orders,
@@ -324,7 +325,8 @@ function AddressCard({ title, address }: { title: string; address: Address }) {
           <div>{address.line1}</div>
           {address.line2 ? <div>{address.line2}</div> : null}
           <div>
-            {address.city}, {address.regionCode} {address.postalCode}
+            {address.city}, {regionLabel(address.countryCode, address.regionCode)}{' '}
+            {address.postalCode}
           </div>
           {address.gstin ? <div className="font-mono text-xs">GSTIN {address.gstin}</div> : null}
         </address>

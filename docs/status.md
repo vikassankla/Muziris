@@ -182,8 +182,28 @@ review).
     exemptions on the customer page. No migrations. Not done: a check of the screens by hand,
     warnings for rates about to end.
 
-**Next (ahead of the plan):** check the admin screens of items 13 to 15 by hand, on the
-Docker test stack (`docker compose --profile app up -d --build --wait`; see the README).
+16. Fixes from the hand test of items 13 to 15 on the Docker stack (2026-11-03). **In review**
+    (branch `fix/hand-test-findings`). This touches access control (setup creates buyer roles
+    and sets the default buyer role), so CLAUDE.md rule 4 asks for a second human review.
+    - Setup adds the standard buyer roles **Buyer** and **Purchasing admin** when they are
+      missing, and makes Buyer the organization's default buyer role when it created it. Before
+      this, a fresh install had no buyer roles, so invited buyers could not order.
+    - The visibility build state also says whether products or categories changed since the
+      last build (`catalogChangedSinceBuild`), and the Products list shows "Buyers do not see
+      ... yet" with **Build visibility now**. Before this, a new product stayed invisible to
+      buyers with nothing in the admin app saying so.
+    - Admin: dates on the Tax screen read as dates; the readiness item for a missing
+      registration shows no count; the customer page's Orders tab lists its orders.
+    - Storefront: addresses show the state name, the totals say "Shipping", and quick order
+      says its price is for one unit and quantity breaks apply at checkout.
+    - Checked and working by hand: price CSV import and export, tier prices after a build, GST
+      CGST plus SGST within a state, invitation and order emails in Mailpit, accepting an
+      invitation, and confirming an order.
+    - Follow-ups: an order or add-to-list button on the storefront product page; names, not
+      ids, in the customer's buyer users tab; admin screens for visibility rules.
+
+**Next (ahead of the plan):** known-answer tests for pricing and tax, then the MRO demo
+catalog and the install guide.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
