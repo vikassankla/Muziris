@@ -73,6 +73,11 @@ docker compose exec api pnpm --filter @muziris/api admin:create --email you@exam
   a website with that code in the admin app, then rebuild with `--build` if you change it.
 - Stripe and Razorpay test keys in `.env` reach the API; without them checkout offers payment
   terms only.
+- For a catalog to try, add the MRO demo: about 40 bearings, fasteners, safety items, tools,
+  lubricants and electrical parts with HSN codes and list prices with breaks at 10 and 100, in
+  INR or USD by the website's currency. It adds no tax rates or registrations; enter those
+  under System > Tax before checking out. Run it again safely, once per website:
+  `docker compose exec api pnpm --filter @muziris/api run demo:seed --website main`.
 - After changing the code, run the same `up` command again to rebuild.
 - `docker compose --profile app down` stops everything. Add `-v` to delete the database too.
 
