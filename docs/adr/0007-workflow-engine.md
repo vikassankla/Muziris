@@ -60,4 +60,5 @@ orders.
 - Nothing in the database stops an `update` or `delete` of log rows; only the application's
   discipline does. A trigger or a separate role can enforce it later if audits require.
 - Time-based transitions (quote expiry) need the job runner to call `performTransition` with
-  the system actor; the engine does not schedule anything.
+  the system actor; the engine does not schedule anything. The job runner exists (ADR 0025),
+  but its `workflow.timers` job waits until a workflow has a time-based transition.

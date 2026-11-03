@@ -46,8 +46,9 @@ Each email has a key, unique in the outbox, so retrying a change never queues it
    the hook holds no second connection.
 2. **Sent by the sender.** It claims one due row at a time with `FOR UPDATE SKIP LOCKED`, so
    several API processes can run it without sending an email twice.
-   - In the API process: every 10 seconds, when `SMTP_URL` is set. It moves into the job runner
-     when pg-boss arrives.
+   - As the `notifications.send` job (ADR 0025), when `SMTP_URL` is set: queued in the email's
+     own transaction, so it starts once the change commits, and every minute as well. It runs
+     wherever the job workers run, the API process by default.
    - From a script: `pnpm --filter @muziris/api notifications:send` sends what is due, once.
 3. **Retried with backoff.** A failed send waits 1, 5, 30 and then 120 minutes. The fifth failure
    marks the email `failed` and logs it. Only the error code is kept (`smtp_550`, or nodemailer's

@@ -1,0 +1,22 @@
+{
+  "name": "@muziris/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "The job runner on PostgreSQL (ADR 0025). Only this package imports pg-boss.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.4",
+    "pg-boss": "12.38.0"
+  },
+  "devDependencies": {
+    "postgres": "^3.4.9"
+  }
+}

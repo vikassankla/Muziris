@@ -45,17 +45,18 @@ you share.
 
 For production, set at least:
 
-| Variable                                         | Value                                                                                                                        |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                       | `production`                                                                                                                 |
-| `DATABASE_URL`                                   | `postgres://user:password@host:5432/database`                                                                                |
-| `HOST`, `PORT`                                   | Where the API listens, for example `0.0.0.0` and `4000` behind the proxy                                                     |
-| `CORS_ORIGINS`                                   | The admin and storefront origins, comma-separated. They must be `https://` in production                                     |
-| `TRUSTED_PROXY_HOPS`                             | How many proxies sit in front of the API (1 for one reverse proxy), so rate limits see the client's address                  |
-| `STOREFRONT_WEBSITE`                             | The code of the website the storefront serves                                                                                |
-| `STOREFRONT_PERSISTED_QUERIES`                   | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow` |
-| `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` | All three are required in production. `STOREFRONT_PUBLIC_URL` is used for links in emails                                    |
-| `STRIPE_*`, `RAZORPAY_*`                         | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                           |
+| Variable                                         | Value                                                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                       | `production`                                                                                                                      |
+| `DATABASE_URL`                                   | `postgres://user:password@host:5432/database`                                                                                     |
+| `HOST`, `PORT`                                   | Where the API listens, for example `0.0.0.0` and `4000` behind the proxy                                                          |
+| `CORS_ORIGINS`                                   | The admin and storefront origins, comma-separated. They must be `https://` in production                                          |
+| `TRUSTED_PROXY_HOPS`                             | How many proxies sit in front of the API (1 for one reverse proxy), so rate limits see the client's address                       |
+| `STOREFRONT_WEBSITE`                             | The code of the website the storefront serves                                                                                     |
+| `STOREFRONT_PERSISTED_QUERIES`                   | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`      |
+| `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` | All three are required in production. `STOREFRONT_PUBLIC_URL` is used for links in emails                                         |
+| `STRIPE_*`, `RAZORPAY_*`                         | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                                |
+| `JOB_WORKERS`, `WORKER_PORT`                     | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001 |
 
 Build-time, for the storefront: `VITE_STOREFRONT_WEBSITE`, the same website code.
 
@@ -115,9 +116,10 @@ Sign in to the admin app, then:
 7. **Customers**: create a customer with an address and invite a buyer. The invitation email
    carries the sign-in link.
 
-Price lists, visibility and search are served from builds. After catalog or price changes,
-run the builds from the admin app (the price list screens say when a price build is due) or
-from the command line:
+Price lists, visibility and search are served from builds. Changes made in the admin app queue
+the price and visibility builds, which start about 15 seconds later, so a burst of edits builds
+once. To build at once, or after changes made outside the admin app (an import into the
+database, say), use "Build now" in the admin app or the command line:
 
 ```sh
 pnpm --filter @muziris/api pricing:build
@@ -130,13 +132,20 @@ an MRO catalog with list prices, if your version includes it. It adds no tax rat
 
 ## Running it
 
-- **Emails** are sent by the API process every 10 seconds while `SMTP_URL` is set. You can also
-  send them with `pnpm --filter @muziris/api notifications:send`.
+- **Background jobs** (ADR 0025) run in the API process by default, on pg-boss in the same
+  database (schema `pgboss`, installed by `pnpm db:migrate`). They build prices, visibility and
+  search after changes, send emails, and clear dead sessions hourly. **System > Jobs** in the
+  admin app lists the jobs waiting, running and failed. To run them apart from the API, set
+  `JOB_WORKERS=false` on the API and run `pnpm --filter @muziris/api worker` as its own service.
+  Run one or more workers; a job runs once whichever picks it up.
+- **Emails** are sent within seconds of being queued, and every minute, while `SMTP_URL` is
+  set. You can also send them with `pnpm --filter @muziris/api notifications:send`.
 - **Logs** are JSON lines on standard output. Passwords, tokens, cookies and authorization
   headers are redacted.
-- **Stopping**: the API finishes in-flight requests on `SIGTERM` before it exits.
-- **Upgrading**: stop the API, back up the database, deploy the new version, run
-  `pnpm db:migrate`, then start the API. Migrations only move forward.
+- **Stopping**: the API finishes in-flight requests, and the worker its running job, on
+  `SIGTERM` before it exits.
+- **Upgrading**: stop the API and any worker, back up the database, deploy the new version, run
+  `pnpm db:migrate`, then start them again. Migrations only move forward.
 - **Backups**: everything is in PostgreSQL. Use your provider's point-in-time recovery, or
   `pg_dump` on a schedule, and test a restore before you rely on it.
 
@@ -146,13 +155,6 @@ These are open before the first production install (see `docs/status.md`):
 
 - **Admin two-factor sign-in** (ADR 0005). Until it exists, keep admin accounts few, with long
   unique passwords.
-- **A job runner** (pg-boss). Until it lands, these need doing by hand or with a scheduler:
-  - the price, visibility and search builds after changes;
-  - expired session clean-up;
-  - quote expiry.
-
-  The email sender runs inside the API process.
-
 - **No production container image.** The Docker setup in this repository is for testing: it
   runs with `NODE_ENV=development` and dev dependencies.
 - **Tax** needs the tax adviser's confirmation of the four **(check)** items in ADR 0017 before

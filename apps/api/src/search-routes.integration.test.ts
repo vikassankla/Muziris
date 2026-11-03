@@ -21,6 +21,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { createLogger } from './logger.js';
+import { inlineJobs } from './test-jobs.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const PASSWORD = 'correct horse battery staple';
@@ -68,9 +69,11 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
         done();
       },
     });
+    const logger = createLogger('info', stream);
     return createApp({
-      logger: createLogger('info', stream),
+      logger,
       db: handle.db,
+      jobs: inlineJobs({ db: handle.db, logger }).queue,
       pingDatabase: () => Promise.resolve(),
       corsOrigins: [ORIGIN],
       maxBodyBytes: 64 * 1024,
@@ -180,7 +183,7 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
 
       const withIt = await signedInAdmin('asha@acme.example', [permission]);
       const allowed = await call(method, path, withIt);
-      expect(allowed.status).toBe(200);
+      expect(allowed.status).toBe(method === 'POST' ? 202 : 200);
     },
   );
 
@@ -257,7 +260,7 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
     expect(state.build.waitingProducts).toBe(0);
   });
 
-  it('rebuilds the index on request and records who ran it', async () => {
+  it('rebuilds the index on request, as the system', async () => {
     await catalog();
     await handle.db.execute(sql`truncate search_product`);
     const asha = await signedInAdmin('asha@acme.example', ['product.view', 'product.manage']);
@@ -265,15 +268,14 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
       await call('GET', '/build', asha),
     );
     expect(waiting.build.waitingProducts).toBe(2);
+    // Build now queues the build (ADR 0025); this test's queue runs it at once.
     const res = await call('POST', '/build', asha);
-    expect(res.status).toBe(200);
-    const { build } = await json<{ build: { productCount: number; builtBy: string } }>(res);
-    expect(build.productCount).toBe(2);
+    expect(res.status).toBe(202);
     const after = await json<{
-      build: { waitingProducts: number; lastBuild: { builtBy: string } };
+      build: { waitingProducts: number; lastBuild: { productCount: number; builtBy: null } };
     }>(await call('GET', '/build', asha));
     expect(after.build.waitingProducts).toBe(0);
-    expect(after.build.lastBuild.builtBy).toBe(build.builtBy);
+    expect(after.build.lastBuild).toMatchObject({ productCount: 2, builtBy: null });
   });
 
   it('gate check: a signed-in buyer finds only their own catalog', async () => {

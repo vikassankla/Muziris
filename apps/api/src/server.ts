@@ -3,9 +3,10 @@ import { createDatabase } from '@muziris/db';
 import { smtpTransport } from '@muziris/notifications';
 import { createGatewayClients } from '@muziris/payments';
 import { tableTaxProvider } from '@muziris/tax';
+import { startJobRunner } from '@muziris/jobs';
 import { createApp } from './app.js';
-import { startEmailSender } from './email-sender.js';
 import { loadEnv } from './env.js';
+import { jobHandlers } from './jobs.js';
 import { createLogger } from './logger.js';
 import { loadPersistedQueries } from './storefront/persisted.js';
 
@@ -21,7 +22,25 @@ const database = createDatabase({
 // A registry whose entries do not match their hashes stops the API here (ADR 0014).
 const persistedQueries = await loadPersistedQueries(env.STOREFRONT_PERSISTED_QUERIES);
 
+// Emails are queued with their changes and sent by the notifications.send job (ADR 0020, 0025).
+// Without SMTP_URL they wait in the outbox until it is set.
+const transport =
+  env.mail.smtpUrl === undefined ? undefined : smtpTransport(env.mail.smtpUrl, env.mail.from);
+if (!transport && env.JOB_WORKERS)
+  logger.warn('SMTP_URL is not set; emails are queued but not sent');
+
+// The job runner (ADR 0025). By default this process runs the workers too; with
+// JOB_WORKERS=false it only enqueues, and `pnpm --filter @muziris/api worker` runs them.
+const jobs = await startJobRunner({
+  url: env.DATABASE_URL,
+  logger,
+  ...(env.JOB_WORKERS
+    ? { handlers: jobHandlers({ db: database.db, logger, ...(transport ? { transport } : {}) }) }
+    : {}),
+});
+
 const app = createApp({
+  jobs: jobs.queue,
   logger,
   db: database.db,
   pingDatabase: database.ping,
@@ -40,13 +59,6 @@ const app = createApp({
   storefrontWebsite: env.STOREFRONT_WEBSITE,
 });
 
-// Emails are queued with their changes and sent from here (ADR 0020). Without SMTP_URL they
-// wait in the outbox until it is set.
-const transport =
-  env.mail.smtpUrl === undefined ? undefined : smtpTransport(env.mail.smtpUrl, env.mail.from);
-const sender = transport ? startEmailSender({ db: database.db, logger, transport }) : undefined;
-if (!transport) logger.warn('SMTP_URL is not set; emails are queued but not sent');
-
 const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (info) => {
   logger.info(
     {
@@ -54,6 +66,7 @@ const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (
       host: env.HOST,
       nodeEnv: env.NODE_ENV,
       paymentGateways: Object.keys(env.payments),
+      jobWorkers: env.JOB_WORKERS,
       emailSending: transport !== undefined,
     },
     'API listening',
@@ -77,7 +90,7 @@ async function shutdown(signal: string): Promise<void> {
       resolve();
     });
   });
-  await sender?.stop();
+  await jobs.stop();
   transport?.close();
   await database.close();
   process.exit(0);

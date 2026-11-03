@@ -1260,9 +1260,14 @@ export function deleteAssignment(assignmentId: string) {
   return api(`/pricing/assignments/${id(assignmentId)}`, none, { method: 'DELETE' });
 }
 
+/** Whether a build job is waiting or running (ADR 0025). */
+const jobStatusSchema = z.enum(['queued', 'running', 'idle']);
+export type JobStatus = z.infer<typeof jobStatusSchema>;
+
 const buildSchema = z.object({
   pendingChanges: z.number(),
   lastBuild: z.object({ builtAt: z.string(), builtBy: z.string().nullable() }).nullable(),
+  job: jobStatusSchema,
 });
 export type PriceBuildState = z.infer<typeof buildSchema>;
 
@@ -1270,7 +1275,7 @@ export async function getPriceBuild(signal?: AbortSignal) {
   return (await api('/pricing/build', z.object({ build: buildSchema }), { signal })).build;
 }
 
-/** Builds the combined prices now and waits for it (ADR 0011). */
+/** Queues the combined price build now (ADR 0011, 0025); the worker runs it within seconds. */
 export function buildPrices() {
   return api('/pricing/build', z.unknown(), { method: 'POST' });
 }
@@ -1285,6 +1290,7 @@ const visibilityBuildSchema = z.object({
       visibleProductCount: z.number(),
     })
     .nullable(),
+  job: jobStatusSchema,
 });
 export type VisibilityBuildState = z.infer<typeof visibilityBuildSchema>;
 
@@ -1293,9 +1299,35 @@ export async function getVisibilityBuild(signal?: AbortSignal) {
     .build;
 }
 
-/** Builds what each buyer may see now and waits for it (ADR 0012). */
+/** Queues the visibility build now (ADR 0012, 0025); the worker runs it within seconds. */
 export function buildVisibility() {
   return api('/visibility/build', z.unknown(), { method: 'POST' });
+}
+
+export const JOB_NAMES = [
+  'pricing.build',
+  'visibility.build',
+  'search.build',
+  'notifications.send',
+  'sessions.cleanup',
+] as const;
+
+const jobSchema = z.object({
+  id: z.string(),
+  name: z.enum(JOB_NAMES),
+  state: z.enum(['created', 'retry', 'active', 'failed']),
+  retryCount: z.number(),
+  createdAt: z.string(),
+  startAfter: z.string(),
+  completedAt: z.string().nullable(),
+});
+export type Job = z.infer<typeof jobSchema>;
+
+/** The jobs waiting or running, and the last 50 that failed (ADR 0025). */
+export function listJobs(signal?: AbortSignal) {
+  return api('/jobs', z.object({ queued: z.array(jobSchema), failed: z.array(jobSchema) }), {
+    signal,
+  });
 }
 
 const tierSchema = z.object({ minQuantity: z.string(), unitPrice: z.string() });

@@ -52,7 +52,8 @@ The pilot catalogue is a few thousand products, so prices are entered in bulk or
   and the trail (used, skipped, not reached, inactive), as the board does.
 - **The build banner.** Price changes reach buyers only after a build (ADR 0011). Both screens
   show "N changes waiting for the price build" and, with `price_list.manage`, a "Build prices
-  now" button. The banner goes away when the job runner builds after each change.
+  now" button. Since the job runner (ADR 0025), each change queues a build, and the banner says
+  the build is queued or running instead of offering the button.
 - **Permissions.** Reads need `price_list.view`, and every change needs `price_list.manage`, as
   the API already checks. The sidebar item appears for `price_list.view`.
 
@@ -145,5 +146,5 @@ Where the build differs from the plan above, or settles something it left open:
 - CSV parsing lives in one place for prices and tax rates.
 - **Second reviewer.** This touches pricing, so its pull requests need a second human
   reviewer under CLAUDE.md rule 4.
-- The banner and button stay until the job runner builds after each change. Until then, an
-  admin who forgets to build leaves buyers on the old prices.
+- Since the job runner (ADR 0025), price changes reach buyers within seconds without an
+  admin; the button stays for a build after changes made outside the admin API.

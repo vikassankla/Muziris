@@ -140,8 +140,8 @@ Under `/admin/v1/search`: `GET /products?q=...&limit=...&offset=...&status=...`
   walks rules, price lists or the category tree at query time. One search over 10,000 products
   is measured by a test with a stated budget.
 - Catalog gains two small public functions (`productSearchSource`, `categoryNames`). The API's
-  catalog routes call search after writes; when catalog grows an event or the job runner lands,
-  that call moves there.
+  catalog routes call search after writes; when catalog grows an event, that call moves there.
+  The job runner (ADR 0025) runs the full build (`search.build`) when an admin asks for it.
 - A buyer can find a product they may see through the name of a category above it that is
   hidden from them; the result does not show that category. Splitting category text per
   visibility context is later work if a client needs it.

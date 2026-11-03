@@ -40,7 +40,6 @@ import {
   priceListChangesSchema,
   priceListStatus,
   PricingError,
-  rebuildCombinedPrices,
   updateAssignment,
   updatePrice,
   updatePriceList,
@@ -51,12 +50,14 @@ import {
   type PricingErrorCode,
 } from '@muziris/pricing';
 import { searchProductIds } from '@muziris/search';
+import type { JobQueue } from '@muziris/jobs';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
+import { writeAndBuild } from './jobs.js';
 import type { Logger } from './logger.js';
 import { HttpProblem, problemResponse, toProblem } from './problem.js';
 
@@ -68,6 +69,8 @@ export interface PricingRouteDependencies {
   db: Database;
   logger: Logger;
   now: () => Date;
+  /** Price list, price and assignment writes enqueue the price build in their transaction (ADR 0025). */
+  jobs: JobQueue;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
 }
@@ -114,6 +117,8 @@ async function translated<T>(action: () => Promise<T>): Promise<T> {
 }
 
 const idParam = z.uuid();
+
+const BUILD = ['pricing.build'] as const;
 
 /** Query strings carry text only; this turns the page size into a number. */
 const limitText = z
@@ -263,7 +268,9 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
 
   app.post('/price-lists', need('price_list.manage'), async (c) => {
     const input = newPriceListSchema.parse(await body(c));
-    const priceList = await translated(() => createPriceList(deps.db, input));
+    const priceList = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => createPriceList(db, input)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, priceListId: priceList.id },
       'pricing.price_list_created',
@@ -284,7 +291,9 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
   app.patch('/price-lists/:priceListId', need('price_list.manage'), async (c) => {
     const priceListId = idParam.parse(c.req.param('priceListId'));
     const changes = priceListChangesSchema.parse(await body(c));
-    const priceList = await translated(() => updatePriceList(deps.db, priceListId, changes));
+    const priceList = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => updatePriceList(db, priceListId, changes)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, priceListId },
       'pricing.price_list_updated',
@@ -294,7 +303,7 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
 
   app.delete('/price-lists/:priceListId', need('price_list.manage'), async (c) => {
     const priceListId = idParam.parse(c.req.param('priceListId'));
-    await translated(() => deletePriceList(deps.db, priceListId));
+    await translated(() => writeAndBuild(deps, BUILD, (db) => deletePriceList(db, priceListId)));
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, priceListId },
       'pricing.price_list_deleted',
@@ -326,7 +335,9 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
   app.post('/price-lists/:priceListId/prices', need('price_list.manage'), async (c) => {
     const priceListId = idParam.parse(c.req.param('priceListId'));
     const input = newPriceSchema.parse(await body(c));
-    const price = await translated(() => addPrice(deps.db, priceListId, input));
+    const price = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => addPrice(db, priceListId, input)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, priceListId, priceId: price.id },
       'pricing.price_added',
@@ -345,7 +356,9 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
   app.patch('/prices/:priceId', need('price_list.manage'), async (c) => {
     const priceId = idParam.parse(c.req.param('priceId'));
     const changes = priceChangesSchema.parse(await body(c));
-    const price = await translated(() => updatePrice(deps.db, priceId, changes));
+    const price = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => updatePrice(db, priceId, changes)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, priceId },
       'pricing.price_updated',
@@ -360,7 +373,7 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
 
   app.delete('/prices/:priceId', need('price_list.manage'), async (c) => {
     const priceId = idParam.parse(c.req.param('priceId'));
-    await translated(() => deletePrice(deps.db, priceId));
+    await translated(() => writeAndBuild(deps, BUILD, (db) => deletePrice(db, priceId)));
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, priceId },
       'pricing.price_deleted',
@@ -413,7 +426,7 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
       const csv = await c.req.text();
       try {
         const result = await translated(() =>
-          importPrices(deps.db, priceListId, csv, { skipInvalid }),
+          writeAndBuild(deps, BUILD, (db) => importPrices(db, priceListId, csv, { skipInvalid })),
         );
         deps.logger.info(
           {
@@ -483,7 +496,9 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
 
   app.post('/assignments', need('price_list.manage'), async (c) => {
     const input = newAssignmentSchema.parse(await body(c));
-    const assignment = await translated(() => createAssignment(deps.db, input));
+    const assignment = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => createAssignment(db, input)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, assignmentId: assignment.id },
       'pricing.assignment_created',
@@ -494,7 +509,9 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
   app.patch('/assignments/:assignmentId', need('price_list.manage'), async (c) => {
     const assignmentId = idParam.parse(c.req.param('assignmentId'));
     const changes = assignmentChangesSchema.parse(await body(c));
-    const assignment = await translated(() => updateAssignment(deps.db, assignmentId, changes));
+    const assignment = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => updateAssignment(db, assignmentId, changes)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, assignmentId },
       'pricing.assignment_updated',
@@ -504,7 +521,7 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
 
   app.delete('/assignments/:assignmentId', need('price_list.manage'), async (c) => {
     const assignmentId = idParam.parse(c.req.param('assignmentId'));
-    await translated(() => deleteAssignment(deps.db, assignmentId));
+    await translated(() => writeAndBuild(deps, BUILD, (db) => deleteAssignment(db, assignmentId)));
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, assignmentId },
       'pricing.assignment_deleted',
@@ -512,23 +529,23 @@ export function pricingRoutes(deps: PricingRouteDependencies): Hono<PricingEnv> 
     return c.body(null, 204);
   });
 
-  /** Whether changes are waiting for a build, and what the last build did. */
-  app.get('/build', need('price_list.view'), async (c) =>
-    c.json({ build: await getBuildState(deps.db) }),
-  );
+  /** Whether changes are waiting for a build, what the last build did, and whether one is queued or running. */
+  app.get('/build', need('price_list.view'), async (c) => {
+    const [state, job] = await Promise.all([
+      getBuildState(deps.db),
+      deps.jobs.status('pricing.build'),
+    ]);
+    return c.json({ build: { ...state, job } });
+  });
 
-  /**
-   * Runs the set-based combined price build and waits for it (ADR 0011). When the job runner
-   * lands, this enqueues the build job and answers 202 instead.
-   */
+  /** Queues the combined price build now (ADR 0011, 0025); the worker runs it within seconds. */
   app.post('/build', need('price_list.manage'), async (c) => {
-    const userId = c.get('user').id;
-    const result = await rebuildCombinedPrices(deps.db, { builtBy: userId });
+    await deps.jobs.enqueue('pricing.build');
     deps.logger.info(
-      { requestId: c.get('requestId'), userId, ...result },
-      'pricing.combined_prices_built',
+      { requestId: c.get('requestId'), userId: c.get('user').id },
+      'pricing.build_queued',
     );
-    return c.json({ build: { ...result, builtBy: userId } });
+    return c.json({ build: { job: await deps.jobs.status('pricing.build') } }, 202);
   });
 
   /** The price a customer gets for a quantity of a product on a website, explained. */

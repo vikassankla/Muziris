@@ -1,7 +1,7 @@
 /**
  * Rebuilds the product search index from the catalog, with the same set-based build as the
- * admin action (ADR 0013). For installs and scripts, and after catalog changes made outside the
- * admin API, until the job runner runs builds on its own.
+ * `search.build` job (ADR 0013, 0025). For installs and scripts, and after catalog changes made
+ * outside the admin API: it runs at once, in this process, without the job runner.
  *
  *   pnpm --filter @muziris/api search:build
  */

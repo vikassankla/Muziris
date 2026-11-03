@@ -20,6 +20,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { createLogger } from './logger.js';
+import { inlineJobs } from './test-jobs.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const PASSWORD = 'correct horse battery staple';
@@ -59,9 +60,11 @@ describe.skipIf(!url)('visibility routes against PostgreSQL', () => {
         done();
       },
     });
+    const logger = createLogger('info', stream);
     return createApp({
-      logger: createLogger('info', stream),
+      logger,
       db: handle.db,
+      jobs: inlineJobs({ db: handle.db, logger }).queue,
       pingDatabase: () => Promise.resolve(),
       corsOrigins: [ORIGIN],
       maxBodyBytes: 64 * 1024,
@@ -259,9 +262,12 @@ describe.skipIf(!url)('visibility routes against PostgreSQL', () => {
       await call('GET', '/build', asha),
     );
     expect(pending.build.pendingChanges).toBe(3);
+    // Build now queues the build (ADR 0025); this test's queue runs it at once.
     const built = await call('POST', '/build', asha);
-    expect(built.status).toBe(200);
-    expect(await built.json()).toMatchObject({ build: { contextCount: 4 } });
+    expect(built.status).toBe(202);
+    expect(await json(await call('GET', '/build', asha))).toMatchObject({
+      build: { pendingChanges: 0, lastBuild: { contextCount: 4 } },
+    });
     expect(logs.join('')).toContain('visibility.built');
 
     // What the admin sees for each customer.

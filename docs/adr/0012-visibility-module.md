@@ -100,7 +100,7 @@ known-answer tests, and once in the build's SQL; the same known-answer tables ru
   Both run the same build and wait for it. Nothing rebuilds on its own.
 - **When the job runner lands:** rule writes and catalog changes enqueue a debounced build job
   with a singleton key; the admin action enqueues the same job and answers 202. The build
-  function, the tables and the reads do not change.
+  function, the tables and the reads do not change. (Built in ADR 0025: `visibility.build`.)
 
 ### How search and the storefront use it
 
@@ -138,7 +138,8 @@ Visibility decides what buyers may see, which is access scoping, so it is not fo
 - Rule edits are not live until a build, like price list edits. The admin app must show
   "changes waiting for a build" next to the visibility screens.
 - New and newly enabled products, and category moves, need a build before buyers see their
-  effect. Until the job runner exists, an admin runs the build after catalog work.
+  effect. Since the job runner (ADR 0025), catalog changes made through the admin API queue a
+  build; changes made elsewhere still need one by hand.
   The build state says so: `catalogChangedSinceBuild` is true when a product or category was
   added or changed after the last build (catalog's `lastCatalogChange`), and the admin
   Products list shows a banner with "Build visibility now". Catalog changes are flagged, not

@@ -1,4 +1,5 @@
 import type { Database } from '@muziris/db';
+import type { JobQueue } from '@muziris/jobs';
 import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
 import type { TaxProvider } from '@muziris/orders';
 import { configuredMethods, type GatewayClients, type PaymentGateways } from '@muziris/payments';
@@ -12,6 +13,8 @@ import { accessRoutes } from './access-routes.js';
 import { authRoutes } from './auth-routes.js';
 import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
+import { jobRoutes } from './job-routes.js';
+import { NO_JOBS } from './jobs.js';
 import { createEmails } from './emails.js';
 import { notificationRoutes } from './notification-routes.js';
 import { orderRoutes } from './order-routes.js';
@@ -61,6 +64,11 @@ export interface AppDependencies {
    */
   mail?: MailConfig;
   storefrontWebsite?: string;
+  /**
+   * The job runner's queue (ADR 0025): writes enqueue their builds and emails through it. Tests
+   * that do not look at jobs leave it out, and their jobs are dropped.
+   */
+  jobs?: JobQueue;
 }
 
 export interface AppEnv {
@@ -178,9 +186,11 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     now: deps.now ?? (() => new Date()),
     clientIp: deps.clientIp ?? ((c: Context) => resolveClientIp(c, deps.trustedProxyHops ?? 0)),
     trustedOrigins: allowedOrigins,
+    jobs: deps.jobs ?? NO_JOBS,
   };
   const emails = createEmails({
     db: deps.db,
+    jobs: authDeps.jobs,
     logger: deps.logger,
     mail: deps.mail ?? mailConfigFromEnv({}, { production: false }),
     storefrontWebsite: deps.storefrontWebsite ?? 'main',
@@ -208,6 +218,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/access', accessRoutes(authDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(emailDeps));
+  app.route('/admin/v1/jobs', jobRoutes(authDeps));
   app.route('/admin/v1/notifications', notificationRoutes(authDeps));
   app.route('/admin/v1/orders', orderRoutes(emailDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));

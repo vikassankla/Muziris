@@ -40,6 +40,16 @@ const envSchema = z.object({
   STOREFRONT_ADHOC_QUERIES: z.enum(['allow', 'deny']).optional(),
   /** A JSON file of persisted storefront queries, hash to document, from the storefront build. */
   STOREFRONT_PERSISTED_QUERIES: z.string().min(1).optional(),
+  /**
+   * Whether the API process also runs the job workers (ADR 0025). Set false when a separate
+   * `worker` process runs them, so web and jobs can scale apart.
+   */
+  JOB_WORKERS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  /** The worker process's port, for its /health/live check. */
+  WORKER_PORT: z.coerce.number().int().min(1).max(65535).default(4001),
   /** The code of the website the public storefront serves; invitation emails come from it. */
   STOREFRONT_WEBSITE: z
     .string()

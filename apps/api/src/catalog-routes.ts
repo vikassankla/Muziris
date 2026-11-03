@@ -24,12 +24,14 @@ import {
   type CatalogErrorCode,
 } from '@muziris/catalog';
 import type { Database } from '@muziris/db';
+import type { JobQueue } from '@muziris/jobs';
 import { indexProducts, indexProductsInCategory } from '@muziris/search';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
+import { writeAndBuild } from './jobs.js';
 import type { Logger } from './logger.js';
 import { HttpProblem } from './problem.js';
 
@@ -37,6 +39,11 @@ export interface CatalogRouteDependencies {
   db: Database;
   logger: Logger;
   now: () => Date;
+  /**
+   * Product and category writes enqueue the visibility build in their transaction, since
+   * buyers see the catalog of the last build (ADR 0012, 0025).
+   */
+  jobs: JobQueue;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
 }
@@ -70,6 +77,8 @@ async function translated<T>(action: () => Promise<T>): Promise<T> {
 }
 
 const idParam = z.uuid();
+
+const BUILD = ['visibility.build'] as const;
 
 /** Query strings carry text only; turn them into the module's query shape. */
 const listProductsQuery = z
@@ -148,7 +157,9 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
 
   app.post('/categories', need('product.manage'), async (c) => {
     const input = newCategorySchema.parse(await body(c));
-    const category = await translated(() => createCategory(deps.db, input));
+    const category = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => createCategory(db, input)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, categoryId: category.id },
       'catalog.category_created',
@@ -159,7 +170,9 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
   app.patch('/categories/:categoryId', need('product.manage'), async (c) => {
     const categoryId = idParam.parse(c.req.param('categoryId'));
     const changes = categoryChangesSchema.parse(await body(c));
-    const category = await translated(() => updateCategory(deps.db, categoryId, changes));
+    const category = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => updateCategory(db, categoryId, changes)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, categoryId },
       'catalog.category_updated',
@@ -171,7 +184,9 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
   app.put('/categories/:categoryId/parent', need('product.manage'), async (c) => {
     const categoryId = idParam.parse(c.req.param('categoryId'));
     const { parentId } = setParentBody.parse(await body(c));
-    const category = await translated(() => setCategoryParent(deps.db, categoryId, parentId));
+    const category = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => setCategoryParent(db, categoryId, parentId)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, categoryId, parentId },
       'catalog.category_moved',
@@ -182,7 +197,7 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
 
   app.delete('/categories/:categoryId', need('product.manage'), async (c) => {
     const categoryId = idParam.parse(c.req.param('categoryId'));
-    await translated(() => deleteCategory(deps.db, categoryId));
+    await translated(() => writeAndBuild(deps, BUILD, (db) => deleteCategory(db, categoryId)));
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, categoryId },
       'catalog.category_deleted',
@@ -196,7 +211,9 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
 
   app.post('/products', need('product.manage'), async (c) => {
     const input = newProductSchema.parse(await body(c));
-    const product = await translated(() => createProduct(deps.db, input));
+    const product = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => createProduct(db, input)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, productId: product.id },
       'catalog.product_created',
@@ -215,7 +232,9 @@ export function catalogRoutes(deps: CatalogRouteDependencies): Hono<CatalogEnv> 
   app.patch('/products/:productId', need('product.manage'), async (c) => {
     const productId = idParam.parse(c.req.param('productId'));
     const changes = productChangesSchema.parse(await body(c));
-    const product = await translated(() => updateProduct(deps.db, productId, changes));
+    const product = await translated(() =>
+      writeAndBuild(deps, BUILD, (db) => updateProduct(db, productId, changes)),
+    );
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, productId },
       'catalog.product_updated',

@@ -51,6 +51,8 @@ pnpm --filter @muziris/api dev
 be run again safely. Then create the first website and its settings in the admin app, under
 System > Websites and System > Settings. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
+The API also runs the background jobs (builds, emails, session clean-up; ADR 0025); with
+`JOB_WORKERS=false` they run in `pnpm --filter @muziris/api worker` instead.
 
 To install Muziris for a business, see the [install guide](docs/install.md) (first draft).
 

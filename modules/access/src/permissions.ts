@@ -28,6 +28,7 @@ export const ADMIN_PERMISSIONS = {
   'tax.manage': 'Change tax registrations, rates and exemption certificates',
   'notification.view': 'See the emails sent and those that failed',
   'notification.manage': 'Send a failed email again',
+  'job.view': 'See background jobs that are waiting, running or failed',
 } as const;
 
 export type AdminPermission = keyof typeof ADMIN_PERMISSIONS;

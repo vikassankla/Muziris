@@ -123,7 +123,7 @@ only the combined price lists.
   singleton key, so a burst of edits causes one build; the admin action enqueues the same job
   and answers 202 with the build's id; time-based starts and ends need no job, because the
   validity intervals already carry them. The build function, the tables and the lookups do not
-  change.
+  change. (Built in ADR 0025: `pricing.build`, with a 15-second wait instead of a build id.)
 
 ### Admin API
 
@@ -149,7 +149,8 @@ ADR 0010. Refusals are RFC 9457 problems with the module's stable codes.
   chain. Customers without their own price lists follow a group change at once, if the new
   group's chain was built.
 - The build deletes and rewrites every combined price, and holds a lock that makes price list
-  writes wait. With large catalogs this needs incremental builds and the job runner.
+  writes wait. With large catalogs this needs incremental builds; the job runner (ADR 0025) at
+  least takes the build out of the request.
 - The combined price table grows with chains, products, tiers and date intervals. The pilot is
   far below where that matters; measure before the cloud MVP.
 - Customers and platform gain small public functions for this (`customerGroupMembership`,

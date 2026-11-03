@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Tags,
+  Timer,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ export type NavTo =
   | '/admin-roles'
   | '/buyer-roles'
   | '/emails'
+  | '/jobs'
   | '/websites'
   | '/settings'
   | '/tax';
@@ -102,6 +104,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { to: '/settings', label: 'Settings', icon: Settings, permission: 'setting.view' },
       { to: '/tax', label: 'Tax', icon: Receipt, permission: 'tax.view' },
       { to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' },
+      { to: '/jobs', label: 'Jobs', icon: Timer, permission: 'job.view' },
     ],
   },
 ];

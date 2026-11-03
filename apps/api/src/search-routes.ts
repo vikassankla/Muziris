@@ -4,9 +4,9 @@ import {
   adminSearchQuerySchema,
   getBuildState,
   MAX_QUERY_LENGTH,
-  rebuildSearchIndex,
   searchProducts,
 } from '@muziris/search';
+import type { JobQueue } from '@muziris/jobs';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
@@ -17,6 +17,7 @@ export interface SearchRouteDependencies {
   db: Database;
   logger: Logger;
   now: () => Date;
+  jobs: JobQueue;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
 }
@@ -67,19 +68,25 @@ export function searchRoutes(deps: SearchRouteDependencies): Hono<SearchEnv> {
   );
 
   /** How many products wait for the index, and what the last full build did. */
-  app.get('/build', need('product.view'), async (c) =>
-    c.json({ build: await getBuildState(deps.db) }),
-  );
+  app.get('/build', need('product.view'), async (c) => {
+    const [state, job] = await Promise.all([
+      getBuildState(deps.db),
+      deps.jobs.status('search.build'),
+    ]);
+    return c.json({ build: { ...state, job } });
+  });
 
   /**
-   * Rebuilds the whole index and waits for it (ADR 0013). When the job runner lands, this
-   * enqueues the build job and answers 202 instead.
+   * Queues a rebuild of the whole index (ADR 0013, 0025); the worker runs it within seconds. The
+   * catalog routes keep reindexing one product at a time, so this is for changes made elsewhere.
    */
   app.post('/build', need('product.manage'), async (c) => {
-    const userId = c.get('user').id;
-    const result = await rebuildSearchIndex(deps.db, { builtBy: userId });
-    deps.logger.info({ requestId: c.get('requestId'), userId, ...result }, 'search.built');
-    return c.json({ build: { ...result, builtBy: userId } });
+    await deps.jobs.enqueue('search.build');
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id },
+      'search.build_queued',
+    );
+    return c.json({ build: { job: await deps.jobs.status('search.build') } }, 202);
   });
 
   return app;

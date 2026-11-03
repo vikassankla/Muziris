@@ -16,3 +16,7 @@ apps/api/src/storefront/schema.graphql
 # Written by pnpm --filter @muziris/storefront operations
 apps/storefront/src/operations/generated.ts
 apps/storefront/persisted-queries.json
+# Written by the end-to-end journeys (e2e/.gitignore)
+e2e/test-results
+e2e/playwright-report
+e2e/.auth
