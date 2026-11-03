@@ -104,12 +104,8 @@ describe('settings', () => {
       'GET /settings': () => json({ settings: [TERM_DAYS, FLAT_RATE] }),
     });
     renderApp('/settings');
-    const term = await screen.findByRole('group', { name: 'Payment term' });
-    expect(within(term).getByText('45 days')).toBeTruthy();
-    expect(within(term).getByText('Website')).toBeTruthy();
-    const rate = screen.getByRole('group', { name: 'Flat shipping charge per order' });
-    expect(within(rate).getByText('₹250.00')).toBeTruthy();
-    expect(within(rate).getByText('Default')).toBeTruthy();
+    // The page loads once without a website, then again for the top bar's: wait for that
+    // second load before reading the cards, which are replaced when it lands.
     await waitFor(() => {
       expect(
         requests
@@ -118,6 +114,12 @@ describe('settings', () => {
           ?.query.get('websiteId'),
       ).toBe(INDIA.id);
     });
+    const term = await screen.findByRole('group', { name: 'Payment term' });
+    expect(within(term).getByText('45 days')).toBeTruthy();
+    expect(within(term).getByText('Website')).toBeTruthy();
+    const rate = await screen.findByRole('group', { name: 'Flat shipping charge per order' });
+    expect(within(rate).getByText('₹250.00')).toBeTruthy();
+    expect(within(rate).getByText('Default')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull();
   });
 
