@@ -52,6 +52,8 @@ be run again safely. Then create the first website and its settings in the admin
 System > Websites and System > Settings. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.
 
+To install Muziris for a business, see the [install guide](docs/install.md) (first draft).
+
 ### Everything in Docker, for testing
 
 To try the whole application without Node.js, run it in Docker. This is a test setup, not a
