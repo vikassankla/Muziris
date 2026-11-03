@@ -1,4 +1,4 @@
-import { categoryParents, productCategoryAndStatus } from '@muziris/catalog';
+import { categoryParents, lastCatalogChange, productCategoryAndStatus } from '@muziris/catalog';
 import { customerGroupMembership } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import { sql } from 'drizzle-orm';
@@ -25,6 +25,11 @@ export interface BuildResult {
 export interface BuildState {
   /** Changes to rules that no build has seen yet. */
   pendingChanges: number;
+  /**
+   * True when a product or category was added or changed after the last build, or there is a
+   * catalog and no build yet. Catalog changes are not counted, so this only says whether.
+   */
+  catalogChangedSinceBuild: boolean;
   lastBuild: (BuildResult & { builtBy: string | null }) | null;
 }
 
@@ -188,14 +193,21 @@ export async function rebuildVisibility(
   });
 }
 
-/** Whether rule changes are waiting for a build, and what the last build did. */
+/** Whether rule or catalog changes are waiting for a build, and what the last build did. */
 export async function getBuildState(db: Database): Promise<BuildState> {
-  const [row] = await db.select().from(buildState).limit(1);
-  if (!row) return { pendingChanges: 0, lastBuild: null };
+  const [[row], catalogChange] = await Promise.all([
+    db.select().from(buildState).limit(1),
+    lastCatalogChange(db),
+  ]);
+  const builtAt = row?.builtAt ?? null;
+  const catalogChangedSinceBuild =
+    catalogChange !== null && (builtAt === null || catalogChange > builtAt);
+  if (!row) return { pendingChanges: 0, catalogChangedSinceBuild, lastBuild: null };
   const pendingChanges = Number(row.changeCount - (row.builtChangeCount ?? 0n));
-  if (row.builtAt === null) return { pendingChanges, lastBuild: null };
+  if (row.builtAt === null) return { pendingChanges, catalogChangedSinceBuild, lastBuild: null };
   return {
     pendingChanges,
+    catalogChangedSinceBuild,
     lastBuild: {
       builtAt: row.builtAt,
       builtBy: row.builtBy,

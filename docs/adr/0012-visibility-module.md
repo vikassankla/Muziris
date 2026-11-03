@@ -139,6 +139,10 @@ Visibility decides what buyers may see, which is access scoping, so it is not fo
   "changes waiting for a build" next to the visibility screens.
 - New and newly enabled products, and category moves, need a build before buyers see their
   effect. Until the job runner exists, an admin runs the build after catalog work.
+  The build state says so: `catalogChangedSinceBuild` is true when a product or category was
+  added or changed after the last build (catalog's `lastCatalogChange`), and the admin
+  Products list shows a banner with "Build visibility now". Catalog changes are flagged, not
+  counted, and deleting a category is not flagged.
 - The result table grows with contexts times visible products. Customers with their own rules
   each get a full copy; the pilot is far below where that matters. Storing only the
   differences from the website's row is later work, measured before the cloud MVP.

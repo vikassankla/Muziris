@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { json, mockApi, problem, renderApp, signedIn } from '../test/mock-api.js';
 
@@ -139,5 +140,50 @@ describe('permission-aware navigation', () => {
     const list = requests.find((r) => r.path === '/catalog/products');
     expect(list?.query.get('after')).toBe('BRG-6000');
     expect(list?.query.get('limit')).toBe('25');
+  });
+
+  it('says when buyers do not see catalog changes yet, and builds visibility', async () => {
+    let built = false;
+    const requests = mockApi({
+      ...signedIn(['product.view', 'visibility.view', 'visibility.manage']),
+      'GET /catalog/categories': () => json({ categories: [] }),
+      'GET /catalog/product-units': () => json({ productUnits: [] }),
+      'GET /catalog/products': () => json({ products: [], nextAfter: null }),
+      'GET /visibility/build': () =>
+        json({
+          build: {
+            pendingChanges: built ? 0 : 2,
+            catalogChangedSinceBuild: !built,
+            lastBuild: null,
+          },
+        }),
+      'POST /visibility/build': () => {
+        built = true;
+        return json({ build: {} });
+      },
+    });
+    renderApp('/products');
+    expect(
+      await screen.findByText(
+        'Buyers do not see catalog changes and 2 visibility rule changes yet',
+      ),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Build visibility now' }));
+    await waitFor(() => {
+      expect(screen.queryByText(/Buyers do not see/)).toBeNull();
+    });
+    expect(requests.some((r) => r.method === 'POST' && r.path === '/visibility/build')).toBe(true);
+  });
+
+  it('does not ask for the visibility build without visibility.view', async () => {
+    const requests = mockApi({
+      ...signedIn(['product.view']),
+      'GET /catalog/categories': () => json({ categories: [] }),
+      'GET /catalog/product-units': () => json({ productUnits: [] }),
+      'GET /catalog/products': () => json({ products: [], nextAfter: null }),
+    });
+    renderApp('/products');
+    expect(await screen.findByRole('heading', { name: 'Products' })).toBeTruthy();
+    expect(requests.some((r) => r.path === '/visibility/build')).toBe(false);
   });
 });
