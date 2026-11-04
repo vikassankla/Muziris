@@ -64,8 +64,9 @@ A new `api-prod` target in `docker/app.Dockerfile`:
 
 - `pnpm deploy --prod` copies `@muziris/api` with its workspace packages and production
   dependencies only, so no test or build tools ship.
-- It still runs the TypeScript sources with `tsx`, as today, so `tsx` moves from the root's dev
-  dependencies to the API's dependencies. Compiling to JavaScript is left to the cloud MVP.
+- It still runs the TypeScript sources with `tsx`, as today, so `tsx` joins the API's
+  dependencies (the root keeps it for the other packages' scripts). Compiling to JavaScript is
+  left to the cloud MVP.
 - `NODE_ENV=production`, the `node` user, and the API's health check.
 
 Images are built on the VM from a release tag (`git checkout v0.x.y`, then `docker compose
@@ -98,7 +99,9 @@ checks that:
 
 - both hostnames answer over HTTPS, and HTTP redirects to HTTPS;
 - the apps' files carry every header above, and an API path carries the API's own;
-- `/health/ready` is reached only through the API paths, and the API's port is not published;
+- any other path, such as `/health/ready`, loads the app instead of reaching the API, and the
+  API's and PostgreSQL's ports are not published;
+- the latest backup restores into an empty database;
 - the admin app's own routes load `index.html`.
 
 ## Consequences

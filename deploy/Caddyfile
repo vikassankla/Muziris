@@ -1,0 +1,62 @@
+# The edge for the pilot (ADR 0029): HTTPS for both apps, each on one origin with its API
+# paths, as docker/nginx.conf does for the test stack. Nothing else reaches the API.
+#
+# The hostnames come from the environment (deploy/compose.yml). Caddy gets their certificates
+# from Let's Encrypt, renews them and redirects HTTP to HTTPS.
+
+{
+	email {$ACME_EMAIL}
+	# Tests only: "local_certs" swaps Let's Encrypt for Caddy's own certificate authority.
+	{$CADDY_TEST_OPTIONS}
+}
+
+# The headers of docker/app-headers.conf, plus Strict-Transport-Security with the API's value.
+# Keep the two files the same: deploy/check-stack.sh compares them.
+(app_headers) {
+	header {
+		Content-Security-Policy "frame-ancestors 'none'"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		-Server
+	}
+}
+
+# The app's own routes, such as /products/123, load index.html.
+(app_files) {
+	handle {
+		import app_headers
+		root * {args[0]}
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Request bodies are limited by the API; this only has to let the largest through (the 2 MB
+# price import, ADR 0022).
+(body_limit) {
+	request_body {
+		max_size 3MB
+	}
+}
+
+{$ADMIN_DOMAIN} {
+	import body_limit
+	handle /admin/v1/* {
+		reverse_proxy api:4000
+	}
+	import app_files /srv/admin
+}
+
+{$STOREFRONT_DOMAIN} {
+	import body_limit
+	handle /storefront/v1/* {
+		reverse_proxy api:4000
+	}
+	# Payment gateway callbacks (ADR 0019).
+	handle /webhooks/* {
+		reverse_proxy api:4000
+	}
+	import app_files /srv/storefront
+}

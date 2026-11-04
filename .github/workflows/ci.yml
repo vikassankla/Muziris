@@ -116,6 +116,49 @@ jobs:
             e2e/test-results
           retention-days: 14
 
+  production:
+    name: Production stack
+    # ADR 0029: the pilot install built and started as an operator would, with Caddy's own
+    # certificate authority instead of Let's Encrypt, then checked by deploy/check-stack.sh.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Write a throwaway configuration
+        run: |
+          echo "MUZIRIS_ENV_FILE=$RUNNER_TEMP/muziris.env" >> "$GITHUB_ENV"
+          umask 077
+          cat > "$RUNNER_TEMP/muziris.env" <<EOF
+          ADMIN_DOMAIN=admin.muziris.test
+          STOREFRONT_DOMAIN=shop.muziris.test
+          ACME_EMAIL=ci@muziris.test
+          CADDY_TEST_OPTIONS=local_certs
+          ORGANIZATION_NAME=Muziris CI
+          STOREFRONT_WEBSITE=main
+          POSTGRES_PASSWORD=$(openssl rand -hex 24)
+          ADMIN_TOTP_KEY=$(openssl rand -base64 32)
+          SMTP_URL=smtp://127.0.0.1:1025
+          MAIL_FROM=Muziris CI <ci@muziris.test>
+          BACKUP_DIR=$RUNNER_TEMP/backups
+          EOF
+      - run: deploy/muziris up -d --build
+      - name: Wait for the edge
+        run: |
+          for _ in $(seq 1 60); do
+            curl -sk --max-time 2 -o /dev/null --resolve admin.muziris.test:443:127.0.0.1 \
+              https://admin.muziris.test/ && exit 0
+            sleep 2
+          done
+          exit 1
+      - run: deploy/check-stack.sh
+      - name: Logs
+        if: failure()
+        run: deploy/muziris logs --no-color
+      - if: always()
+        run: deploy/muziris down -v
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
