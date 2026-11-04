@@ -298,13 +298,22 @@ review).
     offers those actions only where they are allowed (`mayManage`).
 
 30. ADR 0029, the pilot deployment (launch prep). **Accepted** by Vikas in chat on 2026-11-04
-    (PR 58): one VM with Docker Compose, Caddy for HTTPS from Let's Encrypt with the apps'
-    headers and Strict-Transport-Security, a production API image, one root-only env file, a
-    daily `pg_dump`, and a CI job that starts the production stack and checks its headers.
+    (PR 58).
+31. The pilot deployment recipe (ADR 0029). **In review** (branch `feature/deployment`); it
+    carries secrets and HTTPS, so CLAUDE.md rule 4 asks for a second human review.
+    `deploy/compose.yml` runs PostgreSQL, `migrate`, the API, Caddy 2.11.7 (`edge`) and a daily
+    `pg_dump`; only ports 80 and 443 are published. `deploy/muziris` runs Compose with the
+    root-only `/etc/muziris/muziris.env`. The Dockerfile gains `api-prod` (`pnpm deploy --prod`,
+    `NODE_ENV=production`, still on `tsx`, now an API dependency) and `edge`.
+    `deploy/check-stack.sh` checks HTTPS, the redirect, the headers against
+    `docker/app-headers.conf`, which paths reach the API, the unpublished ports and a backup
+    restore; CI's new "Production stack" job runs it with Caddy's own certificates. The install
+    guide is rewritten around the VM install. Not done: an install on a real VM with Let's
+    Encrypt, and a first release tag.
 
-**Next (ahead of the plan):** launch prep, building ADR 0029: a deployment recipe with an ADR (it must send the
-headers of `docker/app-headers.conf` and Strict-Transport-Security), the install guide finished,
-the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15.
+**Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
+Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and the hand
+checks of items 13 to 15.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -380,8 +389,9 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 - Admin app: browser storage holds only UI preferences, the theme and whether the sidebar is
   collapsed (`apps/admin/src/lib/prefs.ts`). Nothing about the session, the admin user or the
   business goes there; tests check that no other key appears. Decided 2026-10-29.
-- Admin app in production: serve `apps/admin/dist` from the API's origin behind one reverse
-  proxy; there is no deployment recipe yet.
+- Deployment (ADR 0029): one VM, so one point of failure, and up to a day of data lost between
+  dumps. The API still runs from TypeScript with `tsx`; images are built on the VM, with no
+  registry. Both wait for the cloud MVP.
 
 ## Running the tests locally
 
