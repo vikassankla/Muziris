@@ -35,6 +35,7 @@ They are design data only. The tokens from `muziris.css` (light and dark) live i
 | Websites, Settings              | `/websites`, `/settings`                | Built, no toggles         |
 | Tax (no board)                  | `/tax`                                  | Built from ADR 0023       |
 | Visibility (no board)           | `/visibility`                           | Built from ADR 0027       |
+| Admin users (no board)          | `/admin-users`, `/accept-invitation`    | Built from ADR 0028       |
 
 The pull request that built these screens lists where the app deliberately differs from the
 boards, mostly where the API has no matching data yet: counts, search, totals, activity

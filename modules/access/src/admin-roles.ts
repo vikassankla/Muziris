@@ -1,6 +1,6 @@
 import type { Database } from '@muziris/db';
 import { activeUserIds, findUserById, type Realm } from '@muziris/identity';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { adminRolePermissions, adminRoles, adminUserRoles } from './db/schema.js';
 import { AccessControlError, isUniqueViolation } from './errors.js';
@@ -305,4 +305,69 @@ export async function getAdminAccess(db: Database, adminUserId: string): Promise
           .filter((p): p is AdminPermission => p !== null && isAdminPermission(p)),
   );
   return { all, permissions };
+}
+
+export interface AdminRoleName {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Each admin user's roles, by name, for the admin users screen (ADR 0028). */
+export async function adminRolesOfUsers(
+  db: Database,
+  adminUserIds: readonly string[],
+): Promise<Map<string, AdminRoleName[]>> {
+  const ids = adminUserIds.filter((id) => idSchema.safeParse(id).success);
+  const out = new Map<string, AdminRoleName[]>(ids.map((id) => [id, []]));
+  if (ids.length === 0) return out;
+  const rows = await db
+    .select({
+      userId: adminUserRoles.adminUserId,
+      id: adminRoles.id,
+      code: adminRoles.code,
+      name: adminRoles.name,
+    })
+    .from(adminUserRoles)
+    .innerJoin(adminRoles, eq(adminRoles.id, adminUserRoles.roleId))
+    .where(inArray(adminUserRoles.adminUserId, ids))
+    .orderBy(asc(adminRoles.name));
+  for (const { userId, ...role } of rows) out.get(userId)?.push(role);
+  return out;
+}
+
+/**
+ * Refuses, before anything is created, roles that do not exist or that the actor may not give
+ * (privilege_escalation): inviting an admin gives roles as assignAdminRole would.
+ */
+export async function assertAdminRolesAssignable(
+  db: Database,
+  actor: AdminAccess,
+  roleIds: readonly string[],
+): Promise<void> {
+  for (const roleId of new Set(roleIds)) {
+    const { role, permissions } = await loadRole(db, roleId);
+    assertHolds(actor, permissions, role.grantsAllPermissions);
+  }
+}
+
+/**
+ * Refuses to take away the last active administrator (last_administrator): an admin holding a
+ * role that grants every permission may be disabled only while another active admin holds one.
+ */
+export async function assertNotLastAdministrator(db: Database, adminUserId: string): Promise<void> {
+  const userId = idSchema.parse(adminUserId);
+  const holders = await db
+    .select({ adminUserId: adminUserRoles.adminUserId })
+    .from(adminUserRoles)
+    .innerJoin(adminRoles, eq(adminRoles.id, adminUserRoles.roleId))
+    .where(eq(adminRoles.grantsAllPermissions, true));
+  if (!holders.some((h) => h.adminUserId === userId)) return;
+  const others = holders.map((h) => h.adminUserId).filter((id) => id !== userId);
+  if ((await activeUserIds(db, 'admin', others)).size === 0) {
+    throw new AccessControlError(
+      'last_administrator',
+      'At least one active admin user must keep the administrator role',
+    );
+  }
 }

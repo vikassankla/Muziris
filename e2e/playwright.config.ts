@@ -32,6 +32,7 @@ const apiEnv = {
   STOREFRONT_PERSISTED_QUERIES: '../storefront/persisted-queries.json',
   STOREFRONT_WEBSITE: WEBSITE_CODE,
   STOREFRONT_PUBLIC_URL: STOREFRONT_URL,
+  ADMIN_PUBLIC_URL: ADMIN_URL,
   SMTP_URL,
   MAIL_FROM: 'Muziris <no-reply@muziris.localhost>',
   // A key of its own for every run (ADR 0026): the run's database is new too.

@@ -1,5 +1,21 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`email templates > renders admin_invitation 1`] = `
+{
+  "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>You are invited to the Kochi Bearings admin</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Ravi Pillai,</p><p>Asha Menon invited you to work in the Kochi Bearings admin. Choose a password, then sign in and set up two-factor sign-in with an authenticator app.</p><p><a href="https://admin.example.in/accept-invitation#token=abc" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">Accept the invitation</a></p><p>The link works once and expires on 23 Nov 2026, 12:00 pm IST. If you did not expect this email, you can ignore it.</p><p style="color:#555">Kochi Bearings</p></body></html>",
+  "subject": "You are invited to the Kochi Bearings admin",
+  "text": "Hello Ravi Pillai,
+
+Asha Menon invited you to work in the Kochi Bearings admin. Choose a password, then sign in and set up two-factor sign-in with an authenticator app.
+
+Accept the invitation: https://admin.example.in/accept-invitation#token=abc
+
+The link works once and expires on 23 Nov 2026, 12:00 pm IST. If you did not expect this email, you can ignore it.
+
+Kochi Bearings",
+}
+`;
+
 exports[`email templates > renders buyer_invitation 1`] = `
 {
   "html": "<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><title>You are invited to order from Kochi Bearings</title></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a"><p>Hello Asha Menon,</p><p>You have been invited to order from Kochi Bearings for Acme Engineering. Choose a password to set up your account.</p><p><a href="https://shop.example.in/accept-invitation#token=abc" style="display:inline-block;padding:10px 16px;background:#1f3a5f;color:#fff;text-decoration:none;border-radius:4px">Accept the invitation</a></p><p>The link works once and expires on 27 Nov 2026, 12:00 pm IST. If you did not expect this email, you can ignore it.</p><p style="color:#555">Kochi Bearings</p></body></html>",

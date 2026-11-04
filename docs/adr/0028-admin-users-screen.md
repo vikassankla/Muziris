@@ -81,6 +81,32 @@ Under `/admin/v1/auth`, without a session:
 
 Every change logs who did it to whom, never the token or the password.
 
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **Invited** means the account has no password yet; the list works it out from that, not from
+  the invitation. Inviting creates the account and the invitation in one transaction with the
+  email; the roles are given right after, by `assignAdminRole`, once
+  `assertAdminRolesAssignable` has checked them all.
+- **Giving roles when inviting** needs `admin_role.assign` as well as `admin_user.manage`. The
+  invite sheet offers only the roles whose permissions the inviter holds.
+- **`POST /admin/v1/auth/invitation`** was added beside the accept route, as for buyers: it
+  answers who the invitation is for, so the page can greet them. Both share the buyer
+  invitation's rate limits, and every refusal is 404 `invitation_invalid`.
+- **Accepting** answers `{email}` and sets no cookie. A disabled account's link stops working.
+- **The link** is `<ADMIN_PUBLIC_URL>/accept-invitation#token=…`. `ADMIN_PUBLIC_URL` is a new
+  mail setting beside `STOREFRONT_PUBLIC_URL`, required in production.
+- **The last administrator** check on disable counts active holders of a role that grants every
+  permission, as removing the role does. It does not lock, so two disables at the same moment
+  could both pass; `admin:create` recovers.
+- **Reset two-factor** is offered only for an admin who has it set up. **Enable** leaves the
+  admin's ended sessions ended.
+- **Refusals** answer `own_account` (disabling yourself), `last_administrator`, `email_taken`,
+  `not_invited` (sending again after accepting), `privilege_escalation` and `user_not_found`.
+- **Roles on the row** change in a dialog, one at a time, through the existing routes. The
+  Admin roles page's "Admin users" card now points there.
+
 ### Not built
 
 - **Password reset** ("forgot password") for admins or buyers. The invitation token is shaped

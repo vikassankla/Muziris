@@ -1,6 +1,9 @@
 // Public interface of the access module. Other modules import only from here.
 export {
   ADMINISTRATOR_ROLE_CODE,
+  adminRolesOfUsers,
+  assertAdminRolesAssignable,
+  assertNotLastAdministrator,
   assignAdminRole,
   createAdminRole,
   deleteAdminRole,
@@ -15,6 +18,7 @@ export {
   unassignAdminRole,
   type AdminAccess,
   type AdminRole,
+  type AdminRoleName,
   type NewAdminRole,
 } from './admin-roles.js';
 export {
