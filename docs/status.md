@@ -303,8 +303,8 @@ review).
     carries secrets and HTTPS, so CLAUDE.md rule 4 asks for a second human review.
     `deploy/compose.yml` runs PostgreSQL, `migrate`, the API, Caddy 2.11.7 (`edge`) and a daily
     `pg_dump`; only ports 80 and 443 are published. `deploy/muziris` runs Compose with the
-    root-only `/etc/muziris/muziris.env`. The Dockerfile gains `api-prod` (`pnpm deploy --prod`,
-    `NODE_ENV=production`, still on `tsx`, now an API dependency) and `edge`.
+    root-only `/etc/muziris/muziris.env`. The Dockerfile gains `api-prod` (a production-only install from
+    the lockfile, `NODE_ENV=production`, still on `tsx`, now an API dependency) and `edge`.
     `deploy/check-stack.sh` checks HTTPS, the redirect, the headers against
     `docker/app-headers.conf`, which paths reach the API, the unpublished ports and a backup
     restore; CI's new "Production stack" job runs it with Caddy's own certificates. The install

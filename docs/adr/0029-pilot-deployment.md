@@ -62,8 +62,9 @@ built from the hostnames in the compose file.
 
 A new `api-prod` target in `docker/app.Dockerfile`:
 
-- `pnpm deploy --prod` copies `@muziris/api` with its workspace packages and production
-  dependencies only, so no test or build tools ship.
+- `pnpm install --prod --frozen-lockfile --filter '@muziris/api...'` installs the API and its
+  workspace packages with their production dependencies only, at the lockfile's versions, so no
+  test or build tools ship.
 - It still runs the TypeScript sources with `tsx`, as today, so `tsx` joins the API's
   dependencies (the root keeps it for the other packages' scripts). Compiling to JavaScript is
   left to the cloud MVP.
