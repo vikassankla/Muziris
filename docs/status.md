@@ -204,8 +204,9 @@ review).
     - Checked and working by hand: price CSV import and export, tier prices after a build, GST
       CGST plus SGST within a state, invitation and order emails in Mailpit, accepting an
       invitation, and confirming an order.
-    - Follow-ups: an order or add-to-list button on the storefront product page (item 25);
-      names, not ids, in the customer's buyer users tab; admin screens for visibility rules.
+    - Follow-ups: an order or add-to-list button on the storefront product page (item 27);
+      names, not ids, in the customer's buyer users tab (item 28); admin screens for visibility
+      rules (item 25).
 
 17. Known-answer tests for a whole checkout (PR 39, merged 2026-11-03 as b0c5cb0, approved by
     Vikas in chat, with no second review recorded; pricing and tax tests, so CLAUDE.md rule 4
@@ -247,42 +248,47 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
-
-25. Visibility rule screens (ADR 0027; PR 55, merged 2026-11-04 as 90f98c8, approved by Vikas
-    in chat; needs a second human review under CLAUDE.md
-    rule 4, since visibility scopes what buyers may see). `/visibility` under Catalog, on the
-    top bar's website: the build banner, rules by name (SKU and name, or a category's path;
-    "Everyone on <website>", a customer group or a customer), filters by subject and target,
-    and a search by SKU, product, category, customer or group name. New rule, a row switch
-    between Visible and Hidden, and delete, for `visibility.manage`; a taken rule offers to
-    change the one already there. "Check a buyer's view" explains one product or category for
-    one customer, and says when the answer waits for a build. The product and customer pages
-    gain a Visibility card linking to the screen filtered to them. The API names subjects and
+25. Visibility rule screens (ADR 0027; PR 55, merged 2026-11-04 as 90f98c8, approved by Vikas in
+    chat; needs a second human review under CLAUDE.md rule 4, since visibility scopes what buyers
+    may see). `/visibility` under Catalog, on the top bar's website: the build banner, rules by name
+    (SKU and name, or a category's path; "Everyone on <website>", a customer group or a customer),
+    filters by subject and target, and a search by SKU, product, category, customer or group name.
+    New rule, a row switch between Visible and Hidden, and delete, for `visibility.manage`; a taken
+    rule offers to change the one already there. "Check a buyer's view" explains one product or
+    category for one customer, and says when the answer waits for a build. The product and customer
+    pages gain a Visibility card linking to the screen filtered to them. The API names subjects and
     targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
-    `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks
-    two buyers' storefronts.
+    `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks two
+    buyers' storefronts.
 26. Admin users screen and admin invitations (ADR 0028; PR 56, merged 2026-11-04 as 3a8543f,
-    approved by Vikas in chat; needs a second human review under CLAUDE.md rule 4:
-    authentication and access control). `/admin-users` under System for `admin_user.view`: name, email, admin roles, two-factor, status (Active, Invited,
-    Disabled) and last sign-in. Inviting makes an account with no password, gives the roles
-    the inviter may give, and emails a one-time link to `/accept-invitation` in the admin app,
-    good for 72 hours (`identity_invitation`, migration `0020`, new email kind
-    `admin_invitation`). Accepting sets the password only; the admin then signs in and enrols
-    a second factor. Row actions: change admin roles, send the invitation again, reset
-    two-factor (not your own), disable (not yourself, never the last active administrator) and
+    approved by Vikas in chat; needs a second human review under CLAUDE.md rule 4: authentication
+    and access control). `/admin-users` under System for `admin_user.view`: name, email, admin
+    roles, two-factor, status (Active, Invited, Disabled) and last sign-in. Inviting makes an
+    account with no password, gives the roles the inviter may give, and emails a one-time link to
+    `/accept-invitation` in the admin app, good for 72 hours (`identity_invitation`, migration
+    `0020`, new email kind `admin_invitation`). Accepting sets the password only; the admin then
+    signs in and enrols a second factor. Row actions: change admin roles, send the invitation again,
+    reset two-factor (not your own), disable (not yourself, never the last active administrator) and
     enable. New setting `ADMIN_PUBLIC_URL`, required in production. Journey 8 invites an admin,
     accepts from Mailpit, enrols, and is disabled.
-27. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
-    review** (PR 52, branch `feature/product-page-actions`). The price box gains **Order now** (the
+27. Ordering from the storefront product page (first hand-test follow-up in item 16). PR 52,
+    merged 2026-11-04 as 5bf6b90, approved by Vikas in chat. The price box gains **Order now** (the
     unit and quantity go to checkout as one line, in memory as from quick order) and **Add to
     shopping list** (pick a list or name a new one; the page links to it). Quick order and the
     product page share the list picker and `addToShoppingList`. No API change. Journey 6
     (`e2e/tests/product-page.spec.ts`) saves a product to a new list and orders it from its
     page.
+28. Buyer users by name (second hand-test follow-up in item 16). **In review** (PR 53, branch
+    `feature/buyer-user-names`). It reads buyer role assignments, so CLAUDE.md rule 4 asks for
+    a second human review. Identity gains `findUsersByIds` and access gains
+    `buyerRolesOfUsers`; `GET /admin/v1/customers/:id/buyer-users` adds each user's name,
+    email, status, last sign-in and buyer roles, looked up for the page at once. The customer's
+    Buyer users tab shows them as the board does (Name, Email, Buyer roles, Status, Last
+    sign-in); a user with no account left shows by id. Journey 1 now checks the tab.
 
-**Next (ahead of the plan):** the other hand-test follow-up in item 16 (names in the buyer users
-tab, PR 53). Then the security pass and launch prep (a deployment recipe with an ADR, the install
-guide finished, the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15).
+**Next (ahead of the plan):** the security pass, then launch prep (a deployment recipe with an
+ADR, the install guide finished, the Stripe and Razorpay test-mode run, and the hand checks of
+items 13 to 15).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -340,8 +346,6 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   call `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
-- The admin buyer users list returns identity user ids only; names and emails need a batch
-  lookup in identity's public interface.
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
@@ -353,8 +357,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   column, import history or Activity tab (ADR 0022).
 - Admin app: API gaps the boards assume. No search, totals or counts on admin lists (so no
   "1 to 25 of 1,284" and no per-row subsidiary or buyer user counts); no customer rename or
-  delete; buyer users carry user ids only (no names, emails, roles or last sign-in); no list of
-  a buyer user's buyer roles; no single buyer role read (the screen loads every role); no
+  delete; no search or filters on a customer's buyer users; no single buyer role read (the screen loads every role); no
   activity history; no product counts per category or unit.
 - Admin app: the website switcher lists the real websites but forgets the choice on reload
   (browser storage holds UI preferences only).

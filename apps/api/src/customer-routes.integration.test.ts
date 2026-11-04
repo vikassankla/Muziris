@@ -1,6 +1,7 @@
 import { Writable } from 'node:stream';
 import {
   assignAdminRole,
+  assignBuyerRole,
   createAdminRole,
   createBuyerRole,
   SYSTEM_ADMIN_ACCESS,
@@ -18,7 +19,7 @@ import {
   runMigrations,
   type DatabaseHandle,
 } from '@muziris/db';
-import { createUser } from '@muziris/identity';
+import { createUser, disableUser } from '@muziris/identity';
 import { createOrganization, setSetting } from '@muziris/platform';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -318,6 +319,68 @@ describe.skipIf(!url)('customer routes against PostgreSQL', () => {
       (await invite('e@acme.example', { buyerRoleId: '00000000-0000-4000-8000-000000000000' }))
         .status,
     ).toBe(404);
+  });
+
+  it('lists buyer users with their name, email, roles, status and last sign-in', async () => {
+    const asha = await signedInAdmin('asha@org.example', ['customer.view']);
+    const { acme } = await seed();
+    const ravi = await createBuyerUser(handle.db, {
+      customerId: acme.id,
+      email: 'ravi@acme.example',
+      displayName: 'Ravi Menon',
+    });
+    const leela = await createBuyerUser(handle.db, {
+      customerId: acme.id,
+      email: 'leela@acme.example',
+      displayName: 'Leela Das',
+    });
+    const orderer = await createBuyerRole(handle.db, {
+      code: 'orderer',
+      name: 'Orderer',
+      grants: [],
+    });
+    const approver = await createBuyerRole(handle.db, {
+      code: 'approver',
+      name: 'Approver',
+      grants: [],
+    });
+    await assignBuyerRole(handle.db, ravi.userId, orderer.id);
+    await assignBuyerRole(handle.db, ravi.userId, approver.id);
+    await disableUser(handle.db, leela.userId);
+    await handle.db.execute(
+      sql`update identity_user set last_login_at = '2026-11-03T08:15:00Z' where id = ${ravi.userId}`,
+    );
+
+    const { buyerUsers } = await json<{ buyerUsers: Record<string, unknown>[] }>(
+      await call('GET', `/${acme.id}/buyer-users`, asha),
+    );
+    // The seed's buyer user, Priya, comes first.
+    expect(buyerUsers.slice(1)).toEqual([
+      {
+        userId: ravi.userId,
+        customerId: acme.id,
+        createdAt: expect.any(String) as unknown,
+        displayName: 'Ravi Menon',
+        email: 'ravi@acme.example',
+        status: 'active',
+        lastSignInAt: '2026-11-03T08:15:00.000Z',
+        // By name.
+        buyerRoles: [
+          { id: approver.id, name: 'Approver' },
+          { id: orderer.id, name: 'Orderer' },
+        ],
+      },
+      {
+        userId: leela.userId,
+        customerId: acme.id,
+        createdAt: expect.any(String) as unknown,
+        displayName: 'Leela Das',
+        email: 'leela@acme.example',
+        status: 'disabled',
+        lastSignInAt: null,
+        buyerRoles: [],
+      },
+    ]);
   });
 
   it('lets a customer manager add buyer users, invitations and addresses', async () => {

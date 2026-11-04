@@ -80,7 +80,9 @@ export {
   EmailTakenError,
   findUserByEmail,
   findUserById,
+  findUsersByIds,
   newUserSchema,
   PasswordPolicyError,
   type NewUser,
+  type UserBasics,
 } from './users.js';

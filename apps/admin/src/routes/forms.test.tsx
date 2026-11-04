@@ -129,6 +129,68 @@ describe('customer orders', () => {
   });
 });
 
+describe('customer buyer users', () => {
+  const RAVI = '0b8f5a52-0000-4000-8000-0000000000b1';
+  const GONE = '0b8f5a52-0000-4000-8000-0000000000b2';
+  const row = (userId: string, extra: Record<string, unknown>) => ({
+    userId,
+    customerId: CUSTOMER_ID,
+    createdAt: '2026-10-02T00:00:00.000Z',
+    displayName: null,
+    email: null,
+    status: null,
+    lastSignInAt: null,
+    buyerRoles: [],
+    ...extra,
+  });
+
+  it('shows each buyer user by name with email, roles, status and last sign-in', async () => {
+    mockApi({
+      ...customerApi(['customer.view', 'buyer_role.view', 'buyer_role.manage']),
+      'GET /access/buyer-roles': () => json({ buyerRoles: [], nextAfter: null }),
+      [`GET /customers/${CUSTOMER_ID}/buyer-users`]: () =>
+        json({
+          buyerUsers: [
+            row(RAVI, {
+              displayName: 'Ravi Menon',
+              email: 'ravi@kochi.example',
+              status: 'active',
+              lastSignInAt: '2026-11-03T08:15:00.000Z',
+              buyerRoles: [
+                { id: 'br2', name: 'Approver' },
+                { id: 'br1', name: 'Orderer' },
+              ],
+            }),
+            row(GONE, {}),
+          ],
+          nextAfter: null,
+        }),
+    });
+    renderApp(`/customers/${CUSTOMER_ID}?tab=buyer-users`);
+    const ravi = (await screen.findByText('Ravi Menon')).closest('tr')!;
+    expect(
+      within(ravi)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      'Ravi Menon',
+      'ravi@kochi.example',
+      'ApproverOrderer',
+      'Active',
+      '3 Nov 2026, 13:45 IST',
+      'Assign buyer role',
+    ]);
+    // A buyer user whose account is gone shows by id.
+    const gone = screen.getByText(GONE).closest('tr')!;
+    expect(within(gone).getByText('No account')).toBeTruthy();
+    expect(within(gone).getByText('Never')).toBeTruthy();
+    expect(screen.queryByText(/show by user id/)).toBeNull();
+
+    await userEvent.setup().click(within(ravi).getByRole('button', { name: 'Assign buyer role' }));
+    expect(await screen.findByText('For Ravi Menon')).toBeTruthy();
+  });
+});
+
 describe('address form', () => {
   async function openAddressSheet() {
     renderApp(`/customers/${CUSTOMER_ID}?tab=addresses`);

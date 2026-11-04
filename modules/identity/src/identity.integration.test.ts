@@ -15,6 +15,7 @@ import {
   deleteDeadSessions,
   disableUser,
   EmailTakenError,
+  findUsersByIds,
   PasswordPolicyError,
   revokeSession,
   parseTotpKey,
@@ -103,6 +104,47 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
       });
       const rows = await handle.db.execute(sql`select password_hash from identity_user`);
       expect(String(rows[0]?.['password_hash'])).toMatch(/^\$argon2id\$/);
+    });
+
+    it('finds users of one realm by id for a list', async () => {
+      const admin = await seedAdmin();
+      const ravi = await createUser(handle.db, {
+        realm: 'buyer',
+        email: 'ravi@buyer.example',
+        displayName: 'Ravi Menon',
+      });
+      const leela = await createUser(handle.db, {
+        realm: 'buyer',
+        email: 'leela@buyer.example',
+        displayName: 'Leela Das',
+      });
+      await disableUser(handle.db, leela.id);
+      const missing = '00000000-0000-4000-8000-000000000000';
+
+      const found = await findUsersByIds(handle.db, 'buyer', [
+        ravi.id,
+        leela.id,
+        admin.id,
+        missing,
+      ]);
+      // The admin is in another realm and the last id is no one: both are left out.
+      expect(Object.fromEntries(found)).toEqual({
+        [ravi.id]: {
+          id: ravi.id,
+          email: 'ravi@buyer.example',
+          displayName: 'Ravi Menon',
+          status: 'active',
+          lastLoginAt: null,
+        },
+        [leela.id]: {
+          id: leela.id,
+          email: 'leela@buyer.example',
+          displayName: 'Leela Das',
+          status: 'disabled',
+          lastLoginAt: null,
+        },
+      });
+      expect((await findUsersByIds(handle.db, 'buyer', [])).size).toBe(0);
     });
 
     it('rejects a duplicate email in the same realm, case-insensitively', async () => {

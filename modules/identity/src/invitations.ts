@@ -5,7 +5,13 @@ import { invitations, twoFactors, users } from './db/schema.js';
 import { checkPasswordPolicy, hashPassword } from './password.js';
 import { generateToken, hashToken, isWellFormedToken } from './tokens.js';
 import type { AuthenticatedUser, Realm } from './types.js';
-import { EmailTakenError, isUniqueViolation, newUserSchema, PasswordPolicyError } from './users.js';
+import {
+  EmailTakenError,
+  isUniqueViolation,
+  newUserSchema,
+  PasswordPolicyError,
+  type UserBasics,
+} from './users.js';
 
 // Admin invitations and the admin users list (ADR 0028). An invited admin has an account with
 // no password, so it cannot sign in; the emailed link sets one. Accepting does not sign them in:
@@ -231,16 +237,11 @@ export async function enableUser(db: Database, userId: string): Promise<void> {
     .where(eq(users.id, z.uuid().parse(userId)));
 }
 
-export interface UserSummary {
-  id: string;
-  email: string;
-  displayName: string;
-  status: 'active' | 'disabled';
+export interface UserSummary extends UserBasics {
   /** No password yet: invited and not accepted. */
   invited: boolean;
   /** An authenticator app is set up and confirmed. */
   twoFactor: boolean;
-  lastLoginAt: Date | null;
 }
 
 const summaryColumns = {

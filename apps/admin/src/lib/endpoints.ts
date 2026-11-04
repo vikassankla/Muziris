@@ -38,6 +38,16 @@ const buyerUserSchema = z.object({
 });
 export type BuyerUser = z.infer<typeof buyerUserSchema>;
 
+/** A buyer user as the customer's list shows it; the identity fields are null if the account is gone. */
+const buyerUserRowSchema = buyerUserSchema.extend({
+  displayName: z.string().nullable(),
+  email: z.string().nullable(),
+  status: z.enum(['active', 'disabled']).nullable(),
+  lastSignInAt: z.string().nullable(),
+  buyerRoles: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+export type BuyerUserRow = z.infer<typeof buyerUserRowSchema>;
+
 const invitationSchema = z.object({
   id: z.string(),
   customerId: z.string(),
@@ -377,11 +387,11 @@ export function listBuyerUsers(
   customerId: string,
   after: string | undefined,
   signal?: AbortSignal,
-): Promise<Page<BuyerUser>> {
+): Promise<Page<BuyerUserRow>> {
   return page(
     `/customers/${id(customerId)}/buyer-users`,
     'buyerUsers',
-    buyerUserSchema,
+    buyerUserRowSchema,
     pageQuery(after, 100),
     signal,
   );

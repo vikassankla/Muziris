@@ -4,7 +4,8 @@ import { BEARING, makeCustomer } from '../src/world.js';
 import { expect, quickOrderCheckout, test } from './fixtures.js';
 
 // Journey 1 (ADR 0024): an admin invites a buyer, who sets a password, orders on payment terms
-// and gets the order email; the admin confirms the order and finds it on the customer.
+// and gets the order email; the admin confirms the order and finds it on the customer, then
+// finds the buyer by name on its Buyer users tab, with the role the invitation gave and a sign-in.
 test('invitation to order', async ({ admin, shop, db }) => {
   const customer = await makeCustomer(db, { name: 'Kaveri Engineering', buyer: false });
 
@@ -38,4 +39,11 @@ test('invitation to order', async ({ admin, shop, db }) => {
   await admin.getByRole('link', { name: number }).click();
   await admin.getByRole('button', { name: /confirm/i }).click();
   await expect(admin.getByText(/confirmed the order/)).toBeVisible();
+
+  await admin.goto(`/customers/${customer.id}?tab=buyer-users`);
+  const buyer = admin.getByRole('row', { name: /Priya Nair/ });
+  await expect(buyer.getByRole('cell').nth(1)).toHaveText(customer.email);
+  await expect(buyer.getByRole('cell').nth(2)).toHaveText('Buyer');
+  await expect(buyer.getByRole('cell').nth(3)).toHaveText('Active');
+  await expect(buyer.getByRole('cell').nth(4)).not.toHaveText('Never');
 });

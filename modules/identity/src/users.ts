@@ -95,6 +95,35 @@ export async function findUserById(
   return row ? toAuthenticatedUser(row) : undefined;
 }
 
+/** What an admin list shows about any user. */
+export interface UserBasics {
+  id: string;
+  email: string;
+  displayName: string;
+  status: 'active' | 'disabled';
+  lastLoginAt: Date | null;
+}
+
+/** The users of a realm among the given ids, by id; ids with no such user are left out. */
+export async function findUsersByIds(
+  db: Database,
+  realm: Realm,
+  userIds: readonly string[],
+): Promise<Map<string, UserBasics>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      displayName: users.displayName,
+      status: users.status,
+      lastLoginAt: users.lastLoginAt,
+    })
+    .from(users)
+    .where(and(eq(users.realm, realm), inArray(users.id, [...userIds])));
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
 /** Which of the given users exist in the realm and are active. */
 export async function activeUserIds(
   db: Database,
