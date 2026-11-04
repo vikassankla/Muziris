@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-03
+Last updated: 2026-11-04
 
 ## Goal
 
@@ -40,8 +40,8 @@ with status proposed. ADR 0015 (storefront app) is merged with status proposed. 
 `limit` (at most 200) and `after`.
 
 ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
-accepted by Vikas in chat on 2026-11-04. Not built yet. Both need a second human review under
-CLAUDE.md rule 4 when built.
+accepted by Vikas in chat on 2026-11-04. 0027 is built (item 27, in review); 0028 is not built
+yet. Both need a second human review under CLAUDE.md rule 4.
 
 ## Next, in order (pilot plan)
 
@@ -246,6 +246,19 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
+
+25. Visibility rule screens (ADR 0027; in review, needs a second human review under CLAUDE.md
+    rule 4, since visibility scopes what buyers may see). `/visibility` under Catalog, on the
+    top bar's website: the build banner, rules by name (SKU and name, or a category's path;
+    "Everyone on <website>", a customer group or a customer), filters by subject and target,
+    and a search by SKU, product, category, customer or group name. New rule, a row switch
+    between Visible and Hidden, and delete, for `visibility.manage`; a taken rule offers to
+    change the one already there. "Check a buyer's view" explains one product or category for
+    one customer, and says when the answer waits for a build. The product and customer pages
+    gain a Visibility card linking to the screen filtered to them. The API names subjects and
+    targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
+    `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks
+    two buyers' storefronts.
 
 **Next (ahead of the plan):** the hand-test follow-ups in item 16, each with a journey. Then the
 admin users screen, which needs a button for the two-factor reset.

@@ -68,6 +68,26 @@ There is no design board for visibility.
 
 Nothing changes in the rules, the fallback order, the build or the storefront reads.
 
+### As built
+
+Where the build differs from the plan above, or settles something it left open:
+
+- **Search** matches a product by exact SKU (catalog) or the admin search (`searchProductIds`),
+  a category by its name, and customers and customer groups by name (customers'
+  `customerIdsMatching` and `customerGroupIdsMatching`, at most 1,000 each, with `%`, `_` and
+  `\` taken literally). Rules whose subject or target is among those ids match.
+- **Category paths** read "Power transmission / Bearings" in the API and "Power transmission ›
+  Bearings" in the pickers, as on the Categories screen.
+- **The preview's deciding rule** carries the same names, so the sheet can say "Hidden by the
+  rule on Power transmission for Key accounts".
+- **Pickers** list the first 200 customers and every customer group by name, and products
+  through the admin search, as the price list screens do.
+- **The Visibility cards** show the first 5 rules on the product, or for the customer, on the
+  top bar's website. A product's card shows its own rules, not its categories'; the screen's
+  search finds those.
+- **Filters** live in the URL (`website`, `q`, `subject`, `target`, `subjectId`, `targetId`),
+  so the cards link to the filtered screen.
+
 ### Not built
 
 - **Bulk rules**, such as hiding many products at once, or a CSV import of rules.

@@ -1371,6 +1371,126 @@ export function buildVisibility() {
   return api('/visibility/build', z.unknown(), { method: 'POST' });
 }
 
+export const RULE_SUBJECTS = ['product', 'category'] as const;
+export const RULE_TARGETS = ['website', 'customer_group', 'customer'] as const;
+export const VISIBILITIES = ['visible', 'hidden'] as const;
+export type RuleSubject = (typeof RULE_SUBJECTS)[number];
+export type RuleTarget = (typeof RULE_TARGETS)[number];
+export type Visibility = (typeof VISIBILITIES)[number];
+
+/** A visibility rule, with its subject's and target's names beside the ids (ADR 0027). */
+const visibilityRuleSchema = z.object({
+  id: z.string(),
+  websiteId: z.string(),
+  subject: z.enum(RULE_SUBJECTS),
+  subjectId: z.string(),
+  /** A product's SKU; null for a category, or a product that no longer exists. */
+  subjectSku: z.string().nullable(),
+  /** A product's name or a category's path; null when it no longer exists. */
+  subjectName: z.string().nullable(),
+  target: z.enum(RULE_TARGETS),
+  targetId: z.string(),
+  /** The website's, customer group's or customer's name; null when it no longer exists. */
+  targetName: z.string().nullable(),
+  visibility: z.enum(VISIBILITIES),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type VisibilityRule = z.infer<typeof visibilityRuleSchema>;
+
+export interface VisibilityRuleQuery {
+  websiteId: string;
+  after?: string | undefined;
+  limit?: number | undefined;
+  /** A product SKU or name, a category name, or a customer or customer group name. */
+  q?: string | undefined;
+  subject?: RuleSubject | undefined;
+  subjectId?: string | undefined;
+  target?: RuleTarget | undefined;
+  targetId?: string | undefined;
+}
+
+export function listVisibilityRules(
+  query: VisibilityRuleQuery,
+  signal?: AbortSignal,
+): Promise<Page<VisibilityRule>> {
+  return page(
+    '/visibility/rules',
+    'rules',
+    visibilityRuleSchema,
+    {
+      ...pageQuery(query.after, query.limit ?? PAGE_SIZE),
+      websiteId: query.websiteId,
+      q: query.q,
+      subject: query.subject,
+      subjectId: query.subjectId,
+      target: query.target,
+      targetId: query.targetId,
+    },
+    signal,
+  );
+}
+
+/** The new rule; created rules carry ids only, so this answers with the rule's id. */
+export async function createVisibilityRule(input: {
+  websiteId: string;
+  subject: RuleSubject;
+  subjectId: string;
+  target: RuleTarget;
+  /** Left out for a website target. */
+  targetId?: string;
+  visibility: Visibility;
+}) {
+  return (
+    await api('/visibility/rules', z.object({ rule: z.object({ id: z.string() }) }), {
+      method: 'POST',
+      body: input,
+    })
+  ).rule;
+}
+
+export function updateVisibilityRule(ruleId: string, visibility: Visibility) {
+  return api(`/visibility/rules/${id(ruleId)}`, z.unknown(), {
+    method: 'PATCH',
+    body: { visibility },
+  });
+}
+
+export function deleteVisibilityRule(ruleId: string) {
+  return api(`/visibility/rules/${id(ruleId)}`, none, { method: 'DELETE' });
+}
+
+const visibilityPreviewSchema = z.object({
+  visible: z.boolean(),
+  /** `disabled`: the product or category is switched off in the catalog. */
+  reason: z.enum(['disabled', 'rule', 'default']),
+  rule: visibilityRuleSchema.nullable(),
+  /** For a category rule, how far above the subject's own category it sits (0 = own). */
+  categoryDistance: z.number().nullable(),
+  built: z.object({
+    visible: z.boolean(),
+    context: z.enum(['customer', 'customer_group', 'website', 'default']).nullable(),
+    needsRebuild: z.boolean(),
+  }),
+  pendingChanges: z.number(),
+});
+export type VisibilityPreview = z.infer<typeof visibilityPreviewSchema>;
+
+/** Why a customer can or cannot see a product or a category on a website. */
+export async function previewVisibility(
+  query: { websiteId: string; customerId: string } & (
+    { productId: string; categoryId?: undefined } | { categoryId: string; productId?: undefined }
+  ),
+  signal?: AbortSignal,
+) {
+  return (
+    await api('/visibility/preview', z.object({ preview: visibilityPreviewSchema }), {
+      query,
+      signal,
+    })
+  ).preview;
+}
+
 export const JOB_NAMES = [
   'pricing.build',
   'visibility.build',

@@ -16,6 +16,7 @@ import { EmptyState } from '../components/states.js';
 import { Badge, PlannedTag } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { VisibilityRulesCard } from '../components/visibility.js';
 import {
   Table,
   TableBody,
@@ -419,6 +420,9 @@ function CustomerDetailPage() {
               ) : null}
             </CardContent>
           </Card>
+          {can(session, 'visibility.view') ? (
+            <VisibilityRulesCard customerId={customer.id} />
+          ) : null}
           {data.exemptions !== undefined && sellsInUs ? (
             <ExemptionsCard
               exemptions={data.exemptions}

@@ -314,7 +314,14 @@ describe.skipIf(!url)('visibility routes against PostgreSQL', () => {
         subject: 'product',
         visible: false,
         reason: 'rule',
-        rule: { target: 'website', subject: 'category', subjectId: w.bearings.id },
+        rule: {
+          target: 'website',
+          subject: 'category',
+          subjectId: w.bearings.id,
+          // Named, for "Hidden by the rule on … for …" (ADR 0027).
+          subjectName: expect.any(String) as unknown,
+          targetName: expect.any(String) as unknown,
+        },
         categoryDistance: 0,
         built: { visible: false, context: 'website', needsRebuild: false },
         pendingChanges: 0,
@@ -351,6 +358,66 @@ describe.skipIf(!url)('visibility routes against PostgreSQL', () => {
     expect(gone.status).toBe(404);
     expect(await gone.json()).toMatchObject({ code: 'rule_not_found' });
     expect(logs.join('')).toContain('visibility.rule_deleted');
+  });
+
+  it('names subjects and targets beside their ids, and finds rules by name or SKU', async () => {
+    const w = await inWorld();
+    const asha = await signedInAdmin('asha@acme.example', ['visibility.view', 'visibility.manage']);
+    const ball = await createCategory(handle.db, {
+      code: 'ball',
+      name: 'Ball bearings',
+      parentId: w.bearings.id,
+    });
+    const rule = (body: Record<string, unknown>) =>
+      call('POST', '/rules', asha, { websiteId: w.website.id, ...body });
+    await rule({
+      subject: 'category',
+      subjectId: ball.id,
+      target: 'website',
+      visibility: 'hidden',
+    });
+    await rule({
+      subject: 'category',
+      subjectId: ball.id,
+      target: 'customer_group',
+      targetId: w.distributors.id,
+      visibility: 'visible',
+    });
+    await rule({
+      subject: 'product',
+      subjectId: w.glove.id,
+      target: 'customer',
+      targetId: w.retailer.id,
+      visibility: 'hidden',
+    });
+
+    interface Named {
+      subject: string;
+      subjectSku: string | null;
+      subjectName: string | null;
+      target: string;
+      targetName: string | null;
+    }
+    const list = async (query: string) =>
+      (await json<{ rules: Named[] }>(await call('GET', `/rules?${query}`, asha))).rules.map(
+        (r) => [r.subjectSku, r.subjectName, r.targetName],
+      );
+    // Customer first, then customer group, then website: the order the levels are tried in.
+    expect(await list(`websiteId=${w.website.id}`)).toEqual([
+      ['GLV-NITRILE-L', 'Nitrile gloves, large', 'Kochi Hardware'],
+      [null, 'Bearings / Ball bearings', 'Distributors'],
+      [null, 'Bearings / Ball bearings', 'Muziris India'],
+    ]);
+    expect(await list('q=glv-nitrile-l')).toEqual([
+      ['GLV-NITRILE-L', 'Nitrile gloves, large', 'Kochi Hardware'],
+    ]);
+    expect(await list('q=kochi')).toEqual([
+      ['GLV-NITRILE-L', 'Nitrile gloves, large', 'Kochi Hardware'],
+    ]);
+    expect(await list('q=DISTRIB')).toEqual([[null, 'Bearings / Ball bearings', 'Distributors']]);
+    expect(await list('q=ball bear')).toHaveLength(2);
+    // % is a character to find, not a wildcard.
+    expect(await list('q=%')).toEqual([]);
   });
 
   it('answers problems for refused and invalid requests', async () => {
