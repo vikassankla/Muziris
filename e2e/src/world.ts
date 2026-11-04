@@ -35,10 +35,17 @@ export const GLOVES = { sku: 'GLV-NITRILE-L', name: 'Nitrile gloves, large' };
 /** Ordered from a shopping list, then disabled (catalog-changes.spec.ts). */
 export const SEAL = { sku: 'SEAL-TC-35', name: 'Oil seal TC 35x52x7' };
 
-async function product(db: Database, sku: string, name: string, hsnSacCode: string) {
+async function product(
+  db: Database,
+  sku: string,
+  name: string,
+  hsnSacCode: string,
+  categoryId: string | null = null,
+) {
   return createProduct(db, {
     sku,
     name,
+    categoryId,
     status: 'enabled',
     attributes: {},
     primaryUnitCode: 'each',
@@ -194,10 +201,16 @@ export async function contractPrice(
  */
 export async function makeProduct(
   db: Database,
-  input: { sku: string; name: string; hsnSacCode: string; amount: string },
+  input: {
+    sku: string;
+    name: string;
+    hsnSacCode: string;
+    amount: string;
+    categoryId?: string;
+  },
 ): Promise<Product> {
   const site = await findWebsite(db);
-  const made = await product(db, input.sku, input.name, input.hsnSacCode);
+  const made = await product(db, input.sku, input.name, input.hsnSacCode, input.categoryId);
   const list = await createPriceList(db, { name: `List ${input.sku}`, currency: 'INR' });
   await addPrice(db, list.id, {
     productId: made.id,

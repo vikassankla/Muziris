@@ -40,8 +40,9 @@ with status proposed. ADR 0015 (storefront app) is merged with status proposed. 
 `limit` (at most 200) and `after`.
 
 ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
-accepted by Vikas in chat on 2026-11-04. 0028 is built (item 28, in review). Both need a second
-human review under CLAUDE.md rule 4.
+accepted by Vikas in chat on 2026-11-04 (PR 54, merged 2026-11-04 as 636a17a). 0027 is built
+(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (item 26, in review). Both need a
+second human review under CLAUDE.md rule 4.
 
 ## Next, in order (pilot plan)
 
@@ -247,7 +248,21 @@ review).
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
 
-25. Admin users screen and admin invitations (ADR 0028; in review, needs a second human review
+25. Visibility rule screens (ADR 0027; PR 55, merged 2026-11-04 as 90f98c8, approved by Vikas
+    in chat; needs a second human review under CLAUDE.md
+    rule 4, since visibility scopes what buyers may see). `/visibility` under Catalog, on the
+    top bar's website: the build banner, rules by name (SKU and name, or a category's path;
+    "Everyone on <website>", a customer group or a customer), filters by subject and target,
+    and a search by SKU, product, category, customer or group name. New rule, a row switch
+    between Visible and Hidden, and delete, for `visibility.manage`; a taken rule offers to
+    change the one already there. "Check a buyer's view" explains one product or category for
+    one customer, and says when the answer waits for a build. The product and customer pages
+    gain a Visibility card linking to the screen filtered to them. The API names subjects and
+    targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
+    `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks
+    two buyers' storefronts.
+
+26. Admin users screen and admin invitations (ADR 0028; in review, needs a second human review
     under CLAUDE.md rule 4: authentication and access control). `/admin-users` under System
     for `admin_user.view`: name, email, admin roles, two-factor, status (Active, Invited,
     Disabled) and last sign-in. Inviting makes an account with no password, gives the roles
@@ -259,8 +274,9 @@ review).
     enable. New setting `ADMIN_PUBLIC_URL`, required in production. Journey 8 invites an admin,
     accepts from Mailpit, enrols, and is disabled.
 
-**Next (ahead of the plan):** the hand-test follow-ups in item 16, each with a journey. Then the
-admin users screen, which needs a button for the two-factor reset.
+**Next (ahead of the plan):** the security pass, then launch prep (a deployment recipe with an
+ADR, the install guide finished, the Stripe and Razorpay test-mode run, and the hand checks of
+items 13 to 15).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
