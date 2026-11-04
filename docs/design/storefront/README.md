@@ -46,4 +46,7 @@ They are design data only.
 - **Counts.** Lists page by SKU with `nextAfter` and have no total, so the boards say "Showing 10
   products", not "1 to 10 of 240".
 - **Product images** are not in the catalog yet (ADR 0009), so the boards have none.
-- **Ordering** (shopping lists, quick order, checkout) is week 4; the boards have no cart.
+- **Ordering** (shopping lists, quick order, checkout) came after the boards, which have no
+  cart. The product page's price box adds **Order now**, which hands the one line to checkout in
+  memory as quick order does (ADR 0018), and **Add to shopping list**, with quick order's list
+  picker. Order now needs a price; a list takes the line either way.

@@ -41,8 +41,8 @@ with status proposed. ADR 0015 (storefront app) is merged with status proposed. 
 
 ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
 accepted by Vikas in chat on 2026-11-04 (PR 54, merged 2026-11-04 as 636a17a). 0027 is built
-(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (item 26, in review). Both need a
-second human review under CLAUDE.md rule 4.
+(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (item 26, PR 56, merged 2026-11-04
+as 3a8543f). Both need a second human review under CLAUDE.md rule 4.
 
 ## Next, in order (pilot plan)
 
@@ -204,8 +204,8 @@ review).
     - Checked and working by hand: price CSV import and export, tier prices after a build, GST
       CGST plus SGST within a state, invitation and order emails in Mailpit, accepting an
       invitation, and confirming an order.
-    - Follow-ups: an order or add-to-list button on the storefront product page; names, not
-      ids, in the customer's buyer users tab; admin screens for visibility rules.
+    - Follow-ups: an order or add-to-list button on the storefront product page (item 25);
+      names, not ids, in the customer's buyer users tab; admin screens for visibility rules.
 
 17. Known-answer tests for a whole checkout (PR 39, merged 2026-11-03 as b0c5cb0, approved by
     Vikas in chat, with no second review recorded; pricing and tax tests, so CLAUDE.md rule 4
@@ -261,10 +261,9 @@ review).
     targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
     `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks
     two buyers' storefronts.
-
-26. Admin users screen and admin invitations (ADR 0028; in review, needs a second human review
-    under CLAUDE.md rule 4: authentication and access control). `/admin-users` under System
-    for `admin_user.view`: name, email, admin roles, two-factor, status (Active, Invited,
+26. Admin users screen and admin invitations (ADR 0028; PR 56, merged 2026-11-04 as 3a8543f,
+    approved by Vikas in chat; needs a second human review under CLAUDE.md rule 4:
+    authentication and access control). `/admin-users` under System for `admin_user.view`: name, email, admin roles, two-factor, status (Active, Invited,
     Disabled) and last sign-in. Inviting makes an account with no password, gives the roles
     the inviter may give, and emails a one-time link to `/accept-invitation` in the admin app,
     good for 72 hours (`identity_invitation`, migration `0020`, new email kind
@@ -273,10 +272,17 @@ review).
     two-factor (not your own), disable (not yourself, never the last active administrator) and
     enable. New setting `ADMIN_PUBLIC_URL`, required in production. Journey 8 invites an admin,
     accepts from Mailpit, enrols, and is disabled.
+27. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
+    review** (PR 52, branch `feature/product-page-actions`). The price box gains **Order now** (the
+    unit and quantity go to checkout as one line, in memory as from quick order) and **Add to
+    shopping list** (pick a list or name a new one; the page links to it). Quick order and the
+    product page share the list picker and `addToShoppingList`. No API change. Journey 6
+    (`e2e/tests/product-page.spec.ts`) saves a product to a new list and orders it from its
+    page.
 
-**Next (ahead of the plan):** the security pass, then launch prep (a deployment recipe with an
-ADR, the install guide finished, the Stripe and Razorpay test-mode run, and the hand checks of
-items 13 to 15).
+**Next (ahead of the plan):** the other hand-test follow-up in item 16 (names in the buyer users
+tab, PR 53). Then the security pass and launch prep (a deployment recipe with an ADR, the install
+guide finished, the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

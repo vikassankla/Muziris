@@ -1,28 +1,45 @@
-import { createRoute, Link } from '@tanstack/react-router';
+import { createRoute, Link, useNavigate } from '@tanstack/react-router';
+import { ShoppingCart } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
+import { ListPicker } from '../components/list-picker.js';
 import { PRICE_ON_REQUEST } from '../components/product-list.js';
 import { ErrorState, ProductNotFound } from '../components/states.js';
 import { Alert } from '../components/ui/alert.js';
 import { Tag } from '../components/ui/badge.js';
-import { buttonVariants } from '../components/ui/button.js';
+import { Button, buttonVariants } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { Input, Select } from '../components/ui/input.js';
 import { Label } from '../components/ui/label.js';
 import { isApiProblem, runOperation, type ApiProblem } from '../lib/api.js';
+import { handToCheckout, type CheckoutLine } from '../lib/checkout.js';
 import { checkQuantity, formatPrice, lineTotal } from '../lib/format.js';
 import { signInOn401 } from '../lib/guard.js';
-import { Product, ProductPrice, type ProductResult } from '../operations/generated.js';
+import { addToShoppingList, NEW_LIST } from '../lib/shopping-lists.js';
+import {
+  Product,
+  ProductPrice,
+  ShoppingLists,
+  type ProductResult,
+  type ShoppingListsResult,
+} from '../operations/generated.js';
 import { authedRoute } from './authed.js';
 
 type FoundProduct = NonNullable<ProductResult['product']>;
 type Price = FoundProduct['price'];
+type Lists = ShoppingListsResult['shoppingLists']['nodes'];
 
 export const productRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/p/$sku',
   loader: async ({ params, location, abortController }) => {
+    const signal = abortController.signal;
     try {
-      return await runOperation(Product, { sku: params.sku }, { signal: abortController.signal });
+      // The lists to add to: the 50 most recently changed are enough to pick from.
+      const [{ product }, { shoppingLists }] = await Promise.all([
+        runOperation(Product, { sku: params.sku }, { signal }),
+        runOperation(ShoppingLists, { first: 50 }, { signal }),
+      ]);
+      return { product, lists: shoppingLists.nodes };
     } catch (error) {
       return signInOn401(error, location.href);
     }
@@ -31,7 +48,7 @@ export const productRoute = createRoute({
 });
 
 function ProductPage() {
-  const { product } = productRoute.useLoaderData();
+  const { product, lists } = productRoute.useLoaderData();
   const { tree } = authedRoute.useRouteContext();
 
   if (!product) {
@@ -127,7 +144,7 @@ function ProductPage() {
             </CardContent>
           </Card>
         </section>
-        <PriceBox product={product} />
+        <PriceBox product={product} lists={lists} />
       </div>
     </>
   );
@@ -144,7 +161,7 @@ type Answer =
  * once the quantity fits the unit. The quantity is checked here first; a BAD_USER_INPUT from the
  * API is shown under the field too. One of the primary unit is the price the page loaded with.
  */
-function PriceBox({ product }: { product: FoundProduct }) {
+function PriceBox({ product, lists }: { product: FoundProduct; lists: Lists }) {
   const { shell } = authedRoute.useRouteContext();
   const locale = shell.website.locale;
   const [unitCode, setUnitCode] = useState(product.primaryUnit.code);
@@ -308,10 +325,121 @@ function PriceBox({ product }: { product: FoundProduct }) {
         ) : (
           <span className="text-meta text-muted-foreground">Checking your price…</span>
         )}
+        <LineActions
+          line={
+            quantity === undefined || fieldError !== undefined
+              ? undefined
+              : { productId: product.id, unitCode, quantity }
+          }
+          priced={price !== null}
+          lists={lists}
+        />
         <p className="m-0 text-xs text-muted-foreground">
           {shell.website.currency}, excluding GST. Quantity breaks apply per order line.
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+type Outcome =
+  | { kind: 'added'; listId: string; listName: string }
+  | { kind: 'refused'; message: string }
+  | { kind: 'failed'; error: unknown };
+
+function sameLine(a: CheckoutLine, b: CheckoutLine): boolean {
+  return a.productId === b.productId && a.unitCode === b.unitCode && a.quantity === b.quantity;
+}
+
+/**
+ * What a buyer does with the unit and quantity in the price box: order it now (checkout gets
+ * the one line in memory, as from quick order) or add it to a shopping list. Ordering needs a
+ * price; a list takes the line either way. A message about one line goes away when the buyer
+ * changes the unit or quantity.
+ */
+function LineActions({
+  line,
+  priced,
+  lists,
+}: {
+  line: CheckoutLine | undefined;
+  priced: boolean;
+  lists: Lists;
+}) {
+  const navigate = useNavigate();
+  const [target, setTarget] = useState(lists[0]?.id ?? NEW_LIST);
+  const [newName, setNewName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ line: CheckoutLine; outcome: Outcome }>();
+  const outcome = result && line && sameLine(result.line, line) ? result.outcome : undefined;
+
+  function orderNow() {
+    if (!line) return;
+    handToCheckout([line]);
+    void navigate({ to: '/checkout', search: {} });
+  }
+
+  async function addToList() {
+    if (!line) return;
+    setBusy(true);
+    setResult(undefined);
+    try {
+      const added = await addToShoppingList(target, newName, [line]);
+      setResult({
+        line,
+        outcome: added.ok
+          ? { kind: 'added', listId: added.listId, listName: added.listName }
+          : { kind: 'refused', message: added.message },
+      });
+    } catch (error) {
+      setResult({ line, outcome: { kind: 'failed', error } });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 border-t pt-4">
+      <Button className="h-11 md:h-control" disabled={!line || !priced || busy} onClick={orderNow}>
+        <ShoppingCart aria-hidden="true" />
+        Order now
+      </Button>
+      <ListPicker
+        lists={lists}
+        target={target}
+        onTarget={setTarget}
+        newName={newName}
+        onNewName={setNewName}
+      />
+      <Button
+        variant="outline"
+        className="h-11 md:h-control"
+        disabled={!line || busy || (target === NEW_LIST && newName.trim() === '')}
+        onClick={() => void addToList()}
+      >
+        Add to shopping list
+      </Button>
+      {outcome?.kind === 'added' ? (
+        <Alert variant="info" role="status">
+          <span>
+            Added to {outcome.listName}.{' '}
+            <Link
+              to="/lists/$listId"
+              params={{ listId: outcome.listId }}
+              search={{}}
+              className="font-semibold text-inherit underline underline-offset-2"
+            >
+              View list
+            </Link>
+          </span>
+        </Alert>
+      ) : outcome?.kind === 'refused' ? (
+        <Alert variant="destructive" role="alert">
+          <span>{outcome.message}</span>
+        </Alert>
+      ) : outcome?.kind === 'failed' ? (
+        <ErrorState error={outcome.error} />
+      ) : null}
+    </div>
   );
 }
