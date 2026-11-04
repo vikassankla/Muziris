@@ -39,6 +39,11 @@ ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. AD
 with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. ADRs 0021 (websites, settings and first-run setup), 0022 (price list screens) and 0023 (tax screens) are merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
+ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
+accepted by Vikas in chat on 2026-11-04 (PR 54, merged 2026-11-04 as 636a17a). 0027 is built
+(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (item 26, PR 56, merged 2026-11-04
+as 3a8543f). Both need a second human review under CLAUDE.md rule 4.
+
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
@@ -199,8 +204,9 @@ review).
     - Checked and working by hand: price CSV import and export, tier prices after a build, GST
       CGST plus SGST within a state, invitation and order emails in Mailpit, accepting an
       invitation, and confirming an order.
-    - Follow-ups: an order or add-to-list button on the storefront product page; names, not
-      ids, in the customer's buyer users tab (item 26); admin screens for visibility rules.
+    - Follow-ups: an order or add-to-list button on the storefront product page (item 27);
+      names, not ids, in the customer's buyer users tab (item 28); admin screens for visibility
+      rules (item 25).
 
 17. Known-answer tests for a whole checkout (PR 39, merged 2026-11-03 as b0c5cb0, approved by
     Vikas in chat, with no second review recorded; pricing and tax tests, so CLAUDE.md rule 4
@@ -242,7 +248,37 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
-25. Buyer users by name (second hand-test follow-up in item 16). **In review** (branch
+25. Visibility rule screens (ADR 0027; PR 55, merged 2026-11-04 as 90f98c8, approved by Vikas in
+    chat; needs a second human review under CLAUDE.md rule 4, since visibility scopes what buyers
+    may see). `/visibility` under Catalog, on the top bar's website: the build banner, rules by name
+    (SKU and name, or a category's path; "Everyone on <website>", a customer group or a customer),
+    filters by subject and target, and a search by SKU, product, category, customer or group name.
+    New rule, a row switch between Visible and Hidden, and delete, for `visibility.manage`; a taken
+    rule offers to change the one already there. "Check a buyer's view" explains one product or
+    category for one customer, and says when the answer waits for a build. The product and customer
+    pages gain a Visibility card linking to the screen filtered to them. The API names subjects and
+    targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
+    `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks two
+    buyers' storefronts.
+26. Admin users screen and admin invitations (ADR 0028; PR 56, merged 2026-11-04 as 3a8543f,
+    approved by Vikas in chat; needs a second human review under CLAUDE.md rule 4: authentication
+    and access control). `/admin-users` under System for `admin_user.view`: name, email, admin
+    roles, two-factor, status (Active, Invited, Disabled) and last sign-in. Inviting makes an
+    account with no password, gives the roles the inviter may give, and emails a one-time link to
+    `/accept-invitation` in the admin app, good for 72 hours (`identity_invitation`, migration
+    `0020`, new email kind `admin_invitation`). Accepting sets the password only; the admin then
+    signs in and enrols a second factor. Row actions: change admin roles, send the invitation again,
+    reset two-factor (not your own), disable (not yourself, never the last active administrator) and
+    enable. New setting `ADMIN_PUBLIC_URL`, required in production. Journey 8 invites an admin,
+    accepts from Mailpit, enrols, and is disabled.
+27. Ordering from the storefront product page (first hand-test follow-up in item 16). PR 52,
+    merged 2026-11-04 as 5bf6b90, approved by Vikas in chat. The price box gains **Order now** (the
+    unit and quantity go to checkout as one line, in memory as from quick order) and **Add to
+    shopping list** (pick a list or name a new one; the page links to it). Quick order and the
+    product page share the list picker and `addToShoppingList`. No API change. Journey 6
+    (`e2e/tests/product-page.spec.ts`) saves a product to a new list and orders it from its
+    page.
+28. Buyer users by name (second hand-test follow-up in item 16). **In review** (PR 53, branch
     `feature/buyer-user-names`). It reads buyer role assignments, so CLAUDE.md rule 4 asks for
     a second human review. Identity gains `findUsersByIds` and access gains
     `buyerRolesOfUsers`; `GET /admin/v1/customers/:id/buyer-users` adds each user's name,
@@ -250,8 +286,9 @@ review).
     Buyer users tab shows them as the board does (Name, Email, Buyer roles, Status, Last
     sign-in); a user with no account left shows by id. Journey 1 now checks the tab.
 
-**Next (ahead of the plan):** the hand-test follow-ups in item 16, each with a journey. Then the
-admin users screen, which needs a button for the two-factor reset.
+**Next (ahead of the plan):** the security pass, then launch prep (a deployment recipe with an
+ADR, the install guide finished, the Stripe and Razorpay test-mode run, and the hand checks of
+items 13 to 15).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -271,8 +308,10 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   data protection and residency decisions. The foundations (websites with country, currency,
   locale, time zone and units; exact money; price lists per currency) already work per country.
 
-- Admin two-factor sign-in (ADR 0026): no passkeys, no remembered devices, and the reset has
-  no admin screen until the admin users screen exists.
+- Admin two-factor sign-in (ADR 0026): no passkeys, no remembered devices.
+- Admin users (ADR 0028): no password reset ("forgot password") for admins or buyers, no
+  editing an admin's name or email, no deleting admins. Two admins disabled at the same moment
+  could both pass the last-administrator check; `admin:create` recovers.
 - Job runner (ADR 0025): no admin action retries or removes a failed job; the Jobs screen only
   lists them. pg-boss keeps finished jobs for its default retention.
 - Pricing (ADR 0011): the build is a full rebuild and makes price list writes wait while it
@@ -312,7 +351,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   are seeded; an admin creates `each` and the others before the first product.
 - Admin app: designed in `docs/design/admin` but waiting on APIs: RFQs,
   QuoteEditor, the Home dashboard widgets,
-  Admin users, and the customer detail tabs for orders, quotes, price lists, settings
+  and the customer detail tabs for orders, quotes, price lists, settings
   overrides and payment term (the Settings screen covers a customer's overrides). Their sidebar
   items stay hidden until the APIs exist. The price list screens have no "vs. list price"
   column, import history or Activity tab (ADR 0022).

@@ -141,6 +141,13 @@
       "when": 1793700863551,
       "tag": "0019_identity_two_factor",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793777896059,
+      "tag": "0020_admin_invitations",
+      "breakpoints": true
     }
   ]
 }

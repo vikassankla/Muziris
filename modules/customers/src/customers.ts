@@ -275,3 +275,34 @@ export async function customerGroupNames(
     .where(inArray(customerGroups.id, ids));
   return new Map(rows.map((r) => [r.id, r.name]));
 }
+
+/** `%` and `_` match themselves, so typed text is searched as written. */
+function containsPattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+const searchTextSchema = z.string().trim().min(1).max(200);
+
+/** Ids of customers whose name contains the text, ignoring case: at most 1,000, by name. */
+export async function customerIdsMatching(db: Database, text: string): Promise<string[]> {
+  const pattern = containsPattern(searchTextSchema.parse(text));
+  const rows = await db
+    .select({ id: customers.id })
+    .from(customers)
+    .where(sql`${customers.name} ilike ${pattern} escape '\\'`)
+    .orderBy(asc(customers.name), asc(customers.id))
+    .limit(1000);
+  return rows.map((r) => r.id);
+}
+
+/** Ids of customer groups whose name contains the text, ignoring case: at most 1,000. */
+export async function customerGroupIdsMatching(db: Database, text: string): Promise<string[]> {
+  const pattern = containsPattern(searchTextSchema.parse(text));
+  const rows = await db
+    .select({ id: customerGroups.id })
+    .from(customerGroups)
+    .where(sql`${customerGroups.name} ilike ${pattern} escape '\\'`)
+    .orderBy(asc(customerGroups.name), asc(customerGroups.id))
+    .limit(1000);
+  return rows.map((r) => r.id);
+}

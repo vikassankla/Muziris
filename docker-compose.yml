@@ -12,6 +12,7 @@ x-api-env: &api-env
   SMTP_URL: smtp://mailpit:1025
   MAIL_FROM: ${MAIL_FROM:-Muziris <no-reply@muziris.localhost>}
   STOREFRONT_PUBLIC_URL: http://localhost:8081
+  ADMIN_PUBLIC_URL: http://localhost:8080
   STOREFRONT_WEBSITE: ${STOREFRONT_WEBSITE:-main}
   STOREFRONT_PERSISTED_QUERIES: ../storefront/persisted-queries.json
   # Test-mode payment keys pass through from .env when set (ADR 0019).

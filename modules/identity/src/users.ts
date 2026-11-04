@@ -39,7 +39,7 @@ function toAuthenticatedUser(row: typeof users.$inferSelect): AuthenticatedUser 
   return { id: row.id, realm: row.realm, email: row.email, displayName: row.displayName };
 }
 
-function isUniqueViolation(error: unknown): boolean {
+export function isUniqueViolation(error: unknown): boolean {
   // postgres.js puts the SQLSTATE on `code`; drizzle may wrap it in `cause`.
   const candidates = [error, (error as { cause?: unknown } | null)?.cause];
   return candidates.some(
@@ -95,8 +95,8 @@ export async function findUserById(
   return row ? toAuthenticatedUser(row) : undefined;
 }
 
-/** What an admin list shows about a user. */
-export interface UserSummary {
+/** What an admin list shows about any user. */
+export interface UserBasics {
   id: string;
   email: string;
   displayName: string;
@@ -109,7 +109,7 @@ export async function findUsersByIds(
   db: Database,
   realm: Realm,
   userIds: readonly string[],
-): Promise<Map<string, UserSummary>> {
+): Promise<Map<string, UserBasics>> {
   if (userIds.length === 0) return new Map();
   const rows = await db
     .select({

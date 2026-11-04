@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { quickOrderLines } from '../lib/checkout.js';
 import type { ProductResult } from '../operations/generated.js';
 import { data, mockApi, signedIn, renderApp, type MockRequest } from '../test/mock-api.js';
 
@@ -51,11 +52,50 @@ function priceFor(request: MockRequest) {
   });
 }
 
-function setup(product: ProductResult['product'] = PRODUCT) {
+const LISTS = [
+  {
+    id: 'l1',
+    name: 'Site A monthly',
+    lineCount: 4,
+    isOwn: true,
+    updatedAt: '2026-11-01T10:00:00Z',
+  },
+  { id: 'l2', name: 'Spares', lineCount: 0, isOwn: true, updatedAt: '2026-10-20T10:00:00Z' },
+];
+
+function addLines(request: MockRequest) {
+  const v = request.variables ?? {};
+  if (v['listId'] === 'l2') {
+    return data({
+      addShoppingListLines: {
+        list: null,
+        refusal: {
+          code: 'INVALID_LINES',
+          message: 'Some lines cannot be added.',
+          lines: [
+            { index: 0, code: 'NOT_FOUND', message: 'This product is not available to you.' },
+          ],
+        },
+      },
+    });
+  }
+  const list = LISTS.find((l) => l.id === v['listId']) ?? { id: v['listId'], name: 'Site B' };
+  return data({
+    addShoppingListLines: { list: { id: list.id, name: list.name, lineCount: 1 }, refusal: null },
+  });
+}
+
+function setup(product: ProductResult['product'] = PRODUCT, lists = LISTS) {
   const requests = mockApi({
     ...signedIn(),
     'GraphQL Product': () => data({ product }),
     'GraphQL ProductPrice': priceFor,
+    'GraphQL ShoppingLists': () => data({ shoppingLists: { nodes: lists, nextAfter: null } }),
+    'GraphQL CreateShoppingList': () =>
+      data({
+        createShoppingList: { list: { id: 'l3', name: 'Site B', lineCount: 0 }, refusal: null },
+      }),
+    'GraphQL AddShoppingListLines': addLines,
   });
   const view = renderApp(`/p/${encodeURIComponent(product?.sku ?? 'NOPE')}`);
   return { requests, ...view };
@@ -145,5 +185,105 @@ describe('the product page', () => {
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Search products' })).toBeTruthy();
     });
+  });
+});
+
+describe('ordering from the product page', () => {
+  it('hands the unit and quantity to checkout as one line', async () => {
+    const { router } = setup();
+    const quantity = await screen.findByLabelText('Quantity');
+    const user = userEvent.setup();
+    await user.clear(quantity);
+    await user.type(quantity, '250.5');
+    await within(priceBox()).findByText('₹38.00');
+    await user.click(within(priceBox()).getByRole('button', { name: 'Order now' }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/checkout');
+    });
+    expect(quickOrderLines()).toEqual([{ productId: 'p1', unitCode: 'M', quantity: '250.5' }]);
+  });
+
+  it('cannot order without a price or a quantity that fits', async () => {
+    setup();
+    const user = userEvent.setup();
+    await user.selectOptions(await screen.findByLabelText('Unit'), 'ROLL');
+    await within(priceBox()).findByText('Price on request.');
+    const order = within(priceBox()).getByRole<HTMLButtonElement>('button', { name: 'Order now' });
+    expect(order.disabled).toBe(true);
+    // A list still takes a line without a price.
+    expect(
+      within(priceBox()).getByRole<HTMLButtonElement>('button', { name: 'Add to shopping list' })
+        .disabled,
+    ).toBe(false);
+
+    const quantity = screen.getByLabelText('Quantity');
+    await user.clear(quantity);
+    await user.type(quantity, '2.5');
+    expect(order.disabled).toBe(true);
+    expect(
+      within(priceBox()).getByRole<HTMLButtonElement>('button', { name: 'Add to shopping list' })
+        .disabled,
+    ).toBe(true);
+  });
+});
+
+describe('adding to a shopping list from the product page', () => {
+  it('adds the line to the most recent list and links to it', async () => {
+    const { requests } = setup();
+    const user = userEvent.setup();
+    await screen.findByLabelText('Quantity');
+    await user.click(
+      await within(priceBox()).findByRole('button', { name: 'Add to shopping list' }),
+    );
+    const status = await within(priceBox()).findByRole('status');
+    expect(status.textContent).toBe('Added to Site A monthly. View list');
+    expect(within(status).getByRole('link', { name: 'View list' }).getAttribute('href')).toBe(
+      '/lists/l1',
+    );
+    expect(requests.find((r) => r.operationName === 'AddShoppingListLines')?.variables).toEqual({
+      listId: 'l1',
+      lines: [{ productId: 'p1', unitCode: 'M', quantity: '1' }],
+    });
+  });
+
+  it('makes a new list with the name typed', async () => {
+    const { requests } = setup(PRODUCT, []);
+    const user = userEvent.setup();
+    await screen.findByLabelText('Quantity');
+    const add = await within(priceBox()).findByRole<HTMLButtonElement>('button', {
+      name: 'Add to shopping list',
+    });
+    // With no lists yet, the picker starts on a new list, which needs a name.
+    expect(add.disabled).toBe(true);
+    await user.type(screen.getByLabelText('List name'), '  Site B ');
+    await user.click(add);
+    expect((await within(priceBox()).findByRole('status')).textContent).toContain(
+      'Added to Site B.',
+    );
+    expect(requests.find((r) => r.operationName === 'CreateShoppingList')?.variables).toEqual({
+      name: 'Site B',
+    });
+    expect(requests.find((r) => r.operationName === 'AddShoppingListLines')?.variables).toEqual({
+      listId: 'l3',
+      lines: [{ productId: 'p1', unitCode: 'M', quantity: '1' }],
+    });
+  });
+
+  it('shows the refusal, and clears it when the quantity changes', async () => {
+    setup();
+    const user = userEvent.setup();
+    await user.selectOptions(await screen.findByLabelText('Shopping list'), 'l2');
+    await user.click(within(priceBox()).getByRole('button', { name: 'Add to shopping list' }));
+    expect((await within(priceBox()).findByRole('alert')).textContent).toBe(
+      'This product is not available to you.',
+    );
+    const quantity = screen.getByLabelText('Quantity');
+    await user.clear(quantity);
+    await user.type(quantity, '3');
+    await waitFor(() => {
+      expect(within(priceBox()).queryByText('This product is not available to you.')).toBeNull();
+    });
+    // The list picked stays picked.
+    expect(screen.getByLabelText<HTMLSelectElement>('Shopping list').value).toBe('l2');
   });
 });
