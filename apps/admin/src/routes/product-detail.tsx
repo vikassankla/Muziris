@@ -17,6 +17,7 @@ import {
 import { Badge, PlannedTag, Tag } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { VisibilityRulesCard } from '../components/visibility.js';
 import { Input } from '../components/ui/input.js';
 import { Kbd } from '../components/ui/misc.js';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group.js';
@@ -579,6 +580,8 @@ function ProductDetailPage() {
           The primary product unit cannot be removed. Choose another primary first.
         </CardContent>
       </Card>
+
+      {can(session, 'visibility.view') ? <VisibilityRulesCard productId={product.id} /> : null}
 
       <Card>
         <CardHeader>

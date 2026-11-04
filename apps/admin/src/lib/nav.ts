@@ -1,5 +1,6 @@
 import {
   Building2,
+  Eye,
   FolderTree,
   Globe,
   House,
@@ -26,6 +27,7 @@ export type NavTo =
   | '/products'
   | '/categories'
   | '/product-units'
+  | '/visibility'
   | '/price-lists'
   | '/admin-roles'
   | '/buyer-roles'
@@ -77,6 +79,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { to: '/products', label: 'Products', icon: Package, permission: 'product.view' },
       { to: '/categories', label: 'Categories', icon: FolderTree, permission: 'product.view' },
       { to: '/product-units', label: 'Product units', icon: Ruler, permission: 'product.view' },
+      { to: '/visibility', label: 'Visibility', icon: Eye, permission: 'visibility.view' },
     ],
   },
   {

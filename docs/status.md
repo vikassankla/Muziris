@@ -39,6 +39,11 @@ ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. AD
 with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. ADRs 0021 (websites, settings and first-run setup), 0022 (price list screens) and 0023 (tax screens) are merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
+ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
+accepted by Vikas in chat on 2026-11-04 (PR 54, merged 2026-11-04 as 636a17a). 0027 is built
+(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (PR 56, in review). Both need a
+second human review under CLAUDE.md rule 4.
+
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
@@ -242,7 +247,20 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
-25. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
+25. Visibility rule screens (ADR 0027; PR 55, merged 2026-11-04 as 90f98c8, approved by Vikas
+    in chat; needs a second human review under CLAUDE.md
+    rule 4, since visibility scopes what buyers may see). `/visibility` under Catalog, on the
+    top bar's website: the build banner, rules by name (SKU and name, or a category's path;
+    "Everyone on <website>", a customer group or a customer), filters by subject and target,
+    and a search by SKU, product, category, customer or group name. New rule, a row switch
+    between Visible and Hidden, and delete, for `visibility.manage`; a taken rule offers to
+    change the one already there. "Check a buyer's view" explains one product or category for
+    one customer, and says when the answer waits for a build. The product and customer pages
+    gain a Visibility card linking to the screen filtered to them. The API names subjects and
+    targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
+    `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks
+    two buyers' storefronts.
+26. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
     review** (branch `feature/product-page-actions`). The price box gains **Order now** (the
     unit and quantity go to checkout as one line, in memory as from quick order) and **Add to
     shopping list** (pick a list or name a new one; the page links to it). Quick order and the
@@ -250,9 +268,9 @@ review).
     (`e2e/tests/product-page.spec.ts`) saves a product to a new list and orders it from its
     page.
 
-**Next (ahead of the plan):** the other hand-test follow-ups in item 16 (names in the buyer users
-tab, visibility rule screens), each with a journey. Then the admin users screen, which needs a
-button for the two-factor reset.
+**Next (ahead of the plan):** the other hand-test follow-up in item 16 (names in the buyer users
+tab, PR 53). Then the security pass and launch prep (a deployment recipe with an ADR, the install
+guide finished, the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
