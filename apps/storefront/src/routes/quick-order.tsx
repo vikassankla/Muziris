@@ -1,11 +1,11 @@
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useState, type ChangeEvent } from 'react';
+import { ListPicker } from '../components/list-picker.js';
 import { ErrorState } from '../components/states.js';
 import { Alert } from '../components/ui/alert.js';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
-import { Input, Select } from '../components/ui/input.js';
 import { Label } from '../components/ui/label.js';
 import {
   Table,
@@ -28,17 +28,12 @@ import {
   type ParsedQuickOrder,
   type QuickOrderProduct,
 } from '../lib/quick-order.js';
-import {
-  AddShoppingListLines,
-  CreateShoppingList,
-  ProductsBySkus,
-  ShoppingLists,
-} from '../operations/generated.js';
+import { addToShoppingList, NEW_LIST } from '../lib/shopping-lists.js';
+import { ProductsBySkus, ShoppingLists } from '../operations/generated.js';
 import { authedRoute } from './authed.js';
 
 /** The largest CSV file read, well above 500 rows of SKU, quantity and unit. */
 const MAX_FILE_BYTES = 256 * 1024;
-const NEW_LIST = 'new';
 
 export const quickOrderRoute = createRoute({
   getParentRoute: () => authedRoute,
@@ -118,30 +113,15 @@ function QuickOrderPage() {
     setBusy(true);
     setFailure(undefined);
     try {
-      let listId = target;
-      if (target === NEW_LIST) {
-        const { createShoppingList } = await runOperation(CreateShoppingList, {
-          name: newName.trim(),
-        });
-        if (!createShoppingList.list) {
-          setFailure({ message: createShoppingList.refusal?.message ?? 'The list was not made.' });
-          return;
-        }
-        listId = createShoppingList.list.id;
-      }
-      const { addShoppingListLines } = await runOperation(AddShoppingListLines, { listId, lines });
-      if (addShoppingListLines.refusal) {
-        const [first] = addShoppingListLines.refusal.lines;
-        const row = first === undefined ? undefined : good[first.index]?.row;
+      const added = await addToShoppingList(target, newName, lines);
+      if (!added.ok) {
+        const row = added.lineIndex === undefined ? undefined : good[added.lineIndex]?.row;
         setFailure({
-          message:
-            row && first
-              ? `Line ${String(row.line)} (${row.sku}): ${first.message}`
-              : addShoppingListLines.refusal.message,
+          message: row ? `Line ${String(row.line)} (${row.sku}): ${added.message}` : added.message,
         });
         return;
       }
-      await navigate({ to: '/lists/$listId', params: { listId }, search: {} });
+      await navigate({ to: '/lists/$listId', params: { listId: added.listId }, search: {} });
     } catch (error) {
       setFailure({ error });
     } finally {
@@ -260,36 +240,13 @@ function QuickOrderPage() {
             ) : null}
             {good.length > 0 ? (
               <div className="flex flex-wrap items-end gap-3 border-t pt-4">
-                <div className="flex min-w-[200px] flex-col gap-1.5">
-                  <Label htmlFor="target-list">Shopping list</Label>
-                  <Select
-                    id="target-list"
-                    value={target}
-                    onChange={(event) => {
-                      setTarget(event.target.value);
-                    }}
-                  >
-                    {shoppingLists.nodes.map((list) => (
-                      <option key={list.id} value={list.id}>
-                        {list.name}
-                      </option>
-                    ))}
-                    <option value={NEW_LIST}>New list…</option>
-                  </Select>
-                </div>
-                {target === NEW_LIST ? (
-                  <div className="flex min-w-[200px] flex-col gap-1.5">
-                    <Label htmlFor="new-list-name">List name</Label>
-                    <Input
-                      id="new-list-name"
-                      maxLength={100}
-                      value={newName}
-                      onChange={(event) => {
-                        setNewName(event.target.value);
-                      }}
-                    />
-                  </div>
-                ) : null}
+                <ListPicker
+                  lists={shoppingLists.nodes}
+                  target={target}
+                  onTarget={setTarget}
+                  newName={newName}
+                  onNewName={setNewName}
+                />
                 <Button
                   variant="outline"
                   disabled={busy || (target === NEW_LIST && newName.trim() === '')}

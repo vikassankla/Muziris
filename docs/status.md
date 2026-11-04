@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-03
+Last updated: 2026-11-04
 
 ## Goal
 
@@ -199,8 +199,8 @@ review).
     - Checked and working by hand: price CSV import and export, tier prices after a build, GST
       CGST plus SGST within a state, invitation and order emails in Mailpit, accepting an
       invitation, and confirming an order.
-    - Follow-ups: an order or add-to-list button on the storefront product page; names, not
-      ids, in the customer's buyer users tab; admin screens for visibility rules.
+    - Follow-ups: an order or add-to-list button on the storefront product page (item 25);
+      names, not ids, in the customer's buyer users tab; admin screens for visibility rules.
 
 17. Known-answer tests for a whole checkout (PR 39, merged 2026-11-03 as b0c5cb0, approved by
     Vikas in chat, with no second review recorded; pricing and tax tests, so CLAUDE.md rule 4
@@ -242,9 +242,17 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
+25. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
+    review** (branch `feature/product-page-actions`). The price box gains **Order now** (the
+    unit and quantity go to checkout as one line, in memory as from quick order) and **Add to
+    shopping list** (pick a list or name a new one; the page links to it). Quick order and the
+    product page share the list picker and `addToShoppingList`. No API change. Journey 6
+    (`e2e/tests/product-page.spec.ts`) saves a product to a new list and orders it from its
+    page.
 
-**Next (ahead of the plan):** the hand-test follow-ups in item 16, each with a journey. Then the
-admin users screen, which needs a button for the two-factor reset.
+**Next (ahead of the plan):** the other hand-test follow-ups in item 16 (names in the buyer users
+tab, visibility rule screens), each with a journey. Then the admin users screen, which needs a
+button for the two-factor reset.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
