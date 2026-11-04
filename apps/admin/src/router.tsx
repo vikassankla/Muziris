@@ -21,6 +21,7 @@ import { productsRoute } from './routes/products.js';
 import { rootRoute } from './routes/root.js';
 import { settingsRoute } from './routes/settings.js';
 import { taxRoute } from './routes/tax.js';
+import { visibilityRoute } from './routes/visibility.js';
 import { signInRoute } from './routes/sign-in.js';
 import { signInCodeRoute, signInEnrolRoute } from './routes/sign-in-two-factor.js';
 import { securityRoute } from './routes/security.js';
@@ -53,6 +54,7 @@ const routeTree = rootRoute.addChildren([
     websitesRoute,
     settingsRoute,
     taxRoute,
+    visibilityRoute,
   ]),
 ]);
 

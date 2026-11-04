@@ -1,7 +1,9 @@
-import { findProductBySku, updateProduct } from '@muziris/catalog';
+import { createCategory, findProductBySku, updateProduct } from '@muziris/catalog';
+import { createCustomerGroup, setCustomerGroup } from '@muziris/customers';
 import { rebuildVisibility } from '@muziris/visibility';
 import { randomUUID } from 'node:crypto';
 import { BEARING, makeCustomer, makeProduct, SEAL } from '../src/world.js';
+import { STOREFRONT_URL } from '../src/env.js';
 import { expect, quickOrderCheckout, signInBuyer, test } from './fixtures.js';
 
 // These journeys change what buyers see, and a visibility build is for the whole catalog, so
@@ -122,4 +124,73 @@ test('tax readiness', async ({ admin, shop, db }) => {
   await quickOrderCheckout(shop, [`${tape.sku}, 10`]);
   await shop.getByRole('button', { name: 'Place order · ₹767.00' }).click();
   await expect(shop).toHaveURL(/\/orders\/[^/]+$/);
+});
+
+// Journey 7 (ADR 0027): an admin hides a category from a customer group on the Visibility
+// screen; after the build, a buyer in the group no longer finds its product, and a buyer of
+// another customer still does. The category, product and group are the test's own.
+test('visibility rules narrow a catalog', async ({ admin, shop, browser, db }) => {
+  const tag = randomUUID().slice(0, 6);
+  const category = await createCategory(db, { code: `spill_${tag}`, name: `Spill kits ${tag}` });
+  const kit = await makeProduct(db, {
+    sku: `SPILL-${tag.toUpperCase()}`,
+    name: `Oil spill kit ${tag}`,
+    hsnSacCode: '8482',
+    amount: '900.00',
+    categoryId: category.id,
+  });
+  const group = await createCustomerGroup(db, { code: `dealers_${tag}`, name: `Dealers ${tag}` });
+  const dealer = await makeCustomer(db, { name: 'Vembanad Dealers', buyer: true });
+  await setCustomerGroup(db, dealer.id, group.id);
+  const other = await makeCustomer(db, { name: 'Thrissur Works', buyer: true });
+
+  await admin.goto('/visibility');
+  // With no rules yet, the empty state offers New rule too.
+  await admin.getByRole('button', { name: 'New rule' }).first().click();
+  const sheet = admin.getByRole('dialog', { name: 'New visibility rule' });
+  await sheet.getByRole('combobox', { name: 'Rule on' }).click();
+  await admin.getByRole('option', { name: 'A category and everything in it' }).click();
+  await sheet.getByRole('combobox', { name: 'Category' }).click();
+  await admin.getByRole('option', { name: category.name }).click();
+  await sheet.getByRole('combobox', { name: 'Customer group' }).click();
+  await admin.getByRole('option', { name: group.name }).click();
+  await sheet.getByRole('button', { name: 'Create rule' }).click();
+  await expect(sheet).toBeHidden();
+  await expect(admin.getByRole('row', { name: new RegExp(category.name) })).toContainText(
+    group.name,
+  );
+
+  // Before the build, the check says the rule waits for it.
+  await admin.getByRole('button', { name: 'Check a buyer’s view' }).click();
+  const check = admin.getByRole('dialog', { name: 'Check a buyer’s view' });
+  await check.getByRole('combobox', { name: 'Customer' }).click();
+  await admin.getByRole('option', { name: dealer.name }).click();
+  await check.getByLabel('Product').fill(kit.sku);
+  await admin.getByRole('button', { name: new RegExp(kit.sku) }).click();
+  await check.getByRole('button', { name: 'Check' }).click();
+  await expect(
+    check.getByText(`Hidden by the rule on ${category.name} for ${group.name}.`),
+  ).toBeVisible();
+  // The footer's Close; the corner × is named Close too.
+  await check.getByText('Close', { exact: true }).click();
+  await expect(check).toBeHidden();
+
+  // The rule queued the build; nobody presses anything.
+  await expect(admin.getByText(/Buyers do not see .*visibility rule change/)).toBeHidden({
+    timeout: 40_000,
+  });
+
+  await signInBuyer(shop, dealer.email);
+  await shop.goto(`/search?q=${encodeURIComponent(kit.sku)}`);
+  await expect(shop.getByText(`No results for “${kit.sku}”`)).toBeVisible();
+
+  const otherContext = await browser.newContext({ baseURL: STOREFRONT_URL });
+  try {
+    const otherShop = await otherContext.newPage();
+    await signInBuyer(otherShop, other.email);
+    await otherShop.goto(`/search?q=${encodeURIComponent(kit.sku)}`);
+    await expect(otherShop.getByRole('link', { name: kit.name })).toBeVisible();
+  } finally {
+    await otherContext.close();
+  }
 });

@@ -2,7 +2,7 @@ import { findCategory, findProduct } from '@muziris/catalog';
 import { findCustomer, findCustomerGroup } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import { findWebsite } from '@muziris/platform';
-import { and, eq, sql, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { recordChange } from './changes.js';
 import { rules } from './db/schema.js';
@@ -196,9 +196,26 @@ export async function deleteRule(db: Database, ruleId: string): Promise<void> {
  * Rules a page at a time, in fallback order: by website, then customer, customer group and
  * website targets, then target, then subject.
  */
-export async function listRules(db: Database, query: ListRulesQuery = {}): Promise<RulePage> {
+/**
+ * A page of rules, filtered by the query. With `matchingIds`, only rules whose subject or
+ * target is one of those ids: the ids a search found in the modules that own the names.
+ */
+export async function listRules(
+  db: Database,
+  query: ListRulesQuery = {},
+  options: { matchingIds?: readonly string[] } = {},
+): Promise<RulePage> {
   const q = listRulesQuerySchema.parse(query);
   const conditions: SQL[] = [];
+  if (options.matchingIds !== undefined) {
+    const ids = z
+      .array(z.uuid())
+      .max(5000)
+      .parse([...new Set(options.matchingIds)]);
+    if (ids.length === 0) return { rules: [], nextAfter: null };
+    const either = or(inArray(rules.subjectId, ids), inArray(rules.targetId, ids));
+    if (either) conditions.push(either);
+  }
   if (q.websiteId !== undefined) conditions.push(eq(rules.websiteId, q.websiteId));
   if (q.subject !== undefined) conditions.push(eq(rules.subject, q.subject));
   if (q.subjectId !== undefined) conditions.push(eq(rules.subjectId, q.subjectId));
