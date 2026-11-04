@@ -29,6 +29,7 @@ RUN pnpm --filter @muziris/admin build && pnpm --filter @muziris/storefront buil
 
 FROM nginx:1.27-alpine AS web
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/app-headers.conf /etc/nginx/snippets/app-headers.conf
 COPY --from=web-build /app/apps/admin/dist /srv/admin
 COPY --from=web-build /app/apps/storefront/dist /srv/storefront
 EXPOSE 8080 8081

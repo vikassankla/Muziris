@@ -392,6 +392,15 @@ function AdminUsersPage() {
           <TableBody>
             {users.items.map((user) => {
               const own = user.id === session.user.id;
+              // Disabling, enabling and resetting need every permission the admin holds (ADR 0028).
+              const act = manage && user.mayManage;
+              const offers = {
+                resend: manage && user.status === 'invited',
+                reset: act && !own && user.twoFactor,
+                disable: act && !own && user.status !== 'disabled',
+                enable: act && user.status === 'disabled',
+              };
+              const anything = assign || Object.values(offers).some(Boolean);
               return (
                 <TableRow key={user.id}>
                   <TableCell className="font-semibold">
@@ -424,70 +433,72 @@ function AdminUsersPage() {
                   </TableCell>
                   {manage || assign ? (
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Actions for ${user.displayName}`}
-                          >
-                            <MoreHorizontal aria-hidden="true" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[230px]">
-                          {assign ? (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setOpen({ kind: 'roles', user });
-                              }}
+                      {anything ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Actions for ${user.displayName}`}
                             >
-                              Change admin roles
-                            </DropdownMenuItem>
-                          ) : null}
-                          {manage && user.status === 'invited' ? (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                void submit(() => resendAdminInvitation(user.id), {
-                                  title: 'Invitation sent again',
-                                  description: user.email,
-                                });
-                              }}
-                            >
-                              Send invitation again
-                            </DropdownMenuItem>
-                          ) : null}
-                          {manage && !own && user.twoFactor ? (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setOpen({ kind: 'reset', user });
-                              }}
-                            >
-                              Reset two-factor
-                            </DropdownMenuItem>
-                          ) : null}
-                          {manage && !own && user.status !== 'disabled' ? (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setOpen({ kind: 'disable', user });
-                              }}
-                            >
-                              Disable
-                            </DropdownMenuItem>
-                          ) : null}
-                          {manage && user.status === 'disabled' ? (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                void submit(() => enableAdminUser(user.id), {
-                                  title: 'Admin user enabled',
-                                  description: user.displayName,
-                                });
-                              }}
-                            >
-                              Enable
-                            </DropdownMenuItem>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              <MoreHorizontal aria-hidden="true" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[230px]">
+                            {assign ? (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setOpen({ kind: 'roles', user });
+                                }}
+                              >
+                                Change admin roles
+                              </DropdownMenuItem>
+                            ) : null}
+                            {offers.resend ? (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  void submit(() => resendAdminInvitation(user.id), {
+                                    title: 'Invitation sent again',
+                                    description: user.email,
+                                  });
+                                }}
+                              >
+                                Send invitation again
+                              </DropdownMenuItem>
+                            ) : null}
+                            {offers.reset ? (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setOpen({ kind: 'reset', user });
+                                }}
+                              >
+                                Reset two-factor
+                              </DropdownMenuItem>
+                            ) : null}
+                            {offers.disable ? (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setOpen({ kind: 'disable', user });
+                                }}
+                              >
+                                Disable
+                              </DropdownMenuItem>
+                            ) : null}
+                            {offers.enable ? (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  void submit(() => enableAdminUser(user.id), {
+                                    title: 'Admin user enabled',
+                                    description: user.displayName,
+                                  });
+                                }}
+                              >
+                                Enable
+                              </DropdownMenuItem>
+                            ) : null}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </TableCell>
                   ) : null}
                 </TableRow>

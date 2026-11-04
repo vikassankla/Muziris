@@ -13,7 +13,8 @@ const POLICY: Readonly<Record<string, readonly string[]>> = {
   'img-src': ["'self'", 'data:', 'https://*.stripe.com', 'https://cdn.razorpay.com'],
   // Tailwind's output is a stylesheet, but both gateways set inline styles on what they add.
   'style-src': ["'self'", "'unsafe-inline'"],
-  'font-src': ["'self'"],
+  // The build inlines the smallest font files as data: URLs.
+  'font-src': ["'self'", 'data:'],
   'object-src': ["'none'"],
   'base-uri': ["'self'"],
   'form-action': ["'self'"],

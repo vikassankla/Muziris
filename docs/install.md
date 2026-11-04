@@ -56,7 +56,7 @@ For production, set at least:
 | `STOREFRONT_WEBSITE`                                                 | The code of the website the storefront serves                                                                                                      |
 | `STOREFRONT_PERSISTED_QUERIES`                                       | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`                       |
 | `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL`, `ADMIN_PUBLIC_URL` | All four are required in production. The two URLs are used for links in emails: the storefront's for buyers, the admin app's for admin invitations |
-| `STRIPE_*`, `RAZORPAY_*`                                             | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                                                 |
+| `STRIPE_*`, `RAZORPAY_*`                                             | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`. `RAZORPAY_WEBHOOK_SECRET` needs 16 or more random characters   |
 | `JOB_WORKERS`, `WORKER_PORT`                                         | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001                  |
 
 Build-time, for the storefront: `VITE_STOREFRONT_WEBSITE`, the same website code.

@@ -31,6 +31,9 @@ export const PAYMENT_ENV_NAMES = [
   'RAZORPAY_WEBHOOK_SECRET',
 ] as const;
 
+/** The shortest Razorpay webhook secret accepted. */
+export const RAZORPAY_WEBHOOK_SECRET_MIN_LENGTH = 16;
+
 type Source = Readonly<Record<string, string | undefined>>;
 
 function read(source: Source, name: string): string | undefined {
@@ -93,6 +96,13 @@ export function paymentGatewaysFromEnv(source: Source): PaymentGateways {
     },
     { keyId: live ? ['rzp_test_', 'rzp_live_'] : ['rzp_test_'] },
   );
+  // Razorpay takes any webhook secret the operator types, and a short one could be guessed and
+  // used to sign a payment event; Stripe's are generated.
+  if (razorpay && razorpay.webhookSecret.length < RAZORPAY_WEBHOOK_SECRET_MIN_LENGTH) {
+    problems.push(
+      `RAZORPAY_WEBHOOK_SECRET: use at least ${String(RAZORPAY_WEBHOOK_SECRET_MIN_LENGTH)} random characters`,
+    );
+  }
   if (problems.length > 0) {
     throw new Error(`Invalid configuration:\n${problems.map((p) => `  ${p}`).join('\n')}`);
   }

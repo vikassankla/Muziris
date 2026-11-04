@@ -10,7 +10,9 @@ export type AccessControlErrorCode =
   /** The actor tried to grant, or take away, permissions they do not hold themselves. */
   | 'privilege_escalation'
   /** The change would leave no admin user with the administrator role. */
-  | 'last_administrator';
+  | 'last_administrator'
+  /** The target admin user holds a permission the actor does not (ADR 0028, amended). */
+  | 'outranked';
 
 /** A refused access-control change. `code` is stable and safe to show to the caller. */
 export class AccessControlError extends Error {

@@ -37,6 +37,7 @@ interface AdminUserView {
   twoFactor: boolean;
   lastSignInAt: string | null;
   roles: { id: string; name: string }[];
+  mayManage: boolean;
 }
 
 describe.skipIf(!url)('admin users routes against PostgreSQL', () => {
@@ -304,10 +305,6 @@ describe.skipIf(!url)('admin users routes against PostgreSQL', () => {
     const own = await disable(asha.id, asha.cookie);
     expect(own.status).toBe(409);
     expect(await own.json()).toMatchObject({ code: 'own_account' });
-    // Asha is the only administrator.
-    const last = await disable(asha.id, meera.cookie);
-    expect(last.status).toBe(409);
-    expect(await last.json()).toMatchObject({ code: 'last_administrator' });
     expect((await disable('00000000-0000-4000-8000-000000000000', asha.cookie)).status).toBe(404);
 
     const done = await json<{ adminUser: AdminUserView }>(disable(meera.id, asha.cookie));
@@ -331,5 +328,51 @@ describe.skipIf(!url)('admin users routes against PostgreSQL', () => {
     expect(back.status).toBe(200);
     const logged = logs.find((l) => l.includes('access.admin_user_disabled')) ?? '';
     expect(JSON.parse(logged)).toMatchObject({ userId: asha.id, targetUserId: meera.id });
+  });
+
+  it('acts on another admin only with every permission they hold (ADR 0028, amended)', async () => {
+    const asha = await signedInAdmin('asha@acme.example', 'administrator');
+    const meera = await signedInAdmin('meera@acme.example', [
+      'admin_user.manage',
+      'admin_user.view',
+    ]);
+    const ravi = await signedInAdmin('ravi@acme.example', ['admin_user.view']);
+    const leela = await signedInAdmin('leela@acme.example', ['admin_user.view', 'tax.manage']);
+    const act = (action: string, target: string) =>
+      call('POST', `/access/admin-users/${target}/${action}`, meera.cookie);
+
+    // The list says whom each may act on, so the screen offers only what will be allowed.
+    const listed = async (cookie: string): Promise<Record<string, boolean>> => {
+      const { adminUsers } = await json<{ adminUsers: AdminUserView[] }>(
+        call('GET', '/access/admin-users', cookie),
+      );
+      return Object.fromEntries(
+        adminUsers.map((u): [string, boolean] => [u.email.split('@')[0] ?? u.email, u.mayManage]),
+      );
+    };
+    expect(await listed(meera.cookie)).toEqual({
+      asha: false,
+      leela: false,
+      meera: true,
+      ravi: true,
+    });
+    expect(Object.values(await listed(asha.cookie)).every(Boolean)).toBe(true);
+
+    // Meera holds neither the administrator's permissions nor tax.manage.
+    for (const target of [asha.id, leela.id]) {
+      for (const action of ['disable', 'enable', 'two-factor/reset']) {
+        const refused = await act(action, target);
+        expect(refused.status, `${action} ${target}`).toBe(403);
+        expect(await refused.json()).toMatchObject({ code: 'outranked' });
+      }
+    }
+    // Nothing changed for them.
+    expect((await call('GET', '/access/me', asha.cookie)).status).toBe(200);
+    expect((await call('GET', '/access/me', leela.cookie)).status).toBe(200);
+
+    // She holds everything Ravi holds.
+    expect((await act('two-factor/reset', ravi.id)).status).toBe(204);
+    expect((await act('disable', ravi.id)).status).toBe(200);
+    expect((await act('enable', ravi.id)).status).toBe(200);
   });
 });

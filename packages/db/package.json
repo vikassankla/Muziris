@@ -9,6 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
     "migrate": "tsx --env-file-if-exists=../../.env src/migrate-cli.ts"
   },
   "dependencies": {

@@ -11,6 +11,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   AccessControlError,
   ADMINISTRATOR_ROLE_CODE,
+  assertMayManageAdminUser,
+  assertNotLastAdministrator,
   assignAdminRole,
   assignBuyerRole,
   buyerRolesOfUsers,
@@ -33,6 +35,7 @@ import {
   unassignBuyerRole,
   type AccessLevel,
   type AdminAccess,
+  type AdminPermission,
   type BuyerScopeContext,
 } from './index.js';
 
@@ -373,6 +376,56 @@ describe.skipIf(!url)('access module against PostgreSQL', () => {
         await assignAdminRole(handle.db, manager, asha.id, sales.id);
         await unassignAdminRole(handle.db, manager, asha.id, sales.id);
         await deleteAdminRole(handle.db, manager, sales.id);
+      });
+    });
+
+    describe('acting on another admin user (ADR 0028, amended)', () => {
+      async function withRole(email: string, permissions: AdminPermission[]) {
+        const user = await newUser('admin', email);
+        const role = await createAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, {
+          code: `role_${email.split('@')[0] ?? 'x'}`,
+          name: `Role of ${email}`,
+          permissions,
+        });
+        await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, user.id, role.id);
+        return user;
+      }
+
+      it('needs every permission the other admin user holds', async () => {
+        const id = await administratorRoleId();
+        const asha = await newUser('admin', 'asha@acme.example');
+        await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, asha.id, id);
+        const meera = await withRole('meera@acme.example', ['admin_user.manage', 'order.view']);
+        const ravi = await withRole('ravi@acme.example', ['order.view']);
+        const leela = await withRole('leela@acme.example', ['order.view', 'tax.manage']);
+        const nobody = await newUser('admin', 'nobody@acme.example');
+        const meeraAccess = await getAdminAccess(handle.db, meera.id);
+
+        // Holding all of theirs, or more, is enough; a user with no role is anyone's.
+        await assertMayManageAdminUser(handle.db, meeraAccess, ravi.id);
+        await assertMayManageAdminUser(handle.db, meeraAccess, nobody.id);
+        await expectRefused(
+          assertMayManageAdminUser(handle.db, meeraAccess, leela.id),
+          'outranked',
+        );
+        // Only someone with every permission may act on an administrator, and on anyone.
+        await expectRefused(assertMayManageAdminUser(handle.db, meeraAccess, asha.id), 'outranked');
+        const ashaAccess = await getAdminAccess(handle.db, asha.id);
+        await assertMayManageAdminUser(handle.db, ashaAccess, leela.id);
+        await assertMayManageAdminUser(handle.db, ashaAccess, meera.id);
+      });
+
+      it('never disables the last active administrator', async () => {
+        const id = await administratorRoleId();
+        const asha = await newUser('admin', 'asha@acme.example');
+        const meera = await newUser('admin', 'meera@acme.example');
+        await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, asha.id, id);
+        await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, meera.id, id);
+        await assertNotLastAdministrator(handle.db, asha.id);
+        await disableUser(handle.db, meera.id);
+        await expectRefused(assertNotLastAdministrator(handle.db, asha.id), 'last_administrator');
+        // Disabling someone who is not an administrator is never refused by it.
+        await assertNotLastAdministrator(handle.db, meera.id);
       });
     });
   });

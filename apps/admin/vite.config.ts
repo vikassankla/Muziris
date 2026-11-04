@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { CONTENT_SECURITY_POLICY } from './src/lib/content-security-policy.js';
 
 // The API runs on 127.0.0.1:4000 (apps/api). Proxying /admin/v1 keeps the admin app and the
 // API on one origin in development, so the __Host- session cookie is first-party and every
@@ -10,8 +11,23 @@ import { defineConfig } from 'vite';
 // The end-to-end journeys (e2e/) run their own API elsewhere and set MUZIRIS_API_TARGET.
 const API_TARGET = process.env['MUZIRIS_API_TARGET'] ?? 'http://127.0.0.1:4000';
 
+/** Writes the content security policy into the built index.html. */
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'muziris-content-security-policy',
+    apply: 'build',
+    transformIndexHtml: () => [
+      {
+        tag: 'meta',
+        attrs: { 'http-equiv': 'Content-Security-Policy', content: CONTENT_SECURITY_POLICY },
+        injectTo: 'head-prepend',
+      },
+    ],
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), contentSecurityPolicy()],
   server: {
     host: 'localhost',
     port: 5173,

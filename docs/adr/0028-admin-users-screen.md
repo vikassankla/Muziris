@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-11-04
+- Amended: 2026-11-04 (acting on an admin user who holds more permissions; see below)
 
 ## Context
 
@@ -103,7 +104,8 @@ Where the build differs from the plan above, or settles something it left open:
 - **Reset two-factor** is offered only for an admin who has it set up. **Enable** leaves the
   admin's ended sessions ended.
 - **Refusals** answer `own_account` (disabling yourself), `last_administrator`, `email_taken`,
-  `not_invited` (sending again after accepting), `privilege_escalation` and `user_not_found`.
+  `not_invited` (sending again after accepting), `privilege_escalation`, `outranked` (since the
+  amendment below) and `user_not_found`.
 - **Roles on the row** change in a dialog, one at a time, through the existing routes. The
   Admin roles page's "Admin users" card now points there.
 
@@ -113,6 +115,24 @@ Where the build differs from the plan above, or settles something it left open:
   so a reset can reuse it later, but a reset is its own decision.
 - **Editing an admin's name or email.**
 - **Deleting admin users.** Disabling keeps the history of who did what.
+
+### Amendment, 2026-11-04: acting on an admin user who holds more permissions
+
+The security pass (`docs/security-review.md`, finding 5) found that `admin_user.manage` let an
+admin user disable, enable or reset the two-factor sign-in of any other admin user, including
+administrators. Nobody could take an account over that way, but an admin user with a narrow
+role could lock every administrator out. Vikas decided in chat on 2026-11-04:
+
+- **Disabling, enabling and resetting two-factor sign-in** need every permission the other admin
+  user holds, as giving a role already does. Only an admin user with every permission may act
+  on an administrator. Anything else is refused with `outranked` (403).
+- **Sending an invitation again** is unchanged: it only emails the invited address.
+- **The list** says, for each admin user, whether the signed-in admin may act on them
+  (`mayManage`), and the screen offers those three actions only where it is true. A row with
+  nothing to offer has no menu.
+- **The last administrator** check stays, though through the API it is now reached only by an
+  administrator acting on themselves, which `own_account` refuses first: it guards the module's
+  own callers and the race above.
 
 ## Consequences
 

@@ -1,3 +1,4 @@
+import { withoutQueryValues } from '@muziris/db';
 import { pino, type Logger } from 'pino';
 
 export type { Logger };
@@ -43,6 +44,10 @@ export function createLogger(level: string, destination?: pino.DestinationStream
       base: { service: 'muziris-api' },
       timestamp: pino.stdTimeFunctions.isoTime,
       redact: { paths: REDACTED_PATHS, censor: '[redacted]' },
+      // Database errors lose the values their queries were sent with before they are written.
+      serializers: {
+        err: (error: unknown) => pino.stdSerializers.err(withoutQueryValues(error) as Error),
+      },
     },
     destination,
   );
