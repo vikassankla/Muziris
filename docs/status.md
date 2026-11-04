@@ -285,9 +285,9 @@ review).
     email, status, last sign-in and buyer roles, looked up for the page at once. The customer's
     Buyer users tab shows them as the board does (Name, Email, Buyer roles, Status, Last
     sign-in); a user with no account left shows by id. Journey 1 now checks the tab.
-29. Security pass (week 5, ahead of the plan). **In review** (branch `feature/security-pass`);
-    it touches authentication, payments and secrets, so CLAUDE.md rule 4 asks for a second
-    human review. Findings and what held are in `docs/security-review.md`. Fixed: database
+29. Security pass (week 5, ahead of the plan). **Merged** (PR 57, 2026-11-04, as 958263d,
+    approved by Vikas in chat after a second review); it touches authentication, payments,
+    secrets and access control (CLAUDE.md rule 4). Findings and what held are in `docs/security-review.md`. Fixed: database
     errors no longer put query values in the logs or pg-boss's job table (`withoutQueryValues`
     in `@muziris/db`); the admin app's build writes a content security policy and nginx forbids
     framing either app (`docker/app-headers.conf`); `safeRedirect` refuses a tab or line break
@@ -297,7 +297,12 @@ review).
     sign-in needs every permission they hold (`outranked` otherwise), and the admin users list
     offers those actions only where they are allowed (`mayManage`).
 
-**Next (ahead of the plan):** launch prep: a deployment recipe with an ADR (it must send the
+30. ADR 0029, the pilot deployment (launch prep). **Proposed**, waiting for Vikas: one VM with
+    Docker Compose, Caddy for HTTPS from Let's Encrypt with the apps' headers and
+    Strict-Transport-Security, a production API image, one root-only env file, a daily
+    `pg_dump`, and a CI job that starts the production stack and checks its headers.
+
+**Next (ahead of the plan):** launch prep, once ADR 0029 is accepted: a deployment recipe with an ADR (it must send the
 headers of `docker/app-headers.conf` and Strict-Transport-Security), the install guide finished,
 the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15.
 
