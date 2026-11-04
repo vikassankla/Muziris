@@ -47,7 +47,9 @@ pnpm --filter @muziris/api dev
 ```
 
 `admin:create` asks for the password without showing it and gives the new admin the built-in
-`administrator` role. `setup` creates the organization and the standard product units, and can
+`administrator` role. Admins sign in with an authenticator app as well (ADR 0026): set
+`ADMIN_TOTP_KEY` in `.env` first (`openssl rand -base64 32`), and the first sign-in sets the app
+up. `setup` creates the organization and the standard product units, and can
 be run again safely. Then create the first website and its settings in the admin app, under
 System > Websites and System > Settings. For an admin created before roles existed, run it with `--email ... --existing`. Check the API is up with
 `curl http://127.0.0.1:4000/health/ready`. Outgoing email appears at http://localhost:8025.

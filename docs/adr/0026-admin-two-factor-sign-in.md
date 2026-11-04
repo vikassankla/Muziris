@@ -61,6 +61,49 @@ kind of factor are later work. Buyers are not affected.
 - **Logging.** Enrolment, use of a recovery code, reset and failures are logged, without codes or
   secrets.
 
+### As built
+
+- **In identity.** `totp.ts` holds HOTP and TOTP, base32, the `otpauth://` link, AES-256-GCM
+  for the secrets (the user id is the associated data, so a secret copied to another row does
+  not decrypt) and the recovery codes. `two-factor.ts` holds the steps. The RFC 4226 and 6238
+  vectors are its known-answer tests. Migration `0019` adds `identity_two_factor`,
+  `identity_recovery_code` and a `stage` on `identity_session`.
+- **The pending session** is a session row with stage `two_factor`, lasting 5 minutes, on a
+  cookie of its own, `__Host-muziris_admin_two_factor` (Strict). `validateSession` never
+  accepts it. The code step ends it and opens a full session with a **new token**, so the
+  pending token is never the session.
+- **The account lock.** A right password alone no longer clears the failure count; a right
+  code does. So an attacker who has the password cannot reset the lock by signing in again.
+- **Limits.** Codes share the per-IP sign-in limit, and add 10 per admin per 10 minutes. A
+  wrong code answers 401 `invalid_code` with one message for wrong and locked, like
+  `invalid_credentials`. An ended step answers 401 `two_factor_expired`.
+- **Recovery codes** are 10 characters from an alphabet without look-alikes, shown as two
+  groups of five; case, spaces and dashes do not matter. They are stored as **Argon2id**
+  hashes, with the password parameters and one random salt per set, not as the SHA-256 named
+  above: ten such characters are about 50 bits, few enough that a copied table of SHA-256
+  hashes could be searched in about a day. A set shares its salt, so checking a code is one
+  hash.
+- **Signed-in changes** are on the admin's own **Security** page (profile menu): new recovery
+  codes, and moving to a new phone. The move keeps the current secret working until a code
+  from the new one is entered, then renews the recovery codes. Both need the password and a
+  current code and end the admin's other sessions. There is **no "turn off"**: every admin must
+  have a second factor, so turning it off would only mean enrolling again.
+- **Resets.** `POST /admin/v1/access/admin-users/:id/two-factor/reset` needs
+  `admin_user.manage` and refuses the admin's own id. It has no screen yet; the admin users
+  screen is still to come. `admin:reset-2fa --email` does the same from the server.
+- **Key rotation** is `admin:rotate-2fa-key`, with the old key in `ADMIN_TOTP_KEY_PREVIOUS` and the
+  new one in `ADMIN_TOTP_KEY`, in one transaction.
+- **Without `ADMIN_TOTP_KEY`** outside production the API starts and warns, and admin sign-in
+  answers 503 `two_factor_not_configured`. Docker Compose passes the key from `.env`; the
+  end-to-end suite makes a new one for every run, and its setup enrols the administrator by
+  reading the setup key off the page.
+- **The QR code** is drawn by `uqr` 0.1.3 (MIT, no dependencies) as SVG in the admin app.
+  Secrets and recovery codes are held in component state only.
+- **Log events:** `auth.password_accepted`, `auth.two_factor_enrolled`, `auth.recovery_code_used`
+  (with the count left), `auth.recovery_codes_replaced`, `auth.two_factor_replaced`,
+  `auth.two_factor_reset` (both user ids), `auth.two_factor_failed` (the reason) and
+  `auth.two_factor_rate_limited`. None of them logs a code or a secret.
+
 ## Consequences
 
 - A stolen admin password alone no longer signs in. Phishing in real time is still possible

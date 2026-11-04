@@ -20,6 +20,7 @@ import { createUser } from '@muziris/identity';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -62,6 +63,7 @@ describe.skipIf(!url)('access routes against PostgreSQL', () => {
       },
     });
     return createApp({
+      twoFactorKey: TEST_TWO_FACTOR_KEY,
       logger: createLogger('info', stream),
       db: handle.db,
       pingDatabase: () => Promise.resolve(),
@@ -93,13 +95,13 @@ describe.skipIf(!url)('access routes against PostgreSQL', () => {
       });
       await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, user.id, role.id);
     }
-    const res = await app().request('/admin/v1/auth/sign-in', {
-      method: 'POST',
-      body: JSON.stringify({ email, password: PASSWORD }),
-      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    const cookie = await signInAdmin(app(), {
+      email,
+      password: PASSWORD,
+      origin: ORIGIN,
+      now: new Date('2026-11-04T09:00:00.000Z'),
     });
-    expect(res.status).toBe(200);
-    return { id: user.id, cookie: (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '' };
+    return { id: user.id, cookie: cookie };
   }
 
   function call(method: string, path: string, cookie: string, body?: unknown) {
@@ -299,6 +301,32 @@ describe.skipIf(!url)('access routes against PostgreSQL', () => {
     );
     expect(takeover.status).toBe(403);
     expect(await takeover.json()).toMatchObject({ code: 'privilege_escalation' });
+  });
+
+  it("lets admin_user.manage reset another admin's second factor, never their own", async () => {
+    const asha = await signedInAdmin('asha@acme.example', ['admin_user.manage']);
+    const meera = await signedInAdmin('meera@acme.example', []);
+    const ravi = await signedInAdmin('ravi@acme.example', ['admin_user.view']);
+    const reset = (target: string, cookie: string) =>
+      call('POST', `/admin-users/${target}/two-factor/reset`, cookie);
+
+    expect((await reset(meera.id, ravi.cookie)).status).toBe(403);
+    const own = await reset(asha.id, asha.cookie);
+    expect(own.status).toBe(409);
+    expect(await own.json()).toMatchObject({ code: 'own_two_factor' });
+    expect((await reset('00000000-0000-4000-8000-000000000000', asha.cookie)).status).toBe(404);
+
+    expect((await reset(meera.id, asha.cookie)).status).toBe(204);
+    // Meera's session has ended, and she enrols again at her next sign-in.
+    expect((await call('GET', '/me', meera.cookie)).status).toBe(401);
+    const again = await app().request('/admin/v1/auth/sign-in', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'meera@acme.example', password: PASSWORD }),
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    });
+    expect(await again.json()).toMatchObject({ next: 'enrol' });
+    const logged = logs.find((l) => l.includes('auth.two_factor_reset')) ?? '';
+    expect(JSON.parse(logged)).toMatchObject({ userId: asha.id, targetUserId: meera.id });
   });
 
   it('refuses state changes from an untrusted origin', async () => {

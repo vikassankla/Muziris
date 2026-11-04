@@ -22,21 +22,33 @@ async function submit(email = 'asha@example.com', password = 'correct horse batt
 }
 
 describe('sign-in', () => {
-  it('posts the email and password and goes where the admin was heading', async () => {
+  it('posts the email and password, asks for the code and goes where the admin was heading', async () => {
     const requests = mockApi({
       ...signedIn(['customer.view']),
-      'POST /auth/sign-in': () => json({ user: ADMIN, expiresAt: '2026-10-28T12:00:00.000Z' }),
+      'POST /auth/sign-in': () => json({ next: 'code', expiresAt: '2026-10-28T12:05:00.000Z' }),
+      'POST /auth/two-factor/verify': () =>
+        json({ user: ADMIN, expiresAt: '2026-10-28T12:00:00.000Z' }),
       'GET /customers': () => json({ customers: [], nextAfter: null }),
     });
     const { router } = renderApp('/sign-in?redirect=%2Fcustomers');
     await submit();
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/customers');
+      expect(router.state.location.pathname).toBe('/sign-in/code');
     });
     expect(requests.find((r) => r.method === 'POST')?.body).toEqual({
       email: 'asha@example.com',
       password: 'correct horse battery',
+    });
+    fireEvent.change(await screen.findByLabelText('Authentication code'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/customers');
+    });
+    expect(requests.find((r) => r.path === '/auth/two-factor/verify')?.body).toEqual({
+      code: '123456',
     });
   });
 
@@ -140,10 +152,16 @@ describe('sign-in', () => {
   it('keeps nothing about the session in browser storage', async () => {
     mockApi({
       ...signedIn(['customer.view']),
-      'POST /auth/sign-in': () => json({ user: ADMIN, expiresAt: '2026-10-28T12:00:00.000Z' }),
+      'POST /auth/sign-in': () => json({ next: 'code', expiresAt: '2026-10-28T12:05:00.000Z' }),
+      'POST /auth/two-factor/verify': () =>
+        json({ user: ADMIN, expiresAt: '2026-10-28T12:00:00.000Z' }),
     });
     const { router } = renderApp('/sign-in');
     await submit();
+    fireEvent.change(await screen.findByLabelText('Authentication code'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/');
     });

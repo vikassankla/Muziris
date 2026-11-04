@@ -32,6 +32,7 @@ import { rebuildVisibility } from '@muziris/visibility';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -170,6 +171,7 @@ describe.skipIf(!url)(
 
     function app(tax?: TaxProvider, gateways: PaymentGateways | null = GATEWAYS) {
       return createApp({
+        twoFactorKey: TEST_TWO_FACTOR_KEY,
         logger: createLogger(
           'silent',
           new Writable({
@@ -191,14 +193,14 @@ describe.skipIf(!url)(
     }
 
     async function signIn(realm: 'buyer' | 'admin', email: string): Promise<string> {
-      const res = await app().request(
-        `/${realm === 'buyer' ? 'storefront' : 'admin'}/v1/auth/sign-in`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ email, password: PASSWORD }),
-          headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-        },
-      );
+      if (realm === 'admin') {
+        return signInAdmin(app(), { email, password: PASSWORD, origin: ORIGIN, now: NOW });
+      }
+      const res = await app().request('/storefront/v1/auth/sign-in', {
+        method: 'POST',
+        body: JSON.stringify({ email, password: PASSWORD }),
+        headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      });
       expect(res.status).toBe(200);
       return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
     }

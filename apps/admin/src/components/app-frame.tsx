@@ -9,6 +9,7 @@ import {
   PanelLeft,
   Plus,
   Search,
+  ShieldCheck,
   Sun,
 } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
@@ -198,6 +199,7 @@ export function TopBar({
   onSignOut: () => void;
 }) {
   const { choice, setChoice } = useTheme();
+  const navigate = useNavigate();
   const themeLabel = THEMES.find((t) => t.value === choice)?.label ?? 'System';
   return (
     <header className="sticky top-0 z-30 flex h-topbar shrink-0 items-center gap-3 border-b bg-background px-5">
@@ -312,6 +314,10 @@ export function TopBar({
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          <DropdownMenuItem onSelect={() => void navigate({ to: '/account/security' })}>
+            <ShieldCheck aria-hidden="true" />
+            Security
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={onOpenShortcuts}>
             <CircleHelp aria-hidden="true" />
             <span className="flex-1">Keyboard shortcuts</span>

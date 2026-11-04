@@ -8,15 +8,26 @@ import {
 } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import {
+  confirmEnrolment,
+  confirmReplacement,
   consumeRateLimit,
   EmailTakenError,
   PasswordPolicyError,
+  replaceRecoveryCodes,
   revokeSession,
   SESSION_POLICIES,
   signIn,
+  startEnrolment,
+  startReplacement,
+  TWO_FACTOR_STEP_MS,
+  twoFactorStatus,
   validateSession,
+  validateTwoFactorSession,
+  verifySecondFactor,
   type AuthenticatedUser,
   type Realm,
+  type TotpKey,
+  type TwoFactorRefusal,
 } from '@muziris/identity';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
@@ -31,6 +42,8 @@ export interface AuthRouteDependencies {
   clientIp: (c: Context) => string | undefined;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
+  /** ADMIN_TOTP_KEY (ADR 0026); without it admins cannot finish signing in. */
+  twoFactorKey?: TotpKey | undefined;
 }
 
 export interface AuthVariables {
@@ -45,6 +58,15 @@ const COOKIE_NAMES: Record<Realm, string> = {
   buyer: 'muziris_buyer_session',
 };
 
+/**
+ * The two-factor session between the password and the code (ADR 0026): a cookie of its own,
+ * with the same rules, that dies with the step.
+ */
+const TWO_FACTOR_COOKIE = 'muziris_admin_two_factor';
+
+/** The name authenticator apps show beside the codes. */
+const TOTP_ISSUER = 'Muziris';
+
 /** Admin cookies are Strict; buyer cookies are Lax so links in order emails keep the buyer signed in. */
 const SAME_SITE: Record<Realm, 'Strict' | 'Lax'> = { admin: 'Strict', buyer: 'Lax' };
 
@@ -52,6 +74,9 @@ const SIGN_IN_LIMITS = {
   perIp: { limit: 20, windowMs: 10 * 60_000 },
   perEmail: { limit: 10, windowMs: 10 * 60_000 },
 } as const;
+
+/** Per admin, for the code step and changes to the second factor (ADR 0026). */
+const TWO_FACTOR_LIMIT = { limit: 10, windowMs: 10 * 60_000 } as const;
 
 /** Per IP, and per token, for looking up and accepting invitations (ADR 0020). */
 const INVITATION_LIMITS = {
@@ -78,6 +103,28 @@ const signInBody = z.object({
   email: z.string().min(1).max(254),
   password: z.string().min(1).max(1024),
 });
+
+const codeField = z.string().trim().min(1).max(64);
+const verifyBody = z.union([
+  z.object({ code: codeField }).strict(),
+  z.object({ recoveryCode: codeField }).strict(),
+]);
+const confirmBody = z.object({ code: codeField });
+const changeBody = z.object({ password: z.string().min(1).max(1024), code: codeField });
+
+/** One answer for a wrong code and a locked account, as for a wrong password (ADR 0026). */
+function invalidCode(): HttpProblem {
+  return new HttpProblem(
+    401,
+    'invalid_code',
+    'The code is incorrect',
+    'The code is incorrect, or the account is temporarily locked. Try again in a few minutes.',
+  );
+}
+
+function twoFactorExpired(): HttpProblem {
+  return new HttpProblem(401, 'two_factor_expired', 'Sign in again to continue');
+}
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -159,6 +206,31 @@ async function enforceSignInLimits(
   }
 }
 
+/** Per IP, shared with sign-in, and per admin, for every code they enter. */
+async function enforceTwoFactorLimits(
+  c: Context,
+  deps: AuthRouteDependencies,
+  userId: string,
+): Promise<void> {
+  const now = deps.now();
+  const ip = deps.clientIp(c) ?? 'unknown';
+  const checks = [
+    { key: `signin:admin:ip:${ip}`, ...SIGN_IN_LIMITS.perIp },
+    { key: `two-factor:admin:user:${userId}`, ...TWO_FACTOR_LIMIT },
+  ];
+  for (const check of checks) {
+    const result = await consumeRateLimit(deps.db, check.key, check.limit, check.windowMs, now);
+    if (!result.allowed) {
+      c.header('Retry-After', String(result.retryAfterSeconds));
+      deps.logger.warn(
+        { requestId: c.get('requestId'), userId, limit: check.key.split(':')[2] },
+        'auth.two_factor_rate_limited',
+      );
+      throw new HttpProblem(429, 'too_many_attempts', 'Too many attempts. Try again later.');
+    }
+  }
+}
+
 async function enforceInvitationLimits(
   c: Context,
   deps: AuthRouteDependencies,
@@ -222,6 +294,26 @@ export function authRoutes(
   });
   app.use('*', trustedOriginGuard(deps.trustedOrigins));
 
+  /** Sets the two-factor session's cookie, ending any earlier one. */
+  async function startTwoFactorStep(c: Context, token: string) {
+    await endTwoFactorStep(c);
+    setCookie(c, TWO_FACTOR_COOKIE, token, {
+      prefix: 'host',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+      path: '/',
+      maxAge: Math.floor(TWO_FACTOR_STEP_MS / 1000),
+    });
+  }
+
+  async function endTwoFactorStep(c: Context) {
+    const token = getCookie(c, TWO_FACTOR_COOKIE, 'host');
+    if (token === undefined) return;
+    await revokeSession(deps.db, token, deps.now());
+    deleteCookie(c, TWO_FACTOR_COOKIE, { prefix: 'host', path: '/', secure: true });
+  }
+
   /** Drops any session this browser already had, then sets the new one's cookie. */
   async function startSession(c: Context, token: string) {
     const previous = readSessionCookie(c, realm);
@@ -263,6 +355,28 @@ export function authRoutes(
       );
     }
 
+    if (result.stage === 'two_factor') {
+      if (!deps.twoFactorKey) {
+        await revokeSession(deps.db, result.token, deps.now());
+        deps.logger.error({ requestId: c.get('requestId') }, 'auth.two_factor_not_configured');
+        throw new HttpProblem(
+          503,
+          'two_factor_not_configured',
+          'Admin sign-in is not set up yet',
+          'ADMIN_TOTP_KEY is not set on the server.',
+        );
+      }
+      await startTwoFactorStep(c, result.token);
+      deps.logger.info(
+        { requestId: c.get('requestId'), realm, userId: result.user.id, enrolled: result.enrolled },
+        'auth.password_accepted',
+      );
+      return c.json({
+        next: result.enrolled ? 'code' : 'enrol',
+        expiresAt: result.expiresAt.toISOString(),
+      });
+    }
+
     await startSession(c, result.token);
     deps.logger.info(
       { requestId: c.get('requestId'), realm, userId: result.user.id },
@@ -275,10 +389,13 @@ export function authRoutes(
     const token = readSessionCookie(c, realm);
     if (token) await revokeSession(deps.db, token, deps.now());
     deleteCookie(c, COOKIE_NAMES[realm], { prefix: 'host', path: '/', secure: true });
+    if (realm === 'admin') await endTwoFactorStep(c);
     return c.body(null, 204);
   });
 
   app.get('/me', requireSession(realm, deps), (c) => c.json({ user: c.get('user') }));
+
+  if (realm === 'admin') mountTwoFactorRoutes(app, deps, { startSession, endTwoFactorStep });
 
   if (realm === 'buyer') {
     // Accepting an invitation (ADR 0020). The token travels in the body only: never in a URL
@@ -364,4 +481,190 @@ export function authRoutes(
   }
 
   return app;
+}
+
+/** Turns a refusal from identity into the answer the browser sees; never which part was wrong. */
+function refusal(c: Context, deps: AuthRouteDependencies, result: TwoFactorRefusal): HttpProblem {
+  deps.logger.info(
+    { requestId: c.get('requestId'), userId: result.userId, reason: result.reason },
+    'auth.two_factor_failed',
+  );
+  if (result.reason === 'no_session') return twoFactorExpired();
+  if (result.reason === 'already_enrolled') {
+    return new HttpProblem(409, 'already_enrolled', 'Two-factor sign-in is already set up');
+  }
+  if (result.reason === 'not_enrolled') {
+    return new HttpProblem(409, 'not_enrolled', 'Two-factor sign-in is not set up');
+  }
+  return invalidCode();
+}
+
+/**
+ * The second factor for admins (ADR 0026): the code step and enrolment, on the two-factor
+ * session, and the admin's own changes, on a full session. Mounted under /admin/v1/auth.
+ */
+function mountTwoFactorRoutes(
+  app: Hono<{ Variables: AuthVariables }>,
+  deps: AuthRouteDependencies,
+  session: {
+    startSession: (c: Context, token: string) => Promise<void>;
+    endTwoFactorStep: (c: Context) => Promise<void>;
+  },
+): void {
+  const realm = 'admin';
+
+  function key(): TotpKey {
+    if (!deps.twoFactorKey) {
+      throw new HttpProblem(503, 'two_factor_not_configured', 'Admin sign-in is not set up yet');
+    }
+    return deps.twoFactorKey;
+  }
+
+  /** The live two-factor session of this browser, after the rate limits for its admin. */
+  async function step(c: Context) {
+    const token = getCookie(c, TWO_FACTOR_COOKIE, 'host');
+    const pending = token
+      ? await validateTwoFactorSession(deps.db, token, realm, deps.now())
+      : undefined;
+    if (!token || !pending) throw twoFactorExpired();
+    await enforceTwoFactorLimits(c, deps, pending.user.id);
+    return {
+      pending,
+      context: {
+        realm,
+        token,
+        now: deps.now(),
+        ipAddress: deps.clientIp(c),
+        userAgent: c.req.header('user-agent'),
+      } as const,
+    };
+  }
+
+  /** The code step of sign-in: a code from the app, or a recovery code. */
+  app.post('/two-factor/verify', async (c) => {
+    const body = verifyBody.parse(await c.req.json().catch(() => ({})));
+    const { context } = await step(c);
+    const result = await verifySecondFactor(deps.db, key(), {
+      ...context,
+      ...('code' in body ? { code: body.code } : { recoveryCode: body.recoveryCode }),
+    });
+    if (!result.ok) throw refusal(c, deps, result);
+    await session.endTwoFactorStep(c);
+    await session.startSession(c, result.token);
+    if (result.usedRecoveryCode) {
+      const { recoveryCodesLeft } = await twoFactorStatus(deps.db, result.user.id);
+      deps.logger.warn(
+        { requestId: c.get('requestId'), userId: result.user.id, recoveryCodesLeft },
+        'auth.recovery_code_used',
+      );
+    }
+    deps.logger.info(
+      {
+        requestId: c.get('requestId'),
+        realm,
+        userId: result.user.id,
+        factor: result.usedRecoveryCode ? 'recovery_code' : 'totp',
+      },
+      'auth.signed_in',
+    );
+    return c.json({ user: result.user, expiresAt: result.expiresAt.toISOString() });
+  });
+
+  /** Enrolment, first step: a new secret, shown once as text and as a QR code's link. */
+  app.post('/two-factor/enrolment', async (c) => {
+    const { context } = await step(c);
+    const result = await startEnrolment(deps.db, key(), { ...context, issuer: TOTP_ISSUER });
+    if (!result.ok) throw refusal(c, deps, result);
+    return c.json({ secret: result.secret, uri: result.uri });
+  });
+
+  /** Enrolment, second step: the first code confirms it and signs the admin in. */
+  app.post('/two-factor/enrolment/confirm', async (c) => {
+    const body = confirmBody.parse(await c.req.json().catch(() => ({})));
+    const { context } = await step(c);
+    const result = await confirmEnrolment(deps.db, key(), { ...context, code: body.code });
+    if (!result.ok) throw refusal(c, deps, result);
+    await session.endTwoFactorStep(c);
+    await session.startSession(c, result.token);
+    deps.logger.info(
+      { requestId: c.get('requestId'), realm, userId: result.user.id },
+      'auth.two_factor_enrolled',
+    );
+    return c.json({
+      user: result.user,
+      expiresAt: result.expiresAt.toISOString(),
+      recoveryCodes: result.recoveryCodes,
+    });
+  });
+
+  // The admin's own changes, on a full session. Each needs the password and a current code,
+  // and ends the admin's other sessions.
+  const signedIn = requireSession(realm, deps);
+
+  app.get('/two-factor', signedIn, async (c) => {
+    const status = await twoFactorStatus(deps.db, c.get('user').id);
+    return c.json({
+      twoFactor: {
+        enrolled: status.enrolled,
+        confirmedAt: status.confirmedAt?.toISOString() ?? null,
+        recoveryCodesLeft: status.recoveryCodesLeft,
+      },
+    });
+  });
+
+  function change(
+    c: Context<{ Variables: AuthVariables }>,
+    body: { password: string; code: string },
+  ) {
+    return {
+      userId: c.get('user').id,
+      sessionId: c.get('sessionId'),
+      password: body.password,
+      code: body.code,
+      now: deps.now(),
+    };
+  }
+
+  app.post('/two-factor/recovery-codes', signedIn, async (c) => {
+    const body = changeBody.parse(await c.req.json().catch(() => ({})));
+    await enforceTwoFactorLimits(c, deps, c.get('user').id);
+    const result = await replaceRecoveryCodes(deps.db, key(), change(c, body));
+    if (!result.ok) throw refusal(c, deps, result);
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id },
+      'auth.recovery_codes_replaced',
+    );
+    return c.json({ recoveryCodes: result.recoveryCodes });
+  });
+
+  /** Moving to a new phone, first step: a new secret beside the current one. */
+  app.post('/two-factor/replacement', signedIn, async (c) => {
+    const body = changeBody.parse(await c.req.json().catch(() => ({})));
+    await enforceTwoFactorLimits(c, deps, c.get('user').id);
+    const result = await startReplacement(deps.db, key(), {
+      ...change(c, body),
+      issuer: TOTP_ISSUER,
+      email: c.get('user').email,
+    });
+    if (!result.ok) throw refusal(c, deps, result);
+    return c.json({ secret: result.secret, uri: result.uri });
+  });
+
+  /** Moving to a new phone, second step: the new phone's first code replaces the old secret. */
+  app.post('/two-factor/replacement/confirm', signedIn, async (c) => {
+    const body = confirmBody.parse(await c.req.json().catch(() => ({})));
+    await enforceTwoFactorLimits(c, deps, c.get('user').id);
+    const result = await confirmReplacement(deps.db, key(), {
+      userId: c.get('user').id,
+      sessionId: c.get('sessionId'),
+      code: body.code,
+      now: deps.now(),
+    });
+    if (!result.ok) throw refusal(c, deps, result);
+    deps.logger.info(
+      { requestId: c.get('requestId'), userId: c.get('user').id },
+      'auth.two_factor_replaced',
+    );
+    return c.json({ recoveryCodes: result.recoveryCodes });
+  });
 }

@@ -18,6 +18,7 @@ import { createWebsite } from '@muziris/platform';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 import { runSetup } from './setup.js';
 
@@ -56,6 +57,7 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
 
   function app() {
     return createApp({
+      twoFactorKey: TEST_TWO_FACTOR_KEY,
       logger: createLogger(
         'silent',
         new Writable({
@@ -86,13 +88,13 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
       permissions,
     });
     await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, user.id, role.id);
-    const res = await app().request('/admin/v1/auth/sign-in', {
-      method: 'POST',
-      body: JSON.stringify({ email, password: PASSWORD }),
-      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    const cookie = await signInAdmin(app(), {
+      email,
+      password: PASSWORD,
+      origin: ORIGIN,
+      now: NOW,
     });
-    expect(res.status).toBe(200);
-    return { userId: user.id, cookie: (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '' };
+    return { userId: user.id, cookie: cookie };
   }
 
   const call = (method: string, path: string, cookie: string, body?: unknown) =>
