@@ -1,3 +1,4 @@
+import { parseTotpKey, TotpKeyError, type TotpKey } from '@muziris/identity';
 import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
 import { paymentGatewaysFromEnv, type PaymentGateways } from '@muziris/payments';
 import { z } from 'zod';
@@ -50,6 +51,15 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
   /** The worker process's port, for its /health/live check. */
   WORKER_PORT: z.coerce.number().int().min(1).max(65535).default(4001),
+  /**
+   * The key that encrypts admins' two-factor secrets (ADR 0026): 32 bytes in base64. Required
+   * in production; without it admins cannot finish signing in.
+   */
+  ADMIN_TOTP_KEY: z
+    .string()
+    .optional()
+    // Docker Compose passes an unset variable as an empty one.
+    .transform((value) => (value === '' ? undefined : value)),
   /** The code of the website the public storefront serves; invitation emails come from it. */
   STOREFRONT_WEBSITE: z
     .string()
@@ -57,8 +67,10 @@ const envSchema = z.object({
     .default('main'),
 });
 
-export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES'> & {
+export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES' | 'ADMIN_TOTP_KEY'> & {
   STOREFRONT_ADHOC_QUERIES: 'allow' | 'deny';
+  /** ADMIN_TOTP_KEY, parsed; undefined when it is not set (never in production). */
+  twoFactorKey: TotpKey | undefined;
   /**
    * The payment gateways whose keys are all set (ADR 0019), from STRIPE_* and RAZORPAY_*.
    * Live keys are refused unless PAYMENTS_LIVE=true.
@@ -92,10 +104,30 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       'Invalid configuration:\n  STOREFRONT_ADHOC_QUERIES: production runs persisted queries only',
     );
   }
+  // Mail and payments first: their errors name several variables at once.
+  const mail = mailConfigFromEnv(source, { production: parsed.NODE_ENV === 'production' });
+  const payments = paymentGatewaysFromEnv(source);
+  const { ADMIN_TOTP_KEY, ...rest } = parsed;
+  let twoFactorKey: TotpKey | undefined;
+  if (ADMIN_TOTP_KEY !== undefined) {
+    try {
+      twoFactorKey = parseTotpKey(ADMIN_TOTP_KEY);
+    } catch (error) {
+      if (error instanceof TotpKeyError) {
+        throw new Error(`Invalid configuration:\n  ADMIN_TOTP_KEY: ${error.message}`, {
+          cause: error,
+        });
+      }
+      throw error;
+    }
+  } else if (parsed.NODE_ENV === 'production') {
+    throw new Error('Invalid configuration:\n  ADMIN_TOTP_KEY: required in production');
+  }
   return {
-    ...parsed,
-    payments: paymentGatewaysFromEnv(source),
-    mail: mailConfigFromEnv(source, { production: parsed.NODE_ENV === 'production' }),
+    ...rest,
+    twoFactorKey,
+    payments,
+    mail,
     STOREFRONT_ADHOC_QUERIES:
       parsed.STOREFRONT_ADHOC_QUERIES ?? (parsed.NODE_ENV === 'production' ? 'deny' : 'allow'),
   };

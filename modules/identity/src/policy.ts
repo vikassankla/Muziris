@@ -34,6 +34,12 @@ export const LOCKOUT_POLICY: LockoutPolicy = {
   maxLockMs: 15 * MINUTE,
 };
 
+/** Realms whose users sign in with a second factor (ADR 0026). */
+export const TWO_FACTOR_REALMS: ReadonlySet<Realm> = new Set<Realm>(['admin']);
+
+/** How long a correct password waits for the code, or for enrolment to finish. */
+export const TWO_FACTOR_STEP_MS = 5 * MINUTE;
+
 /** Only refresh last_seen_at when it is this stale, to avoid a write on every request. */
 export const LAST_SEEN_REFRESH_MS = MINUTE;
 

@@ -57,7 +57,11 @@ const app = createApp({
   },
   mail: env.mail,
   storefrontWebsite: env.STOREFRONT_WEBSITE,
+  ...(env.twoFactorKey ? { twoFactorKey: env.twoFactorKey } : {}),
 });
+if (!env.twoFactorKey) {
+  logger.warn('ADMIN_TOTP_KEY is not set; admins cannot finish signing in (ADR 0026)');
+}
 
 const server = serve({ fetch: app.fetch, port: env.PORT, hostname: env.HOST }, (info) => {
   logger.info(

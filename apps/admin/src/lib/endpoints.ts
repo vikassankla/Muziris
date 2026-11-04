@@ -182,10 +182,77 @@ const none = z.undefined();
 
 // Sign-in and session
 
+/**
+ * The password step. A right password leads to the code (or to enrolment, the first time):
+ * admins sign in with two factors (ADR 0026).
+ */
 export function signIn(email: string, password: string) {
-  return api('/auth/sign-in', z.object({ user: adminUserSchema, expiresAt: z.string() }), {
+  return api(
+    '/auth/sign-in',
+    z.object({ next: z.enum(['code', 'enrol']), expiresAt: z.string() }),
+    { method: 'POST', body: { email, password } },
+  );
+}
+
+const signedInSchema = z.object({ user: adminUserSchema, expiresAt: z.string() });
+const newFactorSchema = z.object({ secret: z.string(), uri: z.string() });
+const recoveryCodesSchema = z.object({ recoveryCodes: z.array(z.string()) });
+
+/** The code step: a code from the authenticator app, or a recovery code. */
+export function verifyCode(code: { code: string } | { recoveryCode: string }) {
+  return api('/auth/two-factor/verify', signedInSchema, { method: 'POST', body: code });
+}
+
+/** Enrolment's first step: a new secret, to show as a QR code and as text. */
+export function startEnrolment() {
+  return api('/auth/two-factor/enrolment', newFactorSchema, { method: 'POST', body: {} });
+}
+
+/** Enrolment's second step: the first code. Signs the admin in and gives the recovery codes. */
+export function confirmEnrolment(code: string) {
+  return api(
+    '/auth/two-factor/enrolment/confirm',
+    signedInSchema.extend(recoveryCodesSchema.shape),
+    {
+      method: 'POST',
+      body: { code },
+    },
+  );
+}
+
+const twoFactorStatusSchema = z.object({
+  enrolled: z.boolean(),
+  confirmedAt: z.string().nullable(),
+  recoveryCodesLeft: z.number().int(),
+});
+export type TwoFactorStatus = z.infer<typeof twoFactorStatusSchema>;
+
+export async function getTwoFactor(signal?: AbortSignal): Promise<TwoFactorStatus> {
+  return (await api('/auth/two-factor', z.object({ twoFactor: twoFactorStatusSchema }), { signal }))
+    .twoFactor;
+}
+
+/** New recovery codes for the password and a current code. Ends the admin's other sessions. */
+export function newRecoveryCodes(password: string, code: string) {
+  return api('/auth/two-factor/recovery-codes', recoveryCodesSchema, {
     method: 'POST',
-    body: { email, password },
+    body: { password, code },
+  });
+}
+
+/** Moving to a new phone, first step: the password and a code from the current phone. */
+export function startPhoneMove(password: string, code: string) {
+  return api('/auth/two-factor/replacement', newFactorSchema, {
+    method: 'POST',
+    body: { password, code },
+  });
+}
+
+/** Moving to a new phone, second step: a code from the new phone. */
+export function confirmPhoneMove(code: string) {
+  return api('/auth/two-factor/replacement/confirm', recoveryCodesSchema, {
+    method: 'POST',
+    body: { code },
   });
 }
 

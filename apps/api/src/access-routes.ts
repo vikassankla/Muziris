@@ -25,6 +25,7 @@ import {
   type AdminPermission,
 } from '@muziris/access';
 import type { Database } from '@muziris/db';
+import { findUserById, resetTwoFactor } from '@muziris/identity';
 import { Hono, type MiddlewareHandler } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
@@ -214,6 +215,30 @@ export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, targetUserId: userId, roleId },
       'access.admin_role_unassigned',
+    );
+    return c.body(null, 204);
+  });
+
+  /**
+   * Resets another admin's second factor (ADR 0026): their sessions end, and they enrol again at
+   * their next sign-in. An admin moves their own to a new phone on their Security page instead.
+   */
+  app.post('/admin-users/:userId/two-factor/reset', need('admin_user.manage'), async (c) => {
+    const userId = idParam.parse(c.req.param('userId'));
+    if (userId === c.get('user').id) {
+      throw new HttpProblem(
+        409,
+        'own_two_factor',
+        'You cannot reset your own two-factor sign-in',
+        'Use Security on your profile to move it to a new phone.',
+      );
+    }
+    const target = await findUserById(deps.db, userId);
+    if (target?.realm !== 'admin') throw new HttpProblem(404, 'user_not_found', 'No such user');
+    const hadFactor = await resetTwoFactor(deps.db, userId, deps.now());
+    deps.logger.warn(
+      { requestId: c.get('requestId'), userId: c.get('user').id, targetUserId: userId, hadFactor },
+      'auth.two_factor_reset',
     );
     return c.body(null, 204);
   });

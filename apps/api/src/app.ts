@@ -1,4 +1,5 @@
 import type { Database } from '@muziris/db';
+import type { TotpKey } from '@muziris/identity';
 import type { JobQueue } from '@muziris/jobs';
 import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
 import type { TaxProvider } from '@muziris/orders';
@@ -69,6 +70,11 @@ export interface AppDependencies {
    * that do not look at jobs leave it out, and their jobs are dropped.
    */
   jobs?: JobQueue;
+  /**
+   * ADMIN_TOTP_KEY (ADR 0026), which encrypts admins' two-factor secrets. Without it the
+   * password step works but the code step answers 503.
+   */
+  twoFactorKey?: TotpKey;
 }
 
 export interface AppEnv {
@@ -187,6 +193,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     clientIp: deps.clientIp ?? ((c: Context) => resolveClientIp(c, deps.trustedProxyHops ?? 0)),
     trustedOrigins: allowedOrigins,
     jobs: deps.jobs ?? NO_JOBS,
+    twoFactorKey: deps.twoFactorKey,
   };
   const emails = createEmails({
     db: deps.db,

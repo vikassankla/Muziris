@@ -19,6 +19,7 @@ import { getSetting } from '@muziris/platform';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 import { DEFAULT_BUYER_ROLE } from './settings.js';
 import { runSetup, SetupError } from './setup.js';
@@ -61,6 +62,7 @@ describe.skipIf(!url)('setup and website routes against PostgreSQL', () => {
 
   function app() {
     return createApp({
+      twoFactorKey: TEST_TWO_FACTOR_KEY,
       logger: createLogger(
         'silent',
         new Writable({
@@ -91,13 +93,13 @@ describe.skipIf(!url)('setup and website routes against PostgreSQL', () => {
       permissions,
     });
     await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, user.id, role.id);
-    const res = await app().request('/admin/v1/auth/sign-in', {
-      method: 'POST',
-      body: JSON.stringify({ email, password: PASSWORD }),
-      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    const cookie = await signInAdmin(app(), {
+      email,
+      password: PASSWORD,
+      origin: ORIGIN,
+      now: NOW,
     });
-    expect(res.status).toBe(200);
-    return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    return cookie;
   }
 
   const call = (method: string, path: string, cookie: string, body?: unknown) =>

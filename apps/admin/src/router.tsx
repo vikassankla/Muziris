@@ -22,11 +22,16 @@ import { rootRoute } from './routes/root.js';
 import { settingsRoute } from './routes/settings.js';
 import { taxRoute } from './routes/tax.js';
 import { signInRoute } from './routes/sign-in.js';
+import { signInCodeRoute, signInEnrolRoute } from './routes/sign-in-two-factor.js';
+import { securityRoute } from './routes/security.js';
 import { websitesRoute } from './routes/websites.js';
 
 const routeTree = rootRoute.addChildren([
   signInRoute,
+  signInCodeRoute,
+  signInEnrolRoute,
   authedRoute.addChildren([
+    securityRoute,
     homeRoute,
     ordersRoute,
     emailsRoute,

@@ -134,6 +134,13 @@
       "when": 1793610357901,
       "tag": "0018_invitation_buyer_role",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793700863551,
+      "tag": "0019_identity_two_factor",
+      "breakpoints": true
     }
   ]
 }

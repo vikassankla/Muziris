@@ -39,24 +39,25 @@ Configuration comes from environment variables only. `.env.example` lists them w
 comments. The API checks them at startup, and when one is wrong it names the variable without
 printing its value.
 
-Secrets (the database password inside `DATABASE_URL`, `SMTP_URL`, the payment keys) belong in
+Secrets (the database password inside `DATABASE_URL`, `ADMIN_TOTP_KEY`, `SMTP_URL`, the payment keys) belong in
 your deployment's secret store. Never put them in the repository, the admin settings or a URL
 you share.
 
 For production, set at least:
 
-| Variable                                         | Value                                                                                                                             |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                       | `production`                                                                                                                      |
-| `DATABASE_URL`                                   | `postgres://user:password@host:5432/database`                                                                                     |
-| `HOST`, `PORT`                                   | Where the API listens, for example `0.0.0.0` and `4000` behind the proxy                                                          |
-| `CORS_ORIGINS`                                   | The admin and storefront origins, comma-separated. They must be `https://` in production                                          |
-| `TRUSTED_PROXY_HOPS`                             | How many proxies sit in front of the API (1 for one reverse proxy), so rate limits see the client's address                       |
-| `STOREFRONT_WEBSITE`                             | The code of the website the storefront serves                                                                                     |
-| `STOREFRONT_PERSISTED_QUERIES`                   | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`      |
-| `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` | All three are required in production. `STOREFRONT_PUBLIC_URL` is used for links in emails                                         |
-| `STRIPE_*`, `RAZORPAY_*`                         | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                                |
-| `JOB_WORKERS`, `WORKER_PORT`                     | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001 |
+| Variable                                         | Value                                                                                                                                |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                                       | `production`                                                                                                                         |
+| `DATABASE_URL`                                   | `postgres://user:password@host:5432/database`                                                                                        |
+| `ADMIN_TOTP_KEY`                                 | 32 random bytes in base64 (`openssl rand -base64 32`). Encrypts admins' two-factor secrets; back it up with the database credentials |
+| `HOST`, `PORT`                                   | Where the API listens, for example `0.0.0.0` and `4000` behind the proxy                                                             |
+| `CORS_ORIGINS`                                   | The admin and storefront origins, comma-separated. They must be `https://` in production                                             |
+| `TRUSTED_PROXY_HOPS`                             | How many proxies sit in front of the API (1 for one reverse proxy), so rate limits see the client's address                          |
+| `STOREFRONT_WEBSITE`                             | The code of the website the storefront serves                                                                                        |
+| `STOREFRONT_PERSISTED_QUERIES`                   | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`         |
+| `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` | All three are required in production. `STOREFRONT_PUBLIC_URL` is used for links in emails                                            |
+| `STRIPE_*`, `RAZORPAY_*`                         | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                                   |
+| `JOB_WORKERS`, `WORKER_PORT`                     | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001    |
 
 Build-time, for the storefront: `VITE_STOREFRONT_WEBSITE`, the same website code.
 
@@ -91,6 +92,7 @@ pnpm --filter @muziris/api start
   is safe to run again and changes nothing the second time.
 - `admin:create` asks for the password without showing it. Use at least 12 characters. The
   first admin gets the built-in `administrator` role.
+- At their first sign-in, every admin sets up an authenticator app (two-factor sign-in, ADR 0026) and saves ten recovery codes. No admin screen opens until they have.
 
 Check the API: `/health/live` answers when the process runs, and `/health/ready` answers when
 it can reach the database. Point your load balancer's checks at them.
@@ -140,21 +142,29 @@ an MRO catalog with list prices, if your version includes it. It adds no tax rat
   Run one or more workers; a job runs once whichever picks it up.
 - **Emails** are sent within seconds of being queued, and every minute, while `SMTP_URL` is
   set. You can also send them with `pnpm --filter @muziris/api notifications:send`.
+- **Admin two-factor sign-in** (ADR 0026). An admin who loses their phone signs in with a
+  recovery code, then moves to a new phone under Security in their profile menu. An admin
+  with `admin_user.manage` can reset another admin's, through
+  `POST /admin/v1/access/admin-users/<id>/two-factor/reset` until the admin users screen
+  exists. For the last administrator, run
+  `pnpm --filter @muziris/api admin:reset-2fa --email <email>` on the server. To change
+  `ADMIN_TOTP_KEY`, stop the API and any worker, run
+  `ADMIN_TOTP_KEY_PREVIOUS=<old> ADMIN_TOTP_KEY=<new> pnpm --filter @muziris/api admin:rotate-2fa-key`,
+  then start them with the new key.
 - **Logs** are JSON lines on standard output. Passwords, tokens, cookies and authorization
   headers are redacted.
 - **Stopping**: the API finishes in-flight requests, and the worker its running job, on
   `SIGTERM` before it exits.
 - **Upgrading**: stop the API and any worker, back up the database, deploy the new version, run
   `pnpm db:migrate`, then start them again. Migrations only move forward.
-- **Backups**: everything is in PostgreSQL. Use your provider's point-in-time recovery, or
+- **Backups**: everything is in PostgreSQL except `ADMIN_TOTP_KEY`. Keep a copy of the key with
+  the database credentials, or after a restore every admin must enrol again. Use your provider's point-in-time recovery, or
   `pg_dump` on a schedule, and test a restore before you rely on it.
 
 ## Not ready for production yet
 
 These are open before the first production install (see `docs/status.md`):
 
-- **Admin two-factor sign-in** (ADR 0005). Until it exists, keep admin accounts few, with long
-  unique passwords.
 - **No production container image.** The Docker setup in this repository is for testing: it
   runs with `NODE_ENV=development` and dev dependencies.
 - **Tax** needs the tax adviser's confirmation of the four **(check)** items in ADR 0017 before

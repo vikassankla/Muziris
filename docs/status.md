@@ -232,7 +232,18 @@ review).
 23. Storefront tests get 15 seconds each (PR 45, merged 2026-11-03 as 1170236): the sign-in
     test ran past vitest's 5-second default on CI and failed main.
 
-**Next (ahead of the plan):** ADR 0026 (admin two-factor sign-in). Then the hand-test follow-ups in item 16, each with a journey.
+24. Admin two-factor sign-in (ADR 0026). **In review** (branch `feature/admin-two-factor`). It
+    is authentication and handles a secret, so CLAUDE.md rule 4 asks for a second human
+    review. Authenticator-app codes (RFC 6238, `node:crypto`, the RFC vectors as known-answer
+    tests) and 10 recovery codes; secrets encrypted with `ADMIN_TOTP_KEY` (migration `0019`).
+    A right password opens a 5-minute two-factor session; the code opens the full one with a
+    new token. First sign-in enrols, with a QR code (`uqr`, MIT, new dependency). A Security
+    page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
+    admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
+    with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
+
+**Next (ahead of the plan):** the hand-test follow-ups in item 16, each with a journey. Then the
+admin users screen, which needs a button for the two-factor reset.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -252,7 +263,8 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   data protection and residency decisions. The foundations (websites with country, currency,
   locale, time zone and units; exact money; price lists per currency) already work per country.
 
-- Admin two-factor sign-in before the first production install (ADR 0005).
+- Admin two-factor sign-in (ADR 0026): no passkeys, no remembered devices, and the reset has
+  no admin screen until the admin users screen exists.
 - Job runner (ADR 0025): no admin action retries or removes a failed job; the Jobs screen only
   lists them. pg-boss keeps finished jobs for its default retention.
 - Pricing (ADR 0011): the build is a full rebuild and makes price list writes wait while it

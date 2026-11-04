@@ -1,10 +1,9 @@
-import { createRoute, useNavigate, useRouter } from '@tanstack/react-router';
+import { createRoute, useNavigate } from '@tanstack/react-router';
 import { Clock, Lock } from 'lucide-react';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
-import { BrandMark } from '../components/app-frame.js';
 import { ProblemAlert } from '../components/problem-view.js';
+import { SignInCard } from '../components/two-factor.js';
 import { Alert } from '../components/ui/alert.js';
-import { Tag } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Input } from '../components/ui/input.js';
 import { Label } from '../components/ui/label.js';
@@ -20,7 +19,7 @@ export const INVALID_CREDENTIALS_MESSAGE =
 
 interface SignInSearch {
   redirect?: string;
-  reason?: 'session_ended';
+  reason?: 'session_ended' | 'two_factor_expired';
 }
 
 export const signInRoute = createRoute({
@@ -30,14 +29,16 @@ export const signInRoute = createRoute({
     const target = safeRedirect(search['redirect']);
     return {
       ...(target === undefined ? {} : { redirect: target }),
-      ...(search['reason'] === 'session_ended' ? { reason: 'session_ended' as const } : {}),
+      ...(search['reason'] === 'session_ended' || search['reason'] === 'two_factor_expired'
+        ? { reason: search['reason'] }
+        : {}),
     };
   },
   component: SignInPage,
 });
 
 /** A countdown in whole seconds, ticking once a second while it runs. */
-function useCountdown() {
+export function useCountdown() {
   const [clock, setClock] = useState<{ until: number; now: number } | undefined>();
   useEffect(() => {
     if (clock === undefined) return undefined;
@@ -64,7 +65,6 @@ function useCountdown() {
 function SignInPage() {
   const search = signInRoute.useSearch();
   const navigate = useNavigate();
-  const router = useRouter();
   const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,10 +84,13 @@ function SignInPage() {
     setProblem(undefined);
     countdown.stop();
     try {
-      await signIn(email, password);
+      const { next } = await signIn(email, password);
       setPassword('');
-      await router.invalidate();
-      await navigate({ href: search.redirect ?? '/', replace: true });
+      // The second factor (ADR 0026): the code, or enrolment the first time.
+      await navigate({
+        to: next === 'code' ? '/sign-in/code' : '/sign-in/enrol',
+        search: search.redirect === undefined ? {} : { redirect: search.redirect },
+      });
     } catch (error) {
       setPassword('');
       // Anything that is not an answer from the API gets the generic message, never the exception.
@@ -107,74 +110,65 @@ function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
-      <div className="flex w-full max-w-[400px] flex-col gap-5 rounded-lg border bg-card px-7 py-8 shadow-overlay">
-        <div className="flex items-center gap-2.5">
-          <BrandMark />
-          <span className="text-base font-semibold">Muziris</span>
-          <Tag>Admin</Tag>
+    <SignInCard title="Sign in" description="For admin users. Buyers sign in on the storefront.">
+      {shownProblem === undefined && search.reason === 'session_ended' ? (
+        <Alert variant="info" icon={<Lock />}>
+          Your session ended. Sign in again.
+        </Alert>
+      ) : shownProblem === undefined && search.reason === 'two_factor_expired' ? (
+        <Alert variant="info" icon={<Clock />}>
+          That took longer than five minutes. Sign in again.
+        </Alert>
+      ) : null}
+      {shownProblem?.code === 'invalid_credentials' ? (
+        <Alert variant="destructive">{INVALID_CREDENTIALS_MESSAGE}</Alert>
+      ) : shownProblem?.code === 'too_many_attempts' ? (
+        <Alert variant="warning" icon={<Clock />}>
+          Too many sign-in attempts.{' '}
+          {locked ? `Try again in ${formatRetryAfter(secondsLeft)}.` : 'Try again later.'}
+        </Alert>
+      ) : shownProblem ? (
+        <ProblemAlert problem={shownProblem} />
+      ) : null}
+      <form className="flex flex-col gap-3.5" onSubmit={(event) => void handleSubmit(event)}>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="username"
+            required
+            maxLength={254}
+            disabled={locked}
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+            }}
+          />
         </div>
-        <div>
-          <h1 className="m-0 text-xl font-[650]">Sign in</h1>
-          <p className="m-0 mt-1 text-meta text-muted-foreground">
-            For admin users. Buyers sign in on the storefront.
-          </p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            ref={passwordRef}
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            maxLength={1024}
+            disabled={locked}
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+            }}
+          />
         </div>
-        {shownProblem === undefined && search.reason === 'session_ended' ? (
-          <Alert variant="info" icon={<Lock />}>
-            Your session ended. Sign in again.
-          </Alert>
-        ) : null}
-        {shownProblem?.code === 'invalid_credentials' ? (
-          <Alert variant="destructive">{INVALID_CREDENTIALS_MESSAGE}</Alert>
-        ) : shownProblem?.code === 'too_many_attempts' ? (
-          <Alert variant="warning" icon={<Clock />}>
-            Too many sign-in attempts.{' '}
-            {locked ? `Try again in ${formatRetryAfter(secondsLeft)}.` : 'Try again later.'}
-          </Alert>
-        ) : shownProblem ? (
-          <ProblemAlert problem={shownProblem} />
-        ) : null}
-        <form className="flex flex-col gap-3.5" onSubmit={(event) => void handleSubmit(event)}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="username"
-              required
-              maxLength={254}
-              disabled={locked}
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              ref={passwordRef}
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              maxLength={1024}
-              disabled={locked}
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-              }}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={pending || locked}>
-            {pending ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
-        <p className="m-0 text-xs text-muted-foreground">
-          Forgot your password or need an account? Ask an administrator.
-        </p>
-      </div>
-    </div>
+        <Button type="submit" className="w-full" disabled={pending || locked}>
+          {pending ? 'Signing in…' : 'Sign in'}
+        </Button>
+      </form>
+      <p className="m-0 text-xs text-muted-foreground">
+        Forgot your password or need an account? Ask an administrator.
+      </p>
+    </SignInCard>
   );
 }

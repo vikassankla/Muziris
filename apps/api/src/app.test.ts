@@ -196,6 +196,8 @@ describe('loadEnv', () => {
     SMTP_URL: 'smtps://mailer:s3cret-mail@mail.example.com:465',
     MAIL_FROM: 'Shop <orders@example.com>',
     STOREFRONT_PUBLIC_URL: 'https://shop.example.com',
+    // Required in production too (ADR 0026); a test value.
+    ADMIN_TOTP_KEY: Buffer.alloc(32, 2).toString('base64'),
   };
 
   it('applies defaults', () => {
@@ -264,6 +266,27 @@ describe('loadEnv', () => {
     expect(message).toContain('SMTP_URL');
     expect(message).toContain('STOREFRONT_PUBLIC_URL: required in production');
     expect(message).not.toContain('s3cret-mail');
+  });
+
+  it('reads ADMIN_TOTP_KEY, required in production, without echoing it', () => {
+    expect(loadEnv(valid).twoFactorKey).toBeUndefined();
+    expect(
+      loadEnv({ ...valid, ...productionMail, NODE_ENV: 'production' }).twoFactorKey,
+    ).toBeDefined();
+    expect(() =>
+      loadEnv({ ...valid, ...productionMail, NODE_ENV: 'production', ADMIN_TOTP_KEY: undefined }),
+    ).toThrow('ADMIN_TOTP_KEY: required in production');
+    let message = '';
+    try {
+      loadEnv({ ...valid, ADMIN_TOTP_KEY: Buffer.alloc(16, 1).toString('base64') });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toContain('ADMIN_TOTP_KEY must be 32 bytes in base64');
+    expect(message).not.toContain('c2hvcnQta2V5LXNlY3JldA');
+    expect(JSON.stringify(loadEnv({ ...valid, ...productionMail }))).not.toContain(
+      productionMail.ADMIN_TOTP_KEY,
+    );
   });
 
   it('reads payment gateways, refusing a half-set one without echoing its keys', () => {
