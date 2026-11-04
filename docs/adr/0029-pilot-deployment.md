@@ -1,6 +1,6 @@
 # 0029: Pilot deployment on one VM with Docker Compose and Caddy
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-04
 
 ## Context

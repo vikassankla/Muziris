@@ -297,12 +297,12 @@ review).
     sign-in needs every permission they hold (`outranked` otherwise), and the admin users list
     offers those actions only where they are allowed (`mayManage`).
 
-30. ADR 0029, the pilot deployment (launch prep). **Proposed**, waiting for Vikas: one VM with
-    Docker Compose, Caddy for HTTPS from Let's Encrypt with the apps' headers and
-    Strict-Transport-Security, a production API image, one root-only env file, a daily
-    `pg_dump`, and a CI job that starts the production stack and checks its headers.
+30. ADR 0029, the pilot deployment (launch prep). **Accepted** by Vikas in chat on 2026-11-04
+    (PR 58): one VM with Docker Compose, Caddy for HTTPS from Let's Encrypt with the apps'
+    headers and Strict-Transport-Security, a production API image, one root-only env file, a
+    daily `pg_dump`, and a CI job that starts the production stack and checks its headers.
 
-**Next (ahead of the plan):** launch prep, once ADR 0029 is accepted: a deployment recipe with an ADR (it must send the
+**Next (ahead of the plan):** launch prep, building ADR 0029: a deployment recipe with an ADR (it must send the
 headers of `docker/app-headers.conf` and Strict-Transport-Security), the install guide finished,
 the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15.
 
