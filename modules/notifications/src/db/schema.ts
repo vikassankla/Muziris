@@ -17,6 +17,7 @@ import {
 /** The pilot's catalogue (docs/notifications.md). */
 export const NOTIFICATION_KINDS = [
   'buyer_invitation',
+  'admin_invitation',
   'order_placed',
   'order_received',
   'order_confirmed',
@@ -63,7 +64,7 @@ export const outbox = pgTable(
     index('notification_outbox_status_idx').on(t.status, t.createdAt),
     check(
       'notification_outbox_kind',
-      sql`${t.kind} in ('buyer_invitation', 'order_placed', 'order_received', 'order_confirmed', 'order_declined', 'order_completed', 'payment_received', 'payment_failed')`,
+      sql`${t.kind} in ('buyer_invitation', 'admin_invitation', 'order_placed', 'order_received', 'order_confirmed', 'order_declined', 'order_completed', 'payment_received', 'payment_failed')`,
     ),
     check('notification_outbox_status', sql`${t.status} in ('queued', 'sent', 'failed')`),
     check('notification_outbox_attempts', sql`${t.attempts} >= 0`),

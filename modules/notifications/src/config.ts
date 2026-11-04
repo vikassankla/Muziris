@@ -8,18 +8,48 @@ export interface MailConfig {
   from: string;
   /** The storefront's public origin and base path, without a trailing slash, for links. */
   storefrontUrl: string;
+  /** The admin app's, likewise, for admin invitation links (ADR 0028). */
+  adminUrl: string;
 }
 
-export const MAIL_ENV_NAMES = ['SMTP_URL', 'MAIL_FROM', 'STOREFRONT_PUBLIC_URL'] as const;
+export const MAIL_ENV_NAMES = [
+  'SMTP_URL',
+  'MAIL_FROM',
+  'STOREFRONT_PUBLIC_URL',
+  'ADMIN_PUBLIC_URL',
+] as const;
 
 const DEV_DEFAULTS = {
   from: 'Muziris <no-reply@muziris.localhost>',
   storefrontUrl: 'http://localhost:5174',
+  adminUrl: 'http://localhost:5173',
 };
 
 function read(source: Record<string, string | undefined>, name: string): string | undefined {
   const value = source[name]?.trim();
   return value === '' ? undefined : value;
+}
+
+/** An app's public address for links: http(s), https in production, no query or fragment. */
+function publicUrl(
+  name: string,
+  value: string | undefined,
+  options: { production: boolean },
+  problems: string[],
+): string | undefined {
+  if (value === undefined) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new TypeError('protocol');
+    if (options.production && url.protocol !== 'https:') {
+      problems.push(`${name}: production links must use https`);
+    }
+    if (url.search || url.hash || url.username || url.password) throw new TypeError('extra');
+    return `${url.origin}${url.pathname}`.replace(/\/+$/, '');
+  } catch {
+    problems.push(`${name}: expected an http(s) URL with no query or fragment`);
+    return undefined;
+  }
 }
 
 /** Throws with every problem at once, naming variables only. */
@@ -37,25 +67,15 @@ export function mailConfigFromEnv(
     problems.push('MAIL_FROM: expected an address such as "Shop <orders@example.com>"');
   }
   const storefront = read(source, 'STOREFRONT_PUBLIC_URL');
-  let storefrontUrl: string | undefined;
-  if (storefront !== undefined) {
-    try {
-      const url = new URL(storefront);
-      if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new TypeError('protocol');
-      if (options.production && url.protocol !== 'https:') {
-        problems.push('STOREFRONT_PUBLIC_URL: production links must use https');
-      }
-      if (url.search || url.hash || url.username || url.password) throw new TypeError('extra');
-      storefrontUrl = `${url.origin}${url.pathname}`.replace(/\/+$/, '');
-    } catch {
-      problems.push('STOREFRONT_PUBLIC_URL: expected an http(s) URL with no query or fragment');
-    }
-  }
+  const storefrontUrl = publicUrl('STOREFRONT_PUBLIC_URL', storefront, options, problems);
+  const admin = read(source, 'ADMIN_PUBLIC_URL');
+  const adminUrl = publicUrl('ADMIN_PUBLIC_URL', admin, options, problems);
   if (options.production) {
     for (const [name, value] of [
       ['SMTP_URL', smtpUrl],
       ['MAIL_FROM', from],
       ['STOREFRONT_PUBLIC_URL', storefront],
+      ['ADMIN_PUBLIC_URL', admin],
     ] as const) {
       if (value === undefined) problems.push(`${name}: required in production`);
     }
@@ -67,5 +87,6 @@ export function mailConfigFromEnv(
     smtpUrl,
     from: from ?? DEV_DEFAULTS.from,
     storefrontUrl: storefrontUrl ?? DEV_DEFAULTS.storefrontUrl,
+    adminUrl: adminUrl ?? DEV_DEFAULTS.adminUrl,
   };
 }

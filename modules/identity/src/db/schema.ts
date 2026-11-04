@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -156,5 +157,34 @@ export const recoveryCodes = pgTable(
   (t) => [
     unique('identity_recovery_code_user_hash_uq').on(t.userId, t.codeHash),
     check('identity_recovery_code_hash_shape', sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
+  ],
+);
+
+/**
+ * An invitation to set a password (ADR 0028), for an account made without one. The emailed token
+ * is never stored; only its SHA-256 hash is. Admin accounts only for now.
+ */
+export const invitations = pgTable(
+  'identity_invitation',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    /** The admin who sent it. */
+    invitedByUserId: uuid('invited_by_user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (t) => [
+    // At most one open invitation per user; sending again revokes the old one.
+    uniqueIndex('identity_invitation_open_uq')
+      .on(t.userId)
+      .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+    check('identity_invitation_token_hash_shape', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    check('identity_invitation_expiry_after_creation', sql`${t.expiresAt} > ${t.createdAt}`),
   ],
 );

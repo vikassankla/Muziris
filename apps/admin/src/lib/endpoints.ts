@@ -604,6 +604,101 @@ export function deleteAdminRole(roleId: string) {
   return api(`/access/roles/${id(roleId)}`, none, { method: 'DELETE' });
 }
 
+// Admin users (ADR 0028)
+
+export const ADMIN_USER_STATUSES = ['active', 'invited', 'disabled'] as const;
+export type AdminUserStatus = (typeof ADMIN_USER_STATUSES)[number];
+
+const adminUserRowSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  email: z.string(),
+  /** Invited until the admin sets a password from the email. */
+  status: z.enum(ADMIN_USER_STATUSES),
+  twoFactor: z.boolean(),
+  lastSignInAt: z.string().nullable(),
+  roles: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+export type AdminUserRow = z.infer<typeof adminUserRowSchema>;
+
+export function listAdminUsers(
+  query: { after?: string | undefined; limit?: number | undefined },
+  signal?: AbortSignal,
+): Promise<Page<AdminUserRow>> {
+  return page(
+    '/access/admin-users',
+    'adminUsers',
+    adminUserRowSchema,
+    pageQuery(query.after, query.limit ?? PAGE_SIZE),
+    signal,
+  );
+}
+
+const oneAdminUser = z.object({ adminUser: adminUserRowSchema });
+
+/** Makes the account and emails the invitation; the link never comes back here. */
+export async function inviteAdminUser(input: {
+  displayName: string;
+  email: string;
+  roleIds: string[];
+}) {
+  return (await api('/access/admin-users', oneAdminUser, { method: 'POST', body: input }))
+    .adminUser;
+}
+
+export async function resendAdminInvitation(userId: string) {
+  return (
+    await api(`/access/admin-users/${id(userId)}/invitation`, oneAdminUser, { method: 'POST' })
+  ).adminUser;
+}
+
+export async function disableAdminUser(userId: string) {
+  return (await api(`/access/admin-users/${id(userId)}/disable`, oneAdminUser, { method: 'POST' }))
+    .adminUser;
+}
+
+export async function enableAdminUser(userId: string) {
+  return (await api(`/access/admin-users/${id(userId)}/enable`, oneAdminUser, { method: 'POST' }))
+    .adminUser;
+}
+
+export function resetAdminTwoFactor(userId: string) {
+  return api(`/access/admin-users/${id(userId)}/two-factor/reset`, none, { method: 'POST' });
+}
+
+export function assignAdminRole(userId: string, roleId: string) {
+  return api(`/access/admin-users/${id(userId)}/roles/${id(roleId)}`, none, { method: 'PUT' });
+}
+
+export function unassignAdminRole(userId: string, roleId: string) {
+  return api(`/access/admin-users/${id(userId)}/roles/${id(roleId)}`, none, { method: 'DELETE' });
+}
+
+const pendingAdminInvitationSchema = z.object({
+  email: z.string(),
+  displayName: z.string(),
+  expiresAt: z.string(),
+});
+export type PendingAdminInvitation = z.infer<typeof pendingAdminInvitationSchema>;
+
+/** Who an admin invitation is for. The token goes in the body, never a URL. */
+export async function lookUpAdminInvitation(token: string) {
+  return (
+    await api('/auth/invitation', z.object({ invitation: pendingAdminInvitationSchema }), {
+      method: 'POST',
+      body: { token },
+    })
+  ).invitation;
+}
+
+/** Sets the invited admin's password. It does not sign in. */
+export function acceptAdminInvitation(token: string, password: string) {
+  return api('/auth/accept-invitation', z.object({ email: z.string() }), {
+    method: 'POST',
+    body: { token, password },
+  });
+}
+
 // Catalog
 
 export function listProducts(

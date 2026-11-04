@@ -8,10 +8,13 @@ import {
 } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import {
+  acceptUserInvitation,
   confirmEnrolment,
   confirmReplacement,
   consumeRateLimit,
   EmailTakenError,
+  findPendingUserInvitation,
+  IdentityError,
   PasswordPolicyError,
   replaceRecoveryCodes,
   revokeSession,
@@ -256,6 +259,19 @@ async function enforceInvitationLimits(
   }
 }
 
+/** The admin invitation's one refusal, and the password policy's; anything else passes through. */
+function adminInvitationProblem(error: unknown): unknown {
+  if (error instanceof IdentityError && error.code === 'invitation_invalid') {
+    return new HttpProblem(
+      404,
+      'invitation_invalid',
+      'This invitation link is not valid',
+      'It may have been used already or expired. Ask an administrator to send it again.',
+    );
+  }
+  return error instanceof PasswordPolicyError ? invitationProblem(error) : error;
+}
+
 /** Turns an invitation refusal into its problem; anything else passes through. */
 function invitationProblem(error: unknown): unknown {
   if (error instanceof CustomerError) {
@@ -396,6 +412,50 @@ export function authRoutes(
   app.get('/me', requireSession(realm, deps), (c) => c.json({ user: c.get('user') }));
 
   if (realm === 'admin') mountTwoFactorRoutes(app, deps, { startSession, endTwoFactorStep });
+
+  if (realm === 'admin') {
+    // Accepting an admin invitation (ADR 0028): it sets the password only. The admin then signs
+    // in with it and enrols a second factor. The token travels in the body only, and every
+    // refusal (unknown, malformed, used, expired, disabled) is the same.
+
+    /** Who the invitation is for, to show on the accept page. */
+    app.post('/invitation', async (c) => {
+      const { token } = invitationBody.parse(await c.req.json().catch(() => ({})));
+      await enforceInvitationLimits(c, deps, token);
+      try {
+        const invitation = await findPendingUserInvitation(deps.db, token, deps.now());
+        return c.json({
+          invitation: {
+            email: invitation.email,
+            displayName: invitation.displayName,
+            expiresAt: invitation.expiresAt.toISOString(),
+          },
+        });
+      } catch (error) {
+        throw adminInvitationProblem(error);
+      }
+    });
+
+    app.post('/accept-invitation', async (c) => {
+      const body = acceptBody.parse(await c.req.json().catch(() => ({})));
+      await enforceInvitationLimits(c, deps, body.token);
+      let user;
+      try {
+        user = await acceptUserInvitation(deps.db, {
+          token: body.token,
+          password: body.password,
+          now: deps.now(),
+        });
+      } catch (error) {
+        throw adminInvitationProblem(error);
+      }
+      deps.logger.info(
+        { requestId: c.get('requestId'), userId: user.id },
+        'auth.admin_invitation_accepted',
+      );
+      return c.json({ email: user.email });
+    });
+  }
 
   if (realm === 'buyer') {
     // Accepting an invitation (ADR 0020). The token travels in the body only: never in a URL

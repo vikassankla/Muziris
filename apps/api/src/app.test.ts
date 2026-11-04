@@ -196,6 +196,7 @@ describe('loadEnv', () => {
     SMTP_URL: 'smtps://mailer:s3cret-mail@mail.example.com:465',
     MAIL_FROM: 'Shop <orders@example.com>',
     STOREFRONT_PUBLIC_URL: 'https://shop.example.com',
+    ADMIN_PUBLIC_URL: 'https://admin.example.com',
     // Required in production too (ADR 0026); a test value.
     ADMIN_TOTP_KEY: Buffer.alloc(32, 2).toString('base64'),
   };

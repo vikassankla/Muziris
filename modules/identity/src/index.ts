@@ -25,6 +25,24 @@ export {
   type SessionPolicy,
 } from './policy.js';
 export { consumeRateLimit, pruneRateLimits, type RateLimitResult } from './rate-limit.js';
+export {
+  acceptUserInvitation,
+  ADMIN_INVITATION_TTL_MS,
+  enableUser,
+  findPendingUserInvitation,
+  findUserSummary,
+  IdentityError,
+  inviteAdminUser,
+  listUsers,
+  listUsersQuerySchema,
+  resendAdminInvitation,
+  type CreatedUserInvitation,
+  type IdentityErrorCode,
+  type UserInvitation,
+  type UserInvitationHooks,
+  type UserPage,
+  type UserSummary,
+} from './invitations.js';
 export { isWellFormedToken } from './tokens.js';
 export {
   base32Decode,

@@ -42,6 +42,14 @@ export type EmailData =
       acceptUrl: string;
       expiresAt: Date;
     }
+  | {
+      kind: 'admin_invitation';
+      displayName: string;
+      /** The admin who sent it. */
+      invitedByName: string;
+      acceptUrl: string;
+      expiresAt: Date;
+    }
   | ({ kind: 'order_placed' | 'order_confirmed' | 'order_completed' } & OrderData)
   | ({ kind: 'order_declined'; note: string | null } & OrderData)
   | {
@@ -160,6 +168,21 @@ export function renderEmail(data: EmailData, ctx: EmailContext): RenderedEmail {
           },
         ],
       );
+    case 'admin_invitation':
+      return compose(
+        ctx,
+        `You are invited to the ${ctx.shopName} admin`,
+        `Hello ${data.displayName},`,
+        [
+          {
+            p: `${data.invitedByName} invited you to work in the ${ctx.shopName} admin. Choose a password, then sign in and set up two-factor sign-in with an authenticator app.`,
+          },
+          { link: { label: 'Accept the invitation', href: data.acceptUrl } },
+          {
+            p: `The link works once and expires on ${formatDateTime(data.expiresAt, ctx)}. If you did not expect this email, you can ignore it.`,
+          },
+        ],
+      );
     case 'order_placed':
       return compose(ctx, `Order ${data.orderNumber} received`, `Hello ${data.buyerName},`, [
         { p: 'Thank you for your order. We will confirm it shortly.' },
@@ -224,4 +247,7 @@ export function renderEmail(data: EmailData, ctx: EmailContext): RenderedEmail {
 }
 
 /** Which kinds carry a secret in their body. */
-export const SENSITIVE_KINDS: ReadonlySet<NotificationKind> = new Set(['buyer_invitation']);
+export const SENSITIVE_KINDS: ReadonlySet<NotificationKind> = new Set([
+  'buyer_invitation',
+  'admin_invitation',
+]);

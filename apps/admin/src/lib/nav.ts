@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Tags,
   Timer,
+  UserCog,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ export type NavTo =
   | '/product-units'
   | '/price-lists'
   | '/admin-roles'
+  | '/admin-users'
   | '/buyer-roles'
   | '/emails'
   | '/jobs'
@@ -50,7 +52,7 @@ export interface NavGroup {
 
 /**
  * The sidebar, grouped as on the Sidebar board. Sections the board shows but that have no API
- * yet (Sales: RFQs, quotes; Admin users) are left out
+ * yet (Sales: RFQs, quotes) are left out
  * rather than shown empty; docs/status.md lists them.
  */
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -105,6 +107,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { to: '/tax', label: 'Tax', icon: Receipt, permission: 'tax.view' },
       { to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' },
       { to: '/jobs', label: 'Jobs', icon: Timer, permission: 'job.view' },
+      { to: '/admin-users', label: 'Admin users', icon: UserCog, permission: 'admin_user.view' },
     ],
   },
 ];

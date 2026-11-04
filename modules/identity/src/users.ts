@@ -39,7 +39,7 @@ function toAuthenticatedUser(row: typeof users.$inferSelect): AuthenticatedUser 
   return { id: row.id, realm: row.realm, email: row.email, displayName: row.displayName };
 }
 
-function isUniqueViolation(error: unknown): boolean {
+export function isUniqueViolation(error: unknown): boolean {
   // postgres.js puts the SQLSTATE on `code`; drizzle may wrap it in `cause`.
   const candidates = [error, (error as { cause?: unknown } | null)?.cause];
   return candidates.some(
