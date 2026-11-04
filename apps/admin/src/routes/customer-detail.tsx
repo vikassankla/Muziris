@@ -176,7 +176,7 @@ export const customerDetailRoute = createRoute({
 
 type Dialogs =
   | { kind: 'group' | 'parent' | 'subsidiary' | 'add-buyer' | 'link-buyer' | 'address' }
-  | { kind: 'assign-role'; userId: string }
+  | { kind: 'assign-role'; userId: string; name: string }
   | { kind: 'revoke'; invitation: Invitation }
   | undefined;
 
@@ -430,9 +430,6 @@ function CustomerDetailPage() {
 
         <TabsContent value="buyer-users" className="mt-5 flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-meta text-muted-foreground">
-              Names and emails come with a later change to identity; buyer users show by user id.
-            </span>
             <span className="flex-1" />
             {manage ? (
               <>
@@ -467,8 +464,11 @@ function CustomerDetailPage() {
             <Table>
               <TableHeader>
                 <tr>
-                  <TableHead>Buyer user</TableHead>
-                  <TableHead>Added</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Buyer roles</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last sign-in</TableHead>
                   <TableHead className="w-48">
                     <span className="sr-only">Actions</span>
                   </TableHead>
@@ -477,9 +477,40 @@ function CustomerDetailPage() {
               <TableBody>
                 {buyerUsers.items.map((user) => (
                   <TableRow key={user.userId}>
-                    <TableCell className="font-mono text-xs">{user.userId}</TableCell>
+                    <TableCell className="font-medium">
+                      {user.displayName ?? (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {user.userId}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{user.email ?? '—'}</TableCell>
+                    <TableCell>
+                      {user.buyerRoles.length === 0 ? (
+                        <span className="text-muted-foreground">None</span>
+                      ) : (
+                        <span className="flex flex-wrap gap-1">
+                          {user.buyerRoles.map((role) => (
+                            <Badge key={role.id} variant="outline">
+                              {role.name}
+                            </Badge>
+                          ))}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {user.status === 'active' ? (
+                        <Badge variant="success">Active</Badge>
+                      ) : user.status === 'disabled' ? (
+                        <Badge variant="neutral">Disabled</Badge>
+                      ) : (
+                        <Badge variant="warning">No account</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="num text-muted-foreground">
-                      {formatDate(user.createdAt, website)}
+                      {user.lastSignInAt === null
+                        ? 'Never'
+                        : formatDateTime(user.lastSignInAt, website)}
                     </TableCell>
                     <TableCell className="text-right">
                       {assignRoles ? (
@@ -487,7 +518,11 @@ function CustomerDetailPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setDialog({ kind: 'assign-role', userId: user.userId });
+                            setDialog({
+                              kind: 'assign-role',
+                              userId: user.userId,
+                              name: user.displayName ?? user.userId,
+                            });
                           }}
                         >
                           Assign buyer role
@@ -802,6 +837,7 @@ function CustomerDetailPage() {
           open
           onOpenChange={close}
           userId={dialog.userId}
+          name={dialog.name}
           roles={buyerRoles}
         />
       ) : null}

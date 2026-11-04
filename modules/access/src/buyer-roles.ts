@@ -204,6 +204,39 @@ export async function deleteBuyerRole(db: Database, roleId: string): Promise<voi
 }
 
 /** Gives a buyer role to a buyer user. Assigning a role the user already has does nothing. */
+/** A buyer role as a list of a user's roles shows it. */
+export interface BuyerRoleName {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** The buyer roles of each of the given buyer users, by name; users with none are left out. */
+export async function buyerRolesOfUsers(
+  db: Database,
+  buyerUserIds: readonly string[],
+): Promise<Map<string, BuyerRoleName[]>> {
+  if (buyerUserIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      buyerUserId: buyerUserRoles.buyerUserId,
+      id: buyerRoles.id,
+      code: buyerRoles.code,
+      name: buyerRoles.name,
+    })
+    .from(buyerUserRoles)
+    .innerJoin(buyerRoles, eq(buyerRoles.id, buyerUserRoles.roleId))
+    .where(inArray(buyerUserRoles.buyerUserId, [...buyerUserIds]))
+    .orderBy(asc(buyerRoles.name), asc(buyerRoles.code));
+  const byUser = new Map<string, BuyerRoleName[]>();
+  for (const { buyerUserId, ...role } of rows) {
+    const roles = byUser.get(buyerUserId) ?? [];
+    roles.push(role);
+    byUser.set(buyerUserId, roles);
+  }
+  return byUser;
+}
+
 export async function assignBuyerRole(
   db: Database,
   buyerUserId: string,

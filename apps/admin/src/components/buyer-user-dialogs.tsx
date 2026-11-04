@@ -359,11 +359,14 @@ export function AssignBuyerRoleDialog({
   open,
   onOpenChange,
   userId,
+  name,
   roles,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
+  /** Who gets the role, as the list shows them. */
+  name: string;
   roles: readonly BuyerRole[];
 }) {
   const [roleId, setRoleId] = useState<string>('');
@@ -390,7 +393,7 @@ export function AssignBuyerRoleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Assign a buyer role</DialogTitle>
-          <DialogDescription>Buyer user {userId}</DialogDescription>
+          <DialogDescription>For {name}</DialogDescription>
         </DialogHeader>
         {problem ? <ProblemAlert problem={problem} /> : null}
         <Field label="Buyer role">

@@ -13,6 +13,7 @@ import {
   ADMINISTRATOR_ROLE_CODE,
   assignAdminRole,
   assignBuyerRole,
+  buyerRolesOfUsers,
   buyerScope,
   buyerScopePredicate,
   createAdminRole,
@@ -479,6 +480,35 @@ describe.skipIf(!url)('access module against PostgreSQL', () => {
 
       await unassignBuyerRole(handle.db, ravi.id, manager.id);
       expect((await getBuyerAccess(handle.db, ravi.id)).get('order.view')).toBe('own_records');
+    });
+
+    it('lists the buyer roles of several buyer users at once, by name', async () => {
+      const ravi = await newUser('buyer', 'ravi@buyer.example');
+      const leela = await newUser('buyer', 'leela@buyer.example');
+      const nobody = await newUser('buyer', 'nobody@buyer.example');
+      const orderer = await createBuyerRole(handle.db, {
+        code: 'orderer',
+        name: 'Orderer',
+        grants: [],
+      });
+      const approver = await createBuyerRole(handle.db, {
+        code: 'approver',
+        name: 'Approver',
+        grants: [],
+      });
+      await assignBuyerRole(handle.db, ravi.id, orderer.id);
+      await assignBuyerRole(handle.db, ravi.id, approver.id);
+      await assignBuyerRole(handle.db, leela.id, orderer.id);
+
+      const roles = await buyerRolesOfUsers(handle.db, [ravi.id, leela.id, nobody.id]);
+      expect(Object.fromEntries(roles)).toEqual({
+        [ravi.id]: [
+          { id: approver.id, code: 'approver', name: 'Approver' },
+          { id: orderer.id, code: 'orderer', name: 'Orderer' },
+        ],
+        [leela.id]: [{ id: orderer.id, code: 'orderer', name: 'Orderer' }],
+      });
+      expect((await buyerRolesOfUsers(handle.db, [])).size).toBe(0);
     });
   });
 

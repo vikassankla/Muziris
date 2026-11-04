@@ -19,6 +19,7 @@ export {
 } from './admin-roles.js';
 export {
   assignBuyerRole,
+  buyerRolesOfUsers,
   createBuyerRole,
   deleteBuyerRole,
   findBuyerRole,
@@ -33,6 +34,7 @@ export {
   type BuyerAccess,
   type BuyerRole,
   type BuyerRoleGrant,
+  type BuyerRoleName,
   type BuyerRolePage,
   type ListBuyerRolesQuery,
   type NewBuyerRole,

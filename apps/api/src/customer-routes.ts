@@ -1,4 +1,4 @@
-import { findBuyerRole, type AdminPermission } from '@muziris/access';
+import { buyerRolesOfUsers, findBuyerRole, type AdminPermission } from '@muziris/access';
 import {
   addAddress,
   createBuyerUser,
@@ -26,7 +26,7 @@ import {
   type CustomerErrorCode,
 } from '@muziris/customers';
 import type { Database } from '@muziris/db';
-import { EmailTakenError, PasswordPolicyError } from '@muziris/identity';
+import { EmailTakenError, findUsersByIds, PasswordPolicyError } from '@muziris/identity';
 import { findOrganization, findWebsiteByCode, getSetting } from '@muziris/platform';
 import { Hono, type Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -284,11 +284,35 @@ export function customerRoutes(deps: CustomerRouteDependencies): Hono<CustomerEn
     return c.json({ customer });
   });
 
+  /**
+   * A page of buyer users, each with the name, email, status and last sign-in from identity and
+   * the buyer roles from access, looked up for the page at once. A user missing from identity
+   * shows with nulls.
+   */
   app.get('/:customerId/buyer-users', need('customer.view'), async (c) => {
     const customerId = idParam.parse(c.req.param('customerId'));
     const page = pageQuery.parse(c.req.query());
     await existingCustomer(customerId);
-    return c.json(await listBuyerUsers(deps.db, customerId, page));
+    const { buyerUsers, nextAfter } = await listBuyerUsers(deps.db, customerId, page);
+    const ids = buyerUsers.map((u) => u.userId);
+    const [people, roles] = await Promise.all([
+      findUsersByIds(deps.db, 'buyer', ids),
+      buyerRolesOfUsers(deps.db, ids),
+    ]);
+    return c.json({
+      buyerUsers: buyerUsers.map((u) => {
+        const person = people.get(u.userId);
+        return {
+          ...u,
+          displayName: person?.displayName ?? null,
+          email: person?.email ?? null,
+          status: person?.status ?? null,
+          lastSignInAt: person?.lastLoginAt ?? null,
+          buyerRoles: (roles.get(u.userId) ?? []).map(({ id, name }) => ({ id, name })),
+        };
+      }),
+      nextAfter,
+    });
   });
 
   /** Creates a buyer account and makes it a buyer user of the customer. */

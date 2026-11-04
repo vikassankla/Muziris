@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-03
+Last updated: 2026-11-04
 
 ## Goal
 
@@ -200,7 +200,7 @@ review).
       CGST plus SGST within a state, invitation and order emails in Mailpit, accepting an
       invitation, and confirming an order.
     - Follow-ups: an order or add-to-list button on the storefront product page; names, not
-      ids, in the customer's buyer users tab; admin screens for visibility rules.
+      ids, in the customer's buyer users tab (item 26); admin screens for visibility rules.
 
 17. Known-answer tests for a whole checkout (PR 39, merged 2026-11-03 as b0c5cb0, approved by
     Vikas in chat, with no second review recorded; pricing and tax tests, so CLAUDE.md rule 4
@@ -242,6 +242,13 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
+25. Buyer users by name (second hand-test follow-up in item 16). **In review** (branch
+    `feature/buyer-user-names`). It reads buyer role assignments, so CLAUDE.md rule 4 asks for
+    a second human review. Identity gains `findUsersByIds` and access gains
+    `buyerRolesOfUsers`; `GET /admin/v1/customers/:id/buyer-users` adds each user's name,
+    email, status, last sign-in and buyer roles, looked up for the page at once. The customer's
+    Buyer users tab shows them as the board does (Name, Email, Buyer roles, Status, Last
+    sign-in); a user with no account left shows by id. Journey 1 now checks the tab.
 
 **Next (ahead of the plan):** the hand-test follow-ups in item 16, each with a journey. Then the
 admin users screen, which needs a button for the two-factor reset.
@@ -300,8 +307,6 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   call `performTransition` with the system actor.
 - Customers: a status for disabled customers, contacts (CRM), and a buyer user who works for
   several customers are not built (ADR 0008).
-- The admin buyer users list returns identity user ids only; names and emails need a batch
-  lookup in identity's public interface.
 - Catalog: unit conversion (box of 10 = 10 each), localized names, attribute definitions,
   product images, and configurable and kit products are not built (ADR 0009). No product units
   are seeded; an admin creates `each` and the others before the first product.
@@ -313,8 +318,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   column, import history or Activity tab (ADR 0022).
 - Admin app: API gaps the boards assume. No search, totals or counts on admin lists (so no
   "1 to 25 of 1,284" and no per-row subsidiary or buyer user counts); no customer rename or
-  delete; buyer users carry user ids only (no names, emails, roles or last sign-in); no list of
-  a buyer user's buyer roles; no single buyer role read (the screen loads every role); no
+  delete; no search or filters on a customer's buyer users; no single buyer role read (the screen loads every role); no
   activity history; no product counts per category or unit.
 - Admin app: the website switcher lists the real websites but forgets the choice on reload
   (browser storage holds UI preferences only).

@@ -62,7 +62,9 @@ export {
   EmailTakenError,
   findUserByEmail,
   findUserById,
+  findUsersByIds,
   newUserSchema,
   PasswordPolicyError,
   type NewUser,
+  type UserSummary,
 } from './users.js';
