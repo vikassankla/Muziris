@@ -1,0 +1,133 @@
+# The pilot install on one VM (ADR 0029). Run it through deploy/muziris, which reads the
+# configuration from /etc/muziris/muziris.env; this file holds no secret. docs/install.md has
+# the steps.
+#
+# Only the edge (Caddy) is published, on ports 80 and 443. The API, PostgreSQL and the backups
+# are reachable from inside this stack only.
+name: muziris
+
+x-api: &api
+  image: muziris-api:${MUZIRIS_VERSION:-local}
+  build: { context: .., dockerfile: docker/app.Dockerfile, target: api-prod }
+  environment: &api-env
+    DATABASE_URL: postgres://${POSTGRES_USER:-muziris}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-muziris}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    ADMIN_TOTP_KEY: ${ADMIN_TOTP_KEY:?set ADMIN_TOTP_KEY}
+    CORS_ORIGINS: https://${ADMIN_DOMAIN:?set ADMIN_DOMAIN},https://${STOREFRONT_DOMAIN:?set STOREFRONT_DOMAIN}
+    # Caddy is the one proxy in front of the API.
+    TRUSTED_PROXY_HOPS: 1
+    ADMIN_PUBLIC_URL: https://${ADMIN_DOMAIN}
+    STOREFRONT_PUBLIC_URL: https://${STOREFRONT_DOMAIN}
+    STOREFRONT_WEBSITE: ${STOREFRONT_WEBSITE:?set STOREFRONT_WEBSITE}
+    SMTP_URL: ${SMTP_URL:?set SMTP_URL}
+    MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM}
+    # Payment gateways (ADR 0019): each is on only when all three of its variables are set.
+    STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+    STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+    RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+    RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+    PAYMENTS_LIVE: ${PAYMENTS_LIVE:-false}
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-muziris}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-muziris}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Applies migrations and prepares the install (organization, product units, buyer roles),
+  # then exits. Both are safe to run again, and run again on every `up`.
+  migrate:
+    <<: *api
+    # setup checks the API's whole configuration, as the API does.
+    environment:
+      <<: *api-env
+      ORGANIZATION_NAME: ${ORGANIZATION_NAME:?set ORGANIZATION_NAME}
+    command:
+      - sh
+      - -c
+      - tsx node_modules/@muziris/db/src/migrate-cli.ts && tsx src/cli/setup.ts --organization "$$ORGANIZATION_NAME"
+    restart: 'no'
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *api
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  edge:
+    image: muziris-edge:${MUZIRIS_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+      target: edge
+      args:
+        VITE_STOREFRONT_WEBSITE: ${STOREFRONT_WEBSITE}
+    restart: unless-stopped
+    environment:
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      STOREFRONT_DOMAIN: ${STOREFRONT_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      CADDY_TEST_OPTIONS: ${CADDY_TEST_OPTIONS:-}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      # Certificates and the ACME account: keep them, or Let's Encrypt is asked again.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api: { condition: service_healthy }
+
+  # A pg_dump once a day into BACKUP_DIR on the VM, keeping 14 days. Copy them off the VM.
+  backup:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-muziris}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-muziris}
+    volumes:
+      - ${BACKUP_DIR:-/var/backups/muziris}:/backups
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          name=/backups/muziris-$$(date -u +%Y%m%dT%H%M%SZ).dump
+          if pg_dump --format=custom --file="$$name.partial" && mv "$$name.partial" "$$name"; then
+            echo "backup written: $$name"
+          else
+            rm -f "$$name.partial"
+            echo "backup failed" >&2
+          fi
+          find /backups -name 'muziris-*.dump' -mtime +14 -delete
+          sleep 86400
+        done
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
