@@ -39,9 +39,9 @@ ADR 0011 (pricing) and ADR 0012 (visibility) are merged with status proposed. AD
 with status proposed. ADR 0015 (storefront app) is merged with status proposed. ADR 0016 (orders and checkout) is merged with status proposed. ADR 0017 (tax engine) is merged with status proposed. ADRs 0018 (shopping lists, quick order and the checkout page), 0019 (payments) and 0020 (emails) are merged with status proposed. ADRs 0021 (websites, settings and first-run setup), 0022 (price list screens) and 0023 (tax screens) are merged with status proposed. Every admin list endpoint is paged with
 `limit` (at most 200) and `after`.
 
-ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) are
-proposed, waiting for Vikas to accept them before they are built. Both need a second human
-review under CLAUDE.md rule 4 when built.
+ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
+accepted by Vikas in chat on 2026-11-04. Not built yet. Both need a second human review under
+CLAUDE.md rule 4 when built.
 
 ## Next, in order (pilot plan)
 

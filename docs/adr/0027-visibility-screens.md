@@ -1,6 +1,6 @@
 # 0027: Visibility rule screens in the admin
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-04
 
 ## Context

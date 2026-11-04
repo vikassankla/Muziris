@@ -1,6 +1,6 @@
 # 0028: Admin users screen and admin invitations
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-04
 
 ## Context
