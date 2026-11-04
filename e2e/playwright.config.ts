@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
 import {
   ADMIN_PORT,
@@ -33,6 +34,8 @@ const apiEnv = {
   STOREFRONT_PUBLIC_URL: STOREFRONT_URL,
   SMTP_URL,
   MAIL_FROM: 'Muziris <no-reply@muziris.localhost>',
+  // A key of its own for every run (ADR 0026): the run's database is new too.
+  ADMIN_TOTP_KEY: randomBytes(32).toString('base64'),
 };
 
 const appEnv = { MUZIRIS_API_TARGET: API_URL, VITE_STOREFRONT_WEBSITE: WEBSITE_CODE };

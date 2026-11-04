@@ -7,7 +7,9 @@ import {
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  base32Decode,
   changePassword,
+  confirmEnrolment,
   consumeRateLimit,
   createUser,
   deleteDeadSessions,
@@ -15,15 +17,20 @@ import {
   EmailTakenError,
   PasswordPolicyError,
   revokeSession,
+  parseTotpKey,
   SESSION_POLICIES,
   signIn,
+  startEnrolment,
+  totpCode,
   validateSession,
+  verifySecondFactor,
 } from './index.js';
 import { ARGON2_PARAMS } from './password.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const PASSWORD = 'correct horse battery staple';
 const MINUTE = 60_000;
+const KEY = parseTotpKey(Buffer.alloc(32, 3).toString('base64'));
 
 describe.skipIf(!url)('identity module against PostgreSQL', () => {
   let handle: DatabaseHandle;
@@ -48,6 +55,33 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
 
   const adminSignIn = (password: string, now: Date, email = 'asha@acme.example') =>
     signIn(handle.db, { realm: 'admin', email, password, now, ipAddress: '203.0.113.7' });
+
+  /** Recovery codes from each admin's enrolment, used for later sign-ins in the same step. */
+  let spareCodes: string[] = [];
+
+  /** Password, then enrolment the first time and a recovery code after: a full admin session. */
+  async function fullAdminSignIn(password: string, now: Date) {
+    const first = await adminSignIn(password, now);
+    if (!first.ok || first.stage !== 'two_factor') throw new Error('password step failed');
+    const context = { realm: 'admin' as const, token: first.token, now };
+    if (first.enrolled) {
+      const result = await verifySecondFactor(handle.db, KEY, {
+        ...context,
+        recoveryCode: spareCodes.pop(),
+      });
+      if (!result.ok) throw new Error(`code step failed: ${result.reason}`);
+      return result;
+    }
+    const factor = await startEnrolment(handle.db, KEY, { ...context, issuer: 'Muziris' });
+    if (!factor.ok) throw new Error(`enrolment failed: ${factor.reason}`);
+    const result = await confirmEnrolment(handle.db, KEY, {
+      ...context,
+      code: totpCode(base32Decode(factor.secret), now),
+    });
+    if (!result.ok) throw new Error(`enrolment failed: ${result.reason}`);
+    spareCodes = result.recoveryCodes;
+    return result;
+  }
 
   async function seedAdmin() {
     return createUser(handle.db, {
@@ -118,9 +152,9 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
   describe('sign-in', () => {
     it('opens a session that validates for its own realm only', async () => {
       const user = await seedAdmin();
-      const result = await adminSignIn(PASSWORD, t0, ' ASHA@acme.example ');
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
+      const password = await adminSignIn(PASSWORD, t0, ' ASHA@acme.example ');
+      expect(password).toMatchObject({ ok: true, stage: 'two_factor', enrolled: false });
+      const result = await fullAdminSignIn(PASSWORD, t0);
       expect(result.expiresAt).toEqual(at(SESSION_POLICIES.admin.absoluteTimeoutMs));
 
       const session = await validateSession(handle.db, result.token, 'admin', at(MINUTE));
@@ -184,10 +218,9 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
         reason: 'locked',
       });
       // Locked for one minute after the fifth failure (at 4 s), so free again at 64 s.
-      const after = await adminSignIn(PASSWORD, at(65_000));
-      expect(after.ok).toBe(true);
+      await fullAdminSignIn(PASSWORD, at(65_000));
 
-      // A success resets the counter: four more failures do not lock.
+      // A full sign-in resets the counter: four more failures do not lock.
       for (let i = 0; i < 4; i += 1) await adminSignIn('wrong password here', at(70_000 + i));
       expect((await adminSignIn(PASSWORD, at(80_000))).ok).toBe(true);
     });
@@ -221,9 +254,7 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
   describe('sessions', () => {
     async function openSession() {
       await seedAdmin();
-      const result = await adminSignIn(PASSWORD, t0);
-      if (!result.ok) throw new Error('sign-in failed');
-      return result.token;
+      return (await fullAdminSignIn(PASSWORD, t0)).token;
     }
 
     it('expires after the idle timeout without activity', async () => {
@@ -251,13 +282,11 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
       await revokeSession(handle.db, token, at(1000));
       expect(await validateSession(handle.db, token, 'admin', at(2000))).toBeUndefined();
 
-      const second = await adminSignIn(PASSWORD, at(3000));
-      if (!second.ok) throw new Error('sign-in failed');
+      const second = await fullAdminSignIn(PASSWORD, at(3000));
       await changePassword(handle.db, second.user.id, 'a brand new passphrase');
       expect(await validateSession(handle.db, second.token, 'admin', at(4000))).toBeUndefined();
 
-      const third = await adminSignIn('a brand new passphrase', at(5000));
-      if (!third.ok) throw new Error('sign-in failed');
+      const third = await fullAdminSignIn('a brand new passphrase', at(5000));
       await disableUser(handle.db, third.user.id);
       expect(await validateSession(handle.db, third.token, 'admin', at(6000))).toBeUndefined();
     });
@@ -272,7 +301,8 @@ describe.skipIf(!url)('identity module against PostgreSQL', () => {
     it('cleans up dead sessions', async () => {
       const token = await openSession();
       await revokeSession(handle.db, token, at(1000));
-      expect(await deleteDeadSessions(handle.db, at(2000))).toBe(1);
+      // The full session, and the two-factor one that the code step spent.
+      expect(await deleteDeadSessions(handle.db, at(2000))).toBe(2);
     });
   });
 

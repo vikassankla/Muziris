@@ -20,6 +20,7 @@ import { createRule, rebuildVisibility } from '@muziris/visibility';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 import { inlineJobs } from './test-jobs.js';
 
@@ -71,6 +72,7 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
     });
     const logger = createLogger('info', stream);
     return createApp({
+      twoFactorKey: TEST_TWO_FACTOR_KEY,
       logger,
       db: handle.db,
       jobs: inlineJobs({ db: handle.db, logger }).queue,
@@ -96,13 +98,13 @@ describe.skipIf(!url)('search routes against PostgreSQL', () => {
       permissions,
     });
     await assignAdminRole(handle.db, SYSTEM_ADMIN_ACCESS, user.id, role.id);
-    const res = await app().request('/admin/v1/auth/sign-in', {
-      method: 'POST',
-      body: JSON.stringify({ email, password: PASSWORD }),
-      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+    const cookie = await signInAdmin(app(), {
+      email,
+      password: PASSWORD,
+      origin: ORIGIN,
+      now: new Date('2026-11-12T09:00:00.000Z'),
     });
-    expect(res.status).toBe(200);
-    return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    return cookie;
   }
 
   /** Creates a buyer user for a customer, signs them in to the storefront, and returns their id. */

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
   index,
   integer,
@@ -21,6 +22,12 @@ import {
 export const realm = pgEnum('identity_realm', ['admin', 'buyer']);
 
 export const userStatus = pgEnum('identity_user_status', ['active', 'disabled']);
+
+/**
+ * A full session may use the API. A two-factor session (ADR 0026) proves the password only: it
+ * lasts minutes and allows nothing but the code step and enrolment.
+ */
+export const sessionStage = pgEnum('identity_session_stage', ['full', 'two_factor']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -70,6 +77,7 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     realm: realm('realm').notNull(),
+    stage: sessionStage('stage').notNull().default('full'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
     /** Absolute expiry; the idle timeout is checked against last_seen_at. */
@@ -100,5 +108,53 @@ export const rateLimits = pgTable(
   (t) => [
     index('identity_rate_limit_window_idx').on(t.windowStartedAt),
     check('identity_rate_limit_hits_positive', sql`${t.hits} > 0`),
+  ],
+);
+
+/**
+ * A user's authenticator-app factor (ADR 0026). The secret is encrypted with ADMIN_TOTP_KEY and
+ * the user id; it is confirmed once the user has entered one code from it.
+ */
+export const twoFactors = pgTable(
+  'identity_two_factor',
+  {
+    userId: uuid('user_id')
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    secretEnc: text('secret_enc').notNull(),
+    /** When the first code was entered; null while enrolment is unfinished. */
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    /** The last time step a code was accepted for: that step and earlier ones are refused. */
+    lastStep: bigint('last_step', { mode: 'number' }),
+    /** A new phone's secret while the user moves to it, until its first code is entered. */
+    replacementSecretEnc: text('replacement_secret_enc'),
+    /** The salt the current recovery codes are hashed with, in base64; null before there are any. */
+    recoveryCodeSalt: text('recovery_code_salt'),
+    ...timestamps,
+  },
+  (t) => [
+    check('identity_two_factor_secret_shape', sql`${t.secretEnc} like 'v1:%'`),
+    check(
+      'identity_two_factor_replacement_shape',
+      sql`${t.replacementSecretEnc} is null or ${t.replacementSecretEnc} like 'v1:%'`,
+    ),
+  ],
+);
+
+/** One-time recovery codes, as Argon2id hashes. A new set replaces the old one. */
+export const recoveryCodes = pgTable(
+  'identity_recovery_code',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    codeHash: text('code_hash').notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('identity_recovery_code_user_hash_uq').on(t.userId, t.codeHash),
+    check('identity_recovery_code_hash_shape', sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
   ],
 );

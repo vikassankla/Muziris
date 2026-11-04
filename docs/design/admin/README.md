@@ -15,7 +15,7 @@ They are design data only. The tokens from `muziris.css` (light and dark) live i
 | ------------------------------- | --------------------------------------- | ------------------------- |
 | Main (home dashboard)           | `/`                                     | Built without widgets     |
 | Sidebar, Topbar, CommandPalette | the signed-in layout                    | Built                     |
-| SignIn                          | `/sign-in`                              | Built, no two-factor      |
+| SignIn                          | `/sign-in`, `/sign-in/code`             | Built, with two-factor    |
 | Customers                       | `/customers`                            | Built                     |
 | CustomerDetail                  | `/customers/$customerId?tab=…`          | Built (API tabs)          |
 | AddressForms                    | sheet on the customer's Addresses tab   | Built                     |

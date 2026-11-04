@@ -7,10 +7,11 @@ import {
 } from '@muziris/db';
 import { createBuyerRole, deleteBuyerRole, getBuyerAccess } from '@muziris/access';
 import { createCustomer, createInvitation } from '@muziris/customers';
-import { createUser, SESSION_POLICIES } from '@muziris/identity';
+import { base32Decode, createUser, SESSION_POLICIES, totpCode } from '@muziris/identity';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -64,6 +65,7 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
       },
     });
     return createApp({
+      twoFactorKey: TEST_TWO_FACTOR_KEY,
       logger: createLogger('info', stream),
       db: handle.db,
       pingDatabase: () => Promise.resolve(),
@@ -88,16 +90,61 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
     return pair;
   }
 
+  /** The password step only (ADR 0026). */
   const adminSignIn = (password = PASSWORD, email = 'asha@acme.example') =>
     post('/admin/v1/auth/sign-in', { email, password });
 
-  it('signs an admin in with a hardened cookie', async () => {
+  /** The password and the second factor: a full admin session's cookie. */
+  const fullSignIn = (cookie?: string) =>
+    signInAdmin(app(), {
+      email: 'asha@acme.example',
+      password: PASSWORD,
+      origin: ORIGIN,
+      now: clock,
+      ...(cookie ? { cookie } : {}),
+    });
+
+  it('answers a right admin password with the two-factor step, on a cookie of its own', async () => {
     const res = await adminSignIn();
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({
-      user: { email: 'asha@acme.example', realm: 'admin' },
-    });
+    expect(await res.json()).toEqual({ next: 'enrol', expiresAt: '2026-11-02T09:05:00.000Z' });
     const cookie = res.headers.get('set-cookie') ?? '';
+    expect(cookie).toMatch(/^__Host-muziris_admin_two_factor=[A-Za-z0-9_-]{43};/);
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('Secure');
+    expect(cookie).toContain('SameSite=Strict');
+    expect(cookie).toContain('Max-Age=300');
+    // The step's cookie is not a session: /me refuses it under either name.
+    const value = sessionCookie(res).split('=')[1] ?? '';
+    for (const name of ['muziris_admin_two_factor', 'muziris_admin_session']) {
+      const me = await app().request('/admin/v1/auth/me', {
+        headers: { Cookie: `__Host-${name}=${value}` },
+      });
+      expect(me.status).toBe(401);
+    }
+  });
+
+  it('signs an admin in with a hardened cookie once the second factor is right', async () => {
+    const step = sessionCookie(await adminSignIn());
+    const enrolment = await post('/admin/v1/auth/two-factor/enrolment', {}, { Cookie: step });
+    const { secret, uri } = (await enrolment.json()) as { secret: string; uri: string };
+    expect(uri).toMatch(/^otpauth:\/\/totp\/Muziris:asha%40acme\.example\?secret=/);
+    const res = await post(
+      '/admin/v1/auth/two-factor/enrolment/confirm',
+      { code: totpCode(base32Decode(secret), clock) },
+      { Cookie: step },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { user: unknown; recoveryCodes: string[] };
+    expect(body.user).toMatchObject({ email: 'asha@acme.example', realm: 'admin' });
+    expect(body.recoveryCodes).toHaveLength(10);
+    for (const code of body.recoveryCodes) expect(code).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
+    const cookies = res.headers.getSetCookie();
+    // The step's cookie is cleared as the session's is set.
+    expect(cookies.find((c) => c.startsWith('__Host-muziris_admin_two_factor='))).toMatch(
+      /Max-Age=0/,
+    );
+    const cookie = cookies.find((c) => c.startsWith('__Host-muziris_admin_session=')) ?? '';
     expect(cookie).toMatch(/^__Host-muziris_admin_session=[A-Za-z0-9_-]{43};/);
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('Secure');
@@ -145,7 +192,7 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
   });
 
   it('serves /me for the signed-in realm only', async () => {
-    const cookie = sessionCookie(await adminSignIn());
+    const cookie = await fullSignIn();
     const me = await app().request('/admin/v1/auth/me', { headers: { Cookie: cookie } });
     expect(me.status).toBe(200);
     expect(await me.json()).toMatchObject({ user: { email: 'asha@acme.example' } });
@@ -165,7 +212,7 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
   });
 
   it('ignores cookies without the __Host- prefix', async () => {
-    const cookie = sessionCookie(await adminSignIn());
+    const cookie = await fullSignIn();
     const value = cookie.split('=')[1] ?? '';
     const res = await app().request('/admin/v1/auth/me', {
       headers: { Cookie: `muziris_admin_session=${value}` },
@@ -174,7 +221,7 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
   });
 
   it('signs out, clearing the cookie and ending the session server-side', async () => {
-    const cookie = sessionCookie(await adminSignIn());
+    const cookie = await fullSignIn();
     const out = await post('/admin/v1/auth/sign-out', {}, { Cookie: cookie });
     expect(out.status).toBe(204);
     expect(out.headers.get('set-cookie')).toMatch(/^__Host-muziris_admin_session=;.*Max-Age=0/);
@@ -184,14 +231,10 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
   });
 
   it('replaces any existing session on a new sign-in', async () => {
-    const first = sessionCookie(await adminSignIn());
-    const second = sessionCookie(await adminSignIn(PASSWORD, 'asha@acme.example'));
-    const res = await post(
-      '/admin/v1/auth/sign-in',
-      { email: 'asha@acme.example', password: PASSWORD },
-      { Cookie: first },
-    );
-    expect(res.status).toBe(200);
+    const first = await fullSignIn();
+    const second = await fullSignIn();
+    // Signing in again from the browser that holds the first session ends it.
+    await fullSignIn(first);
     expect((await app().request('/admin/v1/auth/me', { headers: { Cookie: first } })).status).toBe(
       401,
     );
@@ -201,7 +244,7 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
   });
 
   it('times out an idle admin session', async () => {
-    const cookie = sessionCookie(await adminSignIn());
+    const cookie = await fullSignIn();
     clock = new Date(clock.getTime() + SESSION_POLICIES.admin.idleTimeoutMs + 1000);
     const res = await app().request('/admin/v1/auth/me', { headers: { Cookie: cookie } });
     expect(res.status).toBe(401);
@@ -219,7 +262,7 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
     });
 
     it('refuses a state change with no Origin unless the browser says same-origin', async () => {
-      const cookie = sessionCookie(await adminSignIn());
+      const cookie = await fullSignIn();
       const noOrigin = await app().request('/admin/v1/auth/sign-out', {
         method: 'POST',
         headers: { Cookie: cookie },
@@ -372,6 +415,206 @@ describe.skipIf(!url)('auth routes against PostgreSQL', () => {
     it('is not offered on the admin side', async () => {
       const token = await invited();
       expect((await post('/admin/v1/auth/invitation', { token })).status).toBe(404);
+    });
+  });
+
+  describe('two-factor sign-in (ADR 0026)', () => {
+    /** Enrols the admin and returns the secret and the full session's cookie. */
+    async function enrolled() {
+      const step = sessionCookie(await adminSignIn());
+      const enrolment = await post('/admin/v1/auth/two-factor/enrolment', {}, { Cookie: step });
+      const { secret } = (await enrolment.json()) as { secret: string };
+      const done = await post(
+        '/admin/v1/auth/two-factor/enrolment/confirm',
+        { code: totpCode(base32Decode(secret), clock) },
+        { Cookie: step },
+      );
+      const { recoveryCodes } = (await done.json()) as { recoveryCodes: string[] };
+      const cookie =
+        done.headers
+          .getSetCookie()
+          .find((c) => c.startsWith('__Host-muziris_admin_session='))
+          ?.split(';')[0] ?? '';
+      return { secret: base32Decode(secret), cookie, recoveryCodes };
+    }
+
+    const later = (seconds: number) => {
+      clock = new Date(clock.getTime() + seconds * 1000);
+    };
+
+    it('asks an enrolled admin for a code, and refuses a wrong one like a wrong password', async () => {
+      const { secret } = await enrolled();
+      later(30);
+      const res = await adminSignIn();
+      expect(await res.json()).toMatchObject({ next: 'code' });
+      const step = sessionCookie(res);
+      const wrong = await post(
+        '/admin/v1/auth/two-factor/verify',
+        { code: '000000' },
+        { Cookie: step },
+      );
+      expect(wrong.status).toBe(401);
+      expect(await wrong.json()).toMatchObject({ code: 'invalid_code' });
+      const right = await post(
+        '/admin/v1/auth/two-factor/verify',
+        { code: totpCode(secret, clock) },
+        { Cookie: step },
+      );
+      expect(right.status).toBe(200);
+      // Codes and secrets never reach the logs; the reason does.
+      expect(logs.join('')).not.toContain(totpCode(secret, clock));
+      expect(
+        logs.some((l) => l.includes('auth.two_factor_failed') && l.includes('wrong_code')),
+      ).toBe(true);
+    });
+
+    it('locks the account after five wrong codes', async () => {
+      const { secret } = await enrolled();
+      later(30);
+      const step = sessionCookie(await adminSignIn());
+      for (let i = 0; i < 5; i++) {
+        await post('/admin/v1/auth/two-factor/verify', { code: '000000' }, { Cookie: step });
+      }
+      const locked = await post(
+        '/admin/v1/auth/two-factor/verify',
+        { code: totpCode(secret, clock) },
+        { Cookie: step },
+      );
+      expect(locked.status).toBe(401);
+      expect(await locked.json()).toMatchObject({ code: 'invalid_code' });
+    });
+
+    it('takes a recovery code once', async () => {
+      const { recoveryCodes } = await enrolled();
+      const code = recoveryCodes[0];
+      const first = sessionCookie(await adminSignIn());
+      expect(
+        (await post('/admin/v1/auth/two-factor/verify', { recoveryCode: code }, { Cookie: first }))
+          .status,
+      ).toBe(200);
+      const again = sessionCookie(await adminSignIn());
+      expect(
+        (await post('/admin/v1/auth/two-factor/verify', { recoveryCode: code }, { Cookie: again }))
+          .status,
+      ).toBe(401);
+      expect(logs.some((l) => l.includes('auth.recovery_code_used'))).toBe(true);
+    });
+
+    it('sends a browser back to sign-in once the step has expired or without its cookie', async () => {
+      const step = sessionCookie(await adminSignIn());
+      const none = await post('/admin/v1/auth/two-factor/enrolment', {});
+      expect(none.status).toBe(401);
+      expect(await none.json()).toMatchObject({ code: 'two_factor_expired' });
+      later(5 * 60);
+      const expired = await post('/admin/v1/auth/two-factor/enrolment', {}, { Cookie: step });
+      expect(await expired.json()).toMatchObject({ code: 'two_factor_expired' });
+    });
+
+    it('limits codes per admin and says when to retry', async () => {
+      await enrolled();
+      later(30);
+      const step = sessionCookie(await adminSignIn());
+      // Ten tries are counted, whether or not the account lock has already refused them, and
+      // enrolment's two steps were two of them.
+      for (let i = 0; i < 8; i++) {
+        ip = `198.51.100.${i + 1}`;
+        const res = await post(
+          '/admin/v1/auth/two-factor/verify',
+          { code: '000000' },
+          {
+            Cookie: step,
+          },
+        );
+        expect(res.status).toBe(401);
+      }
+      const limited = await post(
+        '/admin/v1/auth/two-factor/verify',
+        { code: '000000' },
+        {
+          Cookie: step,
+        },
+      );
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get('retry-after')).not.toBeNull();
+    });
+
+    it('answers 503 when the server has no ADMIN_TOTP_KEY', async () => {
+      const res = await createApp({
+        logger: createLogger('silent'),
+        db: handle.db,
+        pingDatabase: () => Promise.resolve(),
+        corsOrigins: [ORIGIN],
+        maxBodyBytes: 64 * 1024,
+        now: () => clock,
+        clientIp: () => ip,
+      }).request('/admin/v1/auth/sign-in', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'asha@acme.example', password: PASSWORD }),
+        headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      });
+      expect(res.status).toBe(503);
+      expect(await res.json()).toMatchObject({ code: 'two_factor_not_configured' });
+      expect(res.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('gives new recovery codes for the password and a code, ending other sessions', async () => {
+      const { secret, cookie, recoveryCodes } = await enrolled();
+      const other = sessionCookie(await adminSignIn());
+      const otherDone = await post(
+        '/admin/v1/auth/two-factor/verify',
+        { recoveryCode: recoveryCodes[0] },
+        { Cookie: other },
+      );
+      const otherCookie =
+        otherDone.headers
+          .getSetCookie()
+          .find((c) => c.startsWith('__Host-muziris_admin_session='))
+          ?.split(';')[0] ?? '';
+      later(30);
+      const status = await app().request('/admin/v1/auth/two-factor', {
+        headers: { Cookie: cookie },
+      });
+      expect(await status.json()).toMatchObject({
+        twoFactor: { enrolled: true, recoveryCodesLeft: 9 },
+      });
+
+      const wrong = await post(
+        '/admin/v1/auth/two-factor/recovery-codes',
+        { password: 'not my password', code: totpCode(secret, clock) },
+        { Cookie: cookie },
+      );
+      expect(wrong.status).toBe(401);
+      const res = await post(
+        '/admin/v1/auth/two-factor/recovery-codes',
+        { password: PASSWORD, code: totpCode(secret, clock) },
+        { Cookie: cookie },
+      );
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { recoveryCodes: string[] }).recoveryCodes).toHaveLength(10);
+      const me = (c: string) => app().request('/admin/v1/auth/me', { headers: { Cookie: c } });
+      expect((await me(cookie)).status).toBe(200);
+      expect((await me(otherCookie)).status).toBe(401);
+    });
+
+    it('moves to a new phone in two steps', async () => {
+      const { secret, cookie } = await enrolled();
+      later(30);
+      const started = await post(
+        '/admin/v1/auth/two-factor/replacement',
+        { password: PASSWORD, code: totpCode(secret, clock) },
+        { Cookie: cookie },
+      );
+      expect(started.status).toBe(200);
+      const { secret: newText } = (await started.json()) as { secret: string };
+      later(30);
+      const confirmed = await post(
+        '/admin/v1/auth/two-factor/replacement/confirm',
+        { code: totpCode(base32Decode(newText), clock) },
+        { Cookie: cookie },
+      );
+      expect(confirmed.status).toBe(200);
+      expect(logs.some((l) => l.includes('auth.two_factor_replaced'))).toBe(true);
+      expect(logs.join('')).not.toContain(newText);
     });
   });
 });

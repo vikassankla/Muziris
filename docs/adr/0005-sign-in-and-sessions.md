@@ -41,6 +41,7 @@ PostgreSQL (ADR 0002).
   (`deleteDeadSessions`, `pruneRateLimits`). The `sessions.cleanup` job runs them hourly
   (ADR 0025).
 - Multi-factor authentication and SSO (OIDC, SAML) are not in this decision. Admin MFA should
-  come before the first production install.
+  come before the first production install. (Done in ADR 0026: an authenticator app's codes,
+  with recovery codes.)
 - Behind a load balancer, `TRUSTED_PROXY_HOPS` must be set correctly, or every user shares the
   balancer's IP for rate limiting.
