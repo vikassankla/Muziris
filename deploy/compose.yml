@@ -9,7 +9,7 @@ name: muziris
 x-api: &api
   image: muziris-api:${MUZIRIS_VERSION:-local}
   build: { context: .., dockerfile: docker/app.Dockerfile, target: api-prod }
-  environment:
+  environment: &api-env
     DATABASE_URL: postgres://${POSTGRES_USER:-muziris}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-muziris}
     LOG_LEVEL: ${LOG_LEVEL:-info}
     ADMIN_TOTP_KEY: ${ADMIN_TOTP_KEY:?set ADMIN_TOTP_KEY}
@@ -50,8 +50,9 @@ services:
   # then exits. Both are safe to run again, and run again on every `up`.
   migrate:
     <<: *api
+    # setup checks the API's whole configuration, as the API does.
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-muziris}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-muziris}
+      <<: *api-env
       ORGANIZATION_NAME: ${ORGANIZATION_NAME:?set ORGANIZATION_NAME}
     command:
       - sh
