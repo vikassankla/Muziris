@@ -123,7 +123,12 @@ export async function startJobRunner(options: JobRunnerOptions): Promise<JobRunn
           } catch (error) {
             // The error, not the job's data: data could one day hold an email address.
             options.logger.error({ job: name, jobId: job.id, err: error }, 'jobs.failed');
-            throw error;
+            // pg-boss keeps what is thrown in its table, and a database error carries the values
+            // its query was sent with. The log has the error; the table only says where to look.
+            // eslint-disable-next-line preserve-caught-error -- the cause is what must not be stored.
+            throw new Error(
+              `The ${name} job failed; see jobs.failed in the logs for job ${job.id}`,
+            );
           }
           options.logger.info(
             { job: name, jobId: job.id, ms: Math.round(performance.now() - started) },

@@ -6,6 +6,20 @@ import { openWorld } from '../src/world.js';
 /** Where admin.setup.ts keeps the signed-in admin's cookies; .gitignore leaves it out. */
 export const ADMIN_STATE = '.auth/admin.json';
 
+/**
+ * Collects what the browser refuses under the apps' content security policies, so a journey
+ * fails when a change needs something the policy does not allow.
+ */
+export function policyViolations(page: Page): string[] {
+  const violations: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('Content Security Policy')) {
+      violations.push(message.text());
+    }
+  });
+  return violations;
+}
+
 interface Fixtures {
   /** A page in the admin app, signed in as the administrator. */
   admin: Page;
@@ -25,13 +39,19 @@ export const test = base.extend<Fixtures, { db: Database }>({
   ],
   admin: async ({ browser }, use) => {
     const context = await browser.newContext({ baseURL: ADMIN_URL, storageState: ADMIN_STATE });
-    await use(await context.newPage());
+    const page = await context.newPage();
+    const violations = policyViolations(page);
+    await use(page);
     await context.close();
+    expect(violations, 'content security policy violations').toEqual([]);
   },
   shop: async ({ browser }, use) => {
     const context = await browser.newContext({ baseURL: STOREFRONT_URL });
-    await use(await context.newPage());
+    const page = await context.newPage();
+    const violations = policyViolations(page);
+    await use(page);
     await context.close();
+    expect(violations, 'content security policy violations').toEqual([]);
   },
 });
 

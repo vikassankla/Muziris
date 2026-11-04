@@ -9,7 +9,7 @@ const STRIPE = {
 const RAZORPAY = {
   RAZORPAY_KEY_ID: 'rzp_test_abc',
   RAZORPAY_KEY_SECRET: 'secret-value-1',
-  RAZORPAY_WEBHOOK_SECRET: 'secret-value-2',
+  RAZORPAY_WEBHOOK_SECRET: 'secret-value-2-of-length',
 };
 
 describe('paymentGatewaysFromEnv', () => {
@@ -31,6 +31,17 @@ describe('paymentGatewaysFromEnv', () => {
     } catch (error) {
       expect(String(error)).not.toContain('secret-value-1');
     }
+  });
+
+  it('refuses a Razorpay webhook secret short enough to guess, without echoing it', () => {
+    let message = '';
+    try {
+      paymentGatewaysFromEnv({ ...RAZORPAY, RAZORPAY_WEBHOOK_SECRET: 'short-secret' });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toMatch(/RAZORPAY_WEBHOOK_SECRET: use at least 16 random characters/);
+    expect(message).not.toContain('short-secret');
   });
 
   it('refuses live keys unless PAYMENTS_LIVE is true', () => {

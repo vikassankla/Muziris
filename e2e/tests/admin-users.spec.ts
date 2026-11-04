@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { base32Decode, totpCode } from '@muziris/identity';
 import { ADMIN_URL, PASSWORD } from '../src/env.js';
 import { linkIn, waitForEmail } from '../src/mailpit.js';
-import { expect, test } from './fixtures.js';
+import { expect, policyViolations, test } from './fixtures.js';
 
 // Journey 8 (ADR 0028): the administrator invites an admin, who sets a password from the email
 // in Mailpit, signs in and sets up two-factor sign-in; then the administrator disables them and
@@ -26,6 +26,7 @@ test('admin invitation to disabling', async ({ admin, browser }) => {
   const context = await browser.newContext({ baseURL: ADMIN_URL });
   try {
     const page = await context.newPage();
+    const violations = policyViolations(page);
     await page.goto(linkIn(invitation.text, `${ADMIN_URL}/accept-invitation`));
     await expect(page.getByRole('heading', { name: `Welcome, ${name}` })).toBeVisible();
     await expect(page).toHaveURL(/\/accept-invitation$/);
@@ -58,6 +59,7 @@ test('admin invitation to disabling', async ({ admin, browser }) => {
     // Their session ended: the next page they load sends them to sign in.
     await page.reload();
     await expect(page).toHaveURL(/\/sign-in/);
+    expect(violations, 'content security policy violations').toEqual([]);
   } finally {
     await context.close();
   }

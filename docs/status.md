@@ -278,17 +278,26 @@ review).
     product page share the list picker and `addToShoppingList`. No API change. Journey 6
     (`e2e/tests/product-page.spec.ts`) saves a product to a new list and orders it from its
     page.
-28. Buyer users by name (second hand-test follow-up in item 16). **In review** (PR 53, branch
-    `feature/buyer-user-names`). It reads buyer role assignments, so CLAUDE.md rule 4 asks for
-    a second human review. Identity gains `findUsersByIds` and access gains
+28. Buyer users by name (second hand-test follow-up in item 16). PR 53, merged 2026-11-04 as
+    4b4698e, approved by Vikas in chat. It reads buyer role assignments, so CLAUDE.md rule 4 asks
+    for a second human review. Identity gains `findUsersByIds` and access gains
     `buyerRolesOfUsers`; `GET /admin/v1/customers/:id/buyer-users` adds each user's name,
     email, status, last sign-in and buyer roles, looked up for the page at once. The customer's
     Buyer users tab shows them as the board does (Name, Email, Buyer roles, Status, Last
     sign-in); a user with no account left shows by id. Journey 1 now checks the tab.
+29. Security pass (week 5, ahead of the plan). **In review** (branch `feature/security-pass`);
+    it touches authentication, payments and secrets, so CLAUDE.md rule 4 asks for a second
+    human review. Findings and what held are in `docs/security-review.md`. Fixed: database
+    errors no longer put query values in the logs or pg-boss's job table (`withoutQueryValues`
+    in `@muziris/db`); the admin app's build writes a content security policy and nginx forbids
+    framing either app (`docker/app-headers.conf`); `safeRedirect` refuses a tab or line break
+    that a browser would turn into another site; `RAZORPAY_WEBHOOK_SECRET` needs 16 or more
+    characters. The end-to-end journeys fail on a content security policy violation. Open: who
+    may disable or reset an admin user holding more permissions (finding 5, for Vikas).
 
-**Next (ahead of the plan):** the security pass, then launch prep (a deployment recipe with an
-ADR, the install guide finished, the Stripe and Razorpay test-mode run, and the hand checks of
-items 13 to 15).
+**Next (ahead of the plan):** launch prep: a deployment recipe with an ADR (it must send the
+headers of `docker/app-headers.conf` and Strict-Transport-Security), the install guide finished,
+the Stripe and Razorpay test-mode run, and the hand checks of items 13 to 15.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

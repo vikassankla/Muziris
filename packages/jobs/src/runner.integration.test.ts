@@ -108,4 +108,47 @@ describe.skipIf(!base)('job runner against PostgreSQL', () => {
       await runner?.stop();
     }
   }, 30_000);
+
+  it('logs a failed job’s error and keeps only a pointer to it in pg-boss’s table', async () => {
+    const secret = 'asha@example.com';
+    const logged: unknown[] = [];
+    const logger = {
+      info: () => undefined,
+      error: (fields: Record<string, unknown>) => {
+        logged.push(fields['err']);
+      },
+    };
+    const handlers = Object.fromEntries(
+      JOB_NAMES.map((name): [JobName, JobHandler] => [
+        name,
+        () => Promise.reject(new Error(`Failed query: params: ${secret}`)),
+      ]),
+    ) as Record<JobName, JobHandler>;
+    let runner: JobRunner | undefined;
+    try {
+      runner = await startJobRunner({ url, logger, handlers });
+      await runner.queue.enqueue('visibility.build');
+      await expect.poll(() => logged.length, { timeout: 15_000 }).toBeGreaterThan(0);
+      expect(String(logged[0])).toContain(secret);
+      await expect
+        .poll(
+          async () =>
+            (
+              await db.execute<{ output: unknown }>(
+                sql`select output from pgboss.job where name = 'visibility.build' and output is not null`,
+              )
+            ).length,
+          { timeout: 5_000 },
+        )
+        .toBeGreaterThan(0);
+      const rows = await db.execute<{ output: unknown }>(
+        sql`select output from pgboss.job where name = 'visibility.build'`,
+      );
+      const stored = JSON.stringify(rows.map((r) => r.output));
+      expect(stored).not.toContain(secret);
+      expect(stored).toContain('see jobs.failed in the logs');
+    } finally {
+      await runner?.stop();
+    }
+  }, 30_000);
 });

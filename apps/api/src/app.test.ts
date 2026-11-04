@@ -297,7 +297,7 @@ describe('loadEnv', () => {
         ...valid,
         RAZORPAY_KEY_ID: 'rzp_test_1',
         RAZORPAY_KEY_SECRET: 'k',
-        RAZORPAY_WEBHOOK_SECRET: 'w',
+        RAZORPAY_WEBHOOK_SECRET: 'w'.repeat(16),
       }).payments.razorpay?.keyId,
     ).toBe('rzp_test_1');
     let message = '';

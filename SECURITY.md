@@ -21,5 +21,6 @@ fixes.
 - Every merge runs a dependency audit, static analysis and secret scanning.
 - Card data never touches Muziris servers: payments use the gateways' hosted fields.
 - Error responses never include stack traces or internal details, and logs redact passwords,
-  tokens, cookies and authorization headers.
+  tokens, cookies, authorization headers and the values database queries were sent with.
 - Changes to payments, tax, access control and secrets need a second reviewer.
+- The latest security pass and what it found are in `docs/security-review.md`.
