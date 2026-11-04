@@ -1,8 +1,10 @@
 // Public interface of the access module. Other modules import only from here.
 export {
+  adminAccessOfUsers,
   ADMINISTRATOR_ROLE_CODE,
   adminRolesOfUsers,
   assertAdminRolesAssignable,
+  assertMayManageAdminUser,
   assertNotLastAdministrator,
   assignAdminRole,
   createAdminRole,
@@ -12,6 +14,7 @@ export {
   getAdminAccess,
   hasAdminPermission,
   listAdminRoles,
+  mayManageAdminUser,
   newAdminRoleSchema,
   setAdminRolePermissions,
   SYSTEM_ADMIN_ACCESS,

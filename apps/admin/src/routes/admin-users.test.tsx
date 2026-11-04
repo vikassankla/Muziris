@@ -37,6 +37,7 @@ const ME = {
   twoFactor: true,
   lastSignInAt: '2026-11-04T03:30:00.000Z',
   roles: [{ id: 'r1', name: 'Administrator' }],
+  mayManage: true,
 };
 const RAVI = {
   id: '6f1d2c4e-0000-4000-8000-000000000002',
@@ -46,6 +47,7 @@ const RAVI = {
   twoFactor: false,
   lastSignInAt: null,
   roles: [],
+  mayManage: true,
 };
 const MEERA = {
   ...RAVI,
@@ -152,13 +154,9 @@ describe('admin users', () => {
     renderApp('/admin-users');
     const user = userEvent.setup();
 
-    // Your own row: no disable, no two-factor reset.
-    await user.click(await screen.findByRole('button', { name: 'Actions for Asha Rao' }));
-    expect(screen.queryByRole('menuitem', { name: 'Disable' })).toBeNull();
-    expect(screen.queryByRole('menuitem', { name: 'Reset two-factor' })).toBeNull();
-    await user.keyboard('{Escape}');
-
-    await user.click(screen.getByRole('button', { name: 'Actions for Ravi Pillai' }));
+    // Your own row: no disable and no two-factor reset, so nothing to offer at all.
+    await user.click(await screen.findByRole('button', { name: 'Actions for Ravi Pillai' }));
+    expect(screen.queryByRole('button', { name: 'Actions for Asha Rao' })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'Reset two-factor' })).toBeNull();
     await user.click(screen.getByRole('menuitem', { name: 'Send invitation again' }));
     await waitFor(() => {
@@ -176,6 +174,57 @@ describe('admin users', () => {
     expect(
       await within(dialog).findByText('At least one admin user must keep the administrator role'),
     ).toBeTruthy();
+  });
+
+  it('offers no disable, enable or reset on an admin who holds permissions you do not', async () => {
+    const ADMINISTRATOR_ROW = {
+      ...MEERA,
+      id: '6f1d2c4e-0000-4000-8000-000000000004',
+      displayName: 'Leela Das',
+      email: 'leela@example.com',
+      roles: [{ id: 'r1', name: 'Administrator' }],
+      mayManage: false,
+    };
+    const DISABLED_ROW = {
+      ...ADMINISTRATOR_ROW,
+      id: '6f1d2c4e-0000-4000-8000-000000000005',
+      displayName: 'Arun Kumar',
+      email: 'arun@example.com',
+      status: 'disabled',
+    };
+    mockApi(
+      adminUsersApi(
+        ['admin_user.view', 'admin_user.manage'],
+        [ME, ADMINISTRATOR_ROW, DISABLED_ROW],
+      ),
+    );
+    renderApp('/admin-users');
+
+    // Without admin_role.assign nothing is left to offer, so the rows have no menu.
+    expect(await screen.findByText('leela@example.com')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Actions for Leela Das' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Actions for Arun Kumar' })).toBeNull();
+  });
+
+  it('still offers changing roles on an admin who holds permissions you do not', async () => {
+    const ADMINISTRATOR_ROW = {
+      ...MEERA,
+      displayName: 'Leela Das',
+      roles: [{ id: 'r1', name: 'Administrator' }],
+      mayManage: false,
+    };
+    mockApi(
+      adminUsersApi(
+        ['admin_user.view', 'admin_user.manage', 'admin_role.view', 'admin_role.assign'],
+        [ME, ADMINISTRATOR_ROW],
+      ),
+    );
+    renderApp('/admin-users');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Actions for Leela Das' }));
+    expect(screen.getByRole('menuitem', { name: 'Change admin roles' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: 'Disable' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Reset two-factor' })).toBeNull();
   });
 
   it('resets another admin’s two-factor after confirming', async () => {

@@ -2,8 +2,10 @@ import {
   ACCESS_LEVELS,
   ADMIN_PERMISSIONS,
   AccessControlError,
+  adminAccessOfUsers,
   adminRolesOfUsers,
   assertAdminRolesAssignable,
+  assertMayManageAdminUser,
   assertNotLastAdministrator,
   assignAdminRole,
   assignBuyerRole,
@@ -17,6 +19,7 @@ import {
   listAdminRoles,
   listBuyerRoles,
   listBuyerRolesQuerySchema,
+  mayManageAdminUser,
   newBuyerRoleSchema,
   setAdminRolePermissions,
   setBuyerRoleGrants,
@@ -42,7 +45,7 @@ import {
   resetTwoFactor,
   type UserSummary,
 } from '@muziris/identity';
-import { Hono, type MiddlewareHandler } from 'hono';
+import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { requireSession, trustedOriginGuard, type AuthVariables } from './auth-routes.js';
@@ -101,6 +104,7 @@ const PROBLEMS: Record<AccessControlErrorCode, [ContentfulStatusCode, string]> =
   built_in_role: [409, 'Built-in roles cannot be changed or deleted'],
   privilege_escalation: [403, 'You can only grant or remove permissions you hold yourself'],
   last_administrator: [409, 'At least one admin user must keep the administrator role'],
+  outranked: [403, 'This admin user holds permissions you do not'],
 };
 
 /** Runs a module call, turning refusals into problem responses with the same stable code. */
@@ -187,8 +191,16 @@ async function identityTranslated<T>(action: () => Promise<T>): Promise<T> {
   }
 }
 
-/** How the admin users screen shows an account: invited until a password is set. */
-function adminUserView(user: UserSummary, roles: { id: string; name: string }[]) {
+/**
+ * How the admin users screen shows an account: invited until a password is set. mayManage says
+ * whether the signed-in admin holds every permission it holds, so may disable, enable or reset
+ * it (ADR 0028, amended).
+ */
+function adminUserView(
+  user: UserSummary,
+  roles: { id: string; name: string }[],
+  mayManage: boolean,
+) {
   return {
     id: user.id,
     displayName: user.displayName,
@@ -196,6 +208,7 @@ function adminUserView(user: UserSummary, roles: { id: string; name: string }[])
     status: user.status === 'disabled' ? 'disabled' : user.invited ? 'invited' : 'active',
     twoFactor: user.twoFactor,
     lastSignInAt: user.lastLoginAt?.toISOString() ?? null,
+    mayManage,
     roles: roles.map((r) => ({ id: r.id, name: r.name })),
   };
 }
@@ -272,23 +285,37 @@ export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv
   });
 
   /** One admin user as the screen shows them, or 404. */
-  async function viewOf(userId: string) {
+  async function viewOf(c: Context<AdminAccessEnv>, userId: string) {
     const user = await findUserSummary(deps.db, 'admin', userId);
     if (!user) throw new HttpProblem(404, 'user_not_found', 'No such admin user');
     const roles = await adminRolesOfUsers(deps.db, [user.id]);
-    return adminUserView(user, roles.get(user.id) ?? []);
+    const target = await getAdminAccess(deps.db, user.id);
+    return adminUserView(
+      user,
+      roles.get(user.id) ?? [],
+      mayManageAdminUser(c.get('access'), target),
+    );
   }
 
   /** Admin users by name, with their roles, two-factor sign-in and last sign-in (ADR 0028). */
   app.get('/admin-users', need('admin_user.view'), async (c) => {
     const query = listAdminUsersQuery.parse(c.req.query());
     const page = await listUsers(deps.db, 'admin', query);
-    const roles = await adminRolesOfUsers(
-      deps.db,
-      page.users.map((u) => u.id),
-    );
+    const ids = page.users.map((u) => u.id);
+    const [roles, access] = await Promise.all([
+      adminRolesOfUsers(deps.db, ids),
+      adminAccessOfUsers(deps.db, ids),
+    ]);
+    const actor = c.get('access');
+    const none: AdminAccess = { all: false, permissions: new Set<AdminPermission>() };
     return c.json({
-      adminUsers: page.users.map((u) => adminUserView(u, roles.get(u.id) ?? [])),
+      adminUsers: page.users.map((u) =>
+        adminUserView(
+          u,
+          roles.get(u.id) ?? [],
+          mayManageAdminUser(actor, access.get(u.id) ?? none),
+        ),
+      ),
       nextAfter: page.nextAfter,
     });
   });
@@ -338,7 +365,7 @@ export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv
       },
       'access.admin_user_invited',
     );
-    return c.json({ adminUser: await viewOf(created.user.id) }, 201);
+    return c.json({ adminUser: await viewOf(c, created.user.id) }, 201);
   });
 
   /** Sends the invitation again with a new link, while the admin has not accepted. */
@@ -361,38 +388,40 @@ export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv
       },
       'access.admin_invitation_resent',
     );
-    return c.json({ adminUser: await viewOf(userId) });
+    return c.json({ adminUser: await viewOf(c, userId) });
   });
 
   /**
-   * Disables an admin and ends their sessions. Never yourself, and never the last active
-   * administrator.
+   * Disables an admin and ends their sessions. Never yourself, never someone holding a
+   * permission you do not, and never the last active administrator.
    */
   app.post('/admin-users/:userId/disable', need('admin_user.manage'), async (c) => {
     const userId = idParam.parse(c.req.param('userId'));
     if (userId === c.get('user').id) {
       throw new HttpProblem(409, 'own_account', 'You cannot disable your own account');
     }
-    await viewOf(userId);
+    await viewOf(c, userId);
+    await translated(() => assertMayManageAdminUser(deps.db, c.get('access'), userId));
     await translated(() => assertNotLastAdministrator(deps.db, userId));
     await disableUser(deps.db, userId);
     deps.logger.warn(
       { requestId: c.get('requestId'), userId: c.get('user').id, targetUserId: userId },
       'access.admin_user_disabled',
     );
-    return c.json({ adminUser: await viewOf(userId) });
+    return c.json({ adminUser: await viewOf(c, userId) });
   });
 
-  /** Lets a disabled admin sign in again. */
+  /** Lets a disabled admin sign in again, if you hold every permission they hold. */
   app.post('/admin-users/:userId/enable', need('admin_user.manage'), async (c) => {
     const userId = idParam.parse(c.req.param('userId'));
-    await viewOf(userId);
+    await viewOf(c, userId);
+    await translated(() => assertMayManageAdminUser(deps.db, c.get('access'), userId));
     await enableUser(deps.db, userId);
     deps.logger.info(
       { requestId: c.get('requestId'), userId: c.get('user').id, targetUserId: userId },
       'access.admin_user_enabled',
     );
-    return c.json({ adminUser: await viewOf(userId) });
+    return c.json({ adminUser: await viewOf(c, userId) });
   });
 
   app.put('/admin-users/:userId/roles/:roleId', need('admin_role.assign'), async (c) => {
@@ -433,6 +462,7 @@ export function accessRoutes(deps: AccessRouteDependencies): Hono<AdminAccessEnv
     }
     const target = await findUserById(deps.db, userId);
     if (target?.realm !== 'admin') throw new HttpProblem(404, 'user_not_found', 'No such user');
+    await translated(() => assertMayManageAdminUser(deps.db, c.get('access'), userId));
     const hadFactor = await resetTwoFactor(deps.db, userId, deps.now());
     deps.logger.warn(
       { requestId: c.get('requestId'), userId: c.get('user').id, targetUserId: userId, hadFactor },

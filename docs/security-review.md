@@ -16,7 +16,7 @@ payments and secrets, so it needs a second human reviewer under `CLAUDE.md` rule
 | 2   | The admin app has no content security policy, and neither app forbids frames  | Medium   | Fixed                      |
 | 3   | The sign-in redirect can be sent to another site with a tab or line break     | Low      | Fixed                      |
 | 4   | A Razorpay webhook secret of any length is accepted                           | Low      | Fixed                      |
-| 5   | An admin user can disable or reset an admin user who holds more permissions   | Low      | Open: needs a decision     |
+| 5   | An admin user can disable or reset an admin user who holds more permissions   | Low      | Fixed (ADR 0028 amended)   |
 | 6   | Anyone can lock an account for a while by failing its sign-in                 | Low      | Accepted (ADR 0005)        |
 | 7   | Two admin users disabled at the same moment can leave no active administrator | Low      | Accepted (known, ADR 0028) |
 
@@ -75,16 +75,19 @@ for other configuration problems, without printing the value. `.env.example` and
 
 ### 5. An admin user can disable or reset an admin user who holds more permissions
 
-`admin_user.manage` lets an admin user disable, enable or reset the two-factor sign-in of any
+`admin_user.manage` let an admin user disable, enable or reset the two-factor sign-in of any
 other admin user, including administrators. No account is taken over (a reset admin user still
 needs their password, and the last active administrator cannot be disabled), but an admin user
 with a narrow role could lock every other administrator out until one of them is enabled again.
-Giving and changing roles already requires holding every permission involved; these actions do
+Giving and changing roles already required holding every permission involved; these actions did
 not.
 
-Not changed: ADR 0028 decided what `admin_user.manage` allows, and changing it is a decision for
-Vikas. One option is to allow these actions only on an admin user whose permissions the actor
-holds all of, as for roles.
+Fixed, as Vikas decided on 2026-11-04 (ADR 0028, amended): disabling, enabling and resetting
+two-factor sign-in need every permission the other admin user holds, so only an admin user with
+every permission may act on an administrator; anything else is refused with `outranked`. The
+list says whom the signed-in admin may act on (`mayManage`) and the screen offers only those
+actions. Tests: the access module's integration tests, `admin-users-routes.integration.test.ts`
+and `admin-users.test.tsx`.
 
 ### 6. Anyone can lock an account for a while by failing its sign-in
 

@@ -352,6 +352,66 @@ export async function assertAdminRolesAssignable(
 }
 
 /**
+ * Whether the actor may disable, enable or reset the two-factor sign-in of the target: they
+ * must hold every permission the target holds, as for giving a role (ADR 0028, amended
+ * 2026-11-04). An actor with every permission may act on anyone.
+ */
+export function mayManageAdminUser(actor: AdminAccess, target: AdminAccess): boolean {
+  if (actor.all) return true;
+  return !target.all && [...target.permissions].every((p) => actor.permissions.has(p));
+}
+
+/** Refuses an action on an admin user who holds a permission the actor does not (outranked). */
+export async function assertMayManageAdminUser(
+  db: Database,
+  actor: AdminAccess,
+  adminUserId: string,
+): Promise<void> {
+  if (!mayManageAdminUser(actor, await getAdminAccess(db, adminUserId))) {
+    throw new AccessControlError(
+      'outranked',
+      'This admin user holds permissions you do not, so only someone who holds them can change this',
+    );
+  }
+}
+
+/** Each admin user's access, as getAdminAccess gives one, in one query; for the admin users list. */
+export async function adminAccessOfUsers(
+  db: Database,
+  adminUserIds: readonly string[],
+): Promise<Map<string, AdminAccess>> {
+  const ids = adminUserIds.filter((id) => idSchema.safeParse(id).success);
+  const found = new Map(
+    ids.map((id) => [id, { all: false, permissions: new Set<AdminPermission>() }]),
+  );
+  if (ids.length > 0) {
+    const rows = await db
+      .select({
+        userId: adminUserRoles.adminUserId,
+        grantsAll: adminRoles.grantsAllPermissions,
+        permission: adminRolePermissions.permission,
+      })
+      .from(adminUserRoles)
+      .innerJoin(adminRoles, eq(adminRoles.id, adminUserRoles.roleId))
+      .leftJoin(adminRolePermissions, eq(adminRolePermissions.roleId, adminRoles.id))
+      .where(inArray(adminUserRoles.adminUserId, ids));
+    for (const row of rows) {
+      const access = found.get(row.userId);
+      if (!access) continue;
+      if (row.grantsAll) access.all = true;
+      if (row.permission !== null && isAdminPermission(row.permission)) {
+        access.permissions.add(row.permission);
+      }
+    }
+  }
+  const out = new Map<string, AdminAccess>();
+  for (const [id, access] of found) {
+    out.set(id, access.all ? { all: true, permissions: new Set(ALL_ADMIN_PERMISSIONS) } : access);
+  }
+  return out;
+}
+
+/**
  * Refuses to take away the last active administrator (last_administrator): an admin holding a
  * role that grants every permission may be disabled only while another active admin holds one.
  */

@@ -292,8 +292,10 @@ review).
     in `@muziris/db`); the admin app's build writes a content security policy and nginx forbids
     framing either app (`docker/app-headers.conf`); `safeRedirect` refuses a tab or line break
     that a browser would turn into another site; `RAZORPAY_WEBHOOK_SECRET` needs 16 or more
-    characters. The end-to-end journeys fail on a content security policy violation. Open: who
-    may disable or reset an admin user holding more permissions (finding 5, for Vikas).
+    characters. The end-to-end journeys fail on a content security policy violation. ADR 0028
+    amended (Vikas, in chat): disabling, enabling or resetting another admin user's two-factor
+    sign-in needs every permission they hold (`outranked` otherwise), and the admin users list
+    offers those actions only where they are allowed (`mayManage`).
 
 **Next (ahead of the plan):** launch prep: a deployment recipe with an ADR (it must send the
 headers of `docker/app-headers.conf` and Strict-Transport-Security), the install guide finished,

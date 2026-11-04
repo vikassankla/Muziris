@@ -628,6 +628,8 @@ const adminUserRowSchema = z.object({
   twoFactor: z.boolean(),
   lastSignInAt: z.string().nullable(),
   roles: z.array(z.object({ id: z.string(), name: z.string() })),
+  /** The signed-in admin holds every permission this one does, so may disable, enable or reset it. */
+  mayManage: z.boolean(),
 });
 export type AdminUserRow = z.infer<typeof adminUserRowSchema>;
 
