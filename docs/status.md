@@ -211,16 +211,16 @@ review).
     and runs the builds. No tax data.
 19. Install guide, first draft (PR 41, merged 2026-11-03 as 03c8331): `docs/install.md`.
 20. ADRs 0024 (end-to-end buyer journeys with Playwright), 0025 (job runner with pg-boss) and
-    0026 (two-factor sign-in for admins), accepted by Vikas in chat on 2026-11-03. Not built.
-    ADR 0026 touches authentication and secrets, so its PR needs a second human review under
-    CLAUDE.md rule 4.
+    0026 (two-factor sign-in for admins), accepted by Vikas in chat on 2026-11-03. Built as items
+    21, 22 and 24.
 21. End-to-end journeys (ADR 0024; PR 43, merged 2026-11-03 as 46f9d15). Package
     `e2e/` with Playwright 1.64.1, `pnpm e2e`, and a CI job "End-to-end journeys" after the
     checks. All five first journeys pass, three times over locally: invitation to order, prices
     and tiers, shopping list reorder, catalog changes reach buyers, tax readiness. The Vite
     configs read `MUZIRIS_API_TARGET`, so the journeys' API can run on its own port.
-22. Job runner (ADR 0025). **In review** (branch `feature/job-runner`). It touches pricing builds
-    and session clean-up, so CLAUDE.md rule 4 asks for a second human review. Package
+22. Job runner (ADR 0025; PR 44, merged 2026-11-03 as 6b944b4, approved by Vikas in chat, with
+    no second review recorded; it touches pricing builds, access control and session clean-up,
+    so CLAUDE.md rule 4 asks for one). Package
     `packages/jobs` with pg-boss 12.38.0 (MIT) in schema `pgboss`, installed by `db:migrate`.
     Admin writes queue `pricing.build` and `visibility.build` in their own transaction, 15
     seconds ahead, one build per burst; "Build now" answers 202. `notifications.send` replaces
@@ -232,10 +232,11 @@ review).
 23. Storefront tests get 15 seconds each (PR 45, merged 2026-11-03 as 1170236): the sign-in
     test ran past vitest's 5-second default on CI and failed main.
 
-24. Admin two-factor sign-in (ADR 0026). **In review** (branch `feature/admin-two-factor`). It
-    is authentication and handles a secret, so CLAUDE.md rule 4 asks for a second human
-    review. Authenticator-app codes (RFC 6238, `node:crypto`, the RFC vectors as known-answer
-    tests) and 10 recovery codes; secrets encrypted with `ADMIN_TOTP_KEY` (migration `0019`).
+24. Admin two-factor sign-in (ADR 0026; PR 51, merged 2026-11-04 as 3067070, approved by Vikas
+    in chat, with no second review recorded; it is authentication and handles a secret, so
+    CLAUDE.md rule 4 asks for one). Authenticator-app codes (RFC 6238, `node:crypto`, the RFC
+    vectors as known-answer tests) and 10 recovery codes, stored as Argon2id hashes; secrets
+    encrypted with `ADMIN_TOTP_KEY` (migration `0019`). Every `.env` needs the key.
     A right password opens a 5-minute two-factor session; the code opens the full one with a
     new token. First sign-in enrols, with a QR code (`uqr`, MIT, new dependency). A Security
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
