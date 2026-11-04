@@ -5,16 +5,17 @@ the wiring in `apps/api/src/emails.ts`.
 
 ## The catalogue
 
-| Kind               | Trigger                                   | To                                      | Holds a secret |
-| ------------------ | ----------------------------------------- | --------------------------------------- | -------------- |
-| `buyer_invitation` | an admin invites a buyer user, or resends | the invited email                       | yes, the link  |
-| `order_placed`     | `placeOrder` succeeds                     | the buyer who placed it                 | no             |
-| `order_received`   | `placeOrder` succeeds                     | the `notifications.order_email` setting | no             |
-| `order_confirmed`  | the `confirm` transition                  | the buyer who placed it                 | no             |
-| `order_declined`   | the `decline` transition, with its note   | the buyer who placed it                 | no             |
-| `order_completed`  | the `complete` transition                 | the buyer who placed it                 | no             |
-| `payment_received` | a payment becomes paid (ADR 0019)         | the buyer who placed it                 | no             |
-| `payment_failed`   | a payment fails or is cancelled           | the buyer who placed it                 | no             |
+| Kind               | Trigger                                               | To                                      | Holds a secret |
+| ------------------ | ----------------------------------------------------- | --------------------------------------- | -------------- |
+| `buyer_invitation` | an admin invites a buyer user, or resends             | the invited email                       | yes, the link  |
+| `admin_invitation` | an admin invites an admin user, or resends (ADR 0028) | the invited email                       | yes, the link  |
+| `order_placed`     | `placeOrder` succeeds                                 | the buyer who placed it                 | no             |
+| `order_received`   | `placeOrder` succeeds                                 | the `notifications.order_email` setting | no             |
+| `order_confirmed`  | the `confirm` transition                              | the buyer who placed it                 | no             |
+| `order_declined`   | the `decline` transition, with its note               | the buyer who placed it                 | no             |
+| `order_completed`  | the `complete` transition                             | the buyer who placed it                 | no             |
+| `payment_received` | a payment becomes paid (ADR 0019)                     | the buyer who placed it                 | no             |
+| `payment_failed`   | a payment fails or is cancelled                       | the buyer who placed it                 | no             |
 
 - **Templates** are in `modules/notifications/src/templates.ts`: one function per kind, each
   returning a subject, a text body and an HTML body with every value escaped. Money and dates
@@ -31,6 +32,7 @@ the wiring in `apps/api/src/emails.ts`.
 Each email has a key, unique in the outbox, so retrying a change never queues it twice:
 
 - `buyer_invitation:<invitation id>`. Resending makes a new invitation, so a new key.
+- `admin_invitation:<invitation id>`, likewise.
 - `order_placed:<order id>`, `order_received:<order id>`, and `<kind>:<order id>` for the
   transitions.
 - `payment_received:<payment id>`.
@@ -70,6 +72,16 @@ fragment, which the browser never sends to a server, so it cannot reach an acces
 Both are limited per IP address (30 per 10 minutes) and per token (10 per 10 minutes). An
 unknown token is a 404, an expired one a 410, and an accepted or revoked one, or an email already in use, a 409.
 
+## The admin invitation link
+
+The link is `<ADMIN_PUBLIC_URL>/accept-invitation#token=<token>`, in the fragment for the same
+reason. The admin app's page calls `POST /admin/v1/auth/invitation` with `{token}` (the
+invited email, name and expiry) and `POST /admin/v1/auth/accept-invitation` with
+`{token, password}`, which sets the password and answers 200 without signing in: the admin
+then signs in and enrols a second factor (ADR 0026). The link works once and for 72 hours.
+Every refusal (unknown, used, expired, a disabled account) is the same 404,
+`invitation_invalid`. The rate limits are the buyer invitation's.
+
 ## The admin Emails page
 
 System > Emails (`/emails`) lists the outbox, newest first, with a status filter. It needs
@@ -92,9 +104,10 @@ From the environment only; see `.env.example`.
 | `SMTP_URL`              | `smtp://` or `smtps://`; a secret, redacted from logs     | emails queue only |
 | `MAIL_FROM`             | the From address                                          | a localhost value |
 | `STOREFRONT_PUBLIC_URL` | the storefront's address, for links (https in production) | localhost:5174    |
+| `ADMIN_PUBLIC_URL`      | the admin app's address, for admin invitation links       | localhost:5173    |
 | `STOREFRONT_WEBSITE`    | the code of the website invitations come from             | `main`            |
 
-In production, `SMTP_URL`, `MAIL_FROM` and `STOREFRONT_PUBLIC_URL` are required and the API
+In production, `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` and `ADMIN_PUBLIC_URL` are required and the API
 does not start without them. Locally, Mailpit from `docker-compose.yml` receives everything; its
 inbox is at http://localhost:8025.
 

@@ -76,7 +76,7 @@ export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES' | '
    * Live keys are refused unless PAYMENTS_LIVE=true.
    */
   payments: PaymentGateways;
-  /** SMTP_URL, MAIL_FROM and STOREFRONT_PUBLIC_URL (ADR 0020); all three required in production. */
+  /** SMTP_URL, MAIL_FROM and the two public URLs (ADR 0020, 0028); all required in production. */
   mail: MailConfig;
 };
 

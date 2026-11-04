@@ -41,8 +41,8 @@ with status proposed. ADR 0015 (storefront app) is merged with status proposed. 
 
 ADRs 0027 (visibility rule screens) and 0028 (admin users screen and admin invitations) were
 accepted by Vikas in chat on 2026-11-04 (PR 54, merged 2026-11-04 as 636a17a). 0027 is built
-(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (PR 56, in review). Both need a
-second human review under CLAUDE.md rule 4.
+(item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (item 26, PR 56, merged 2026-11-04
+as 3a8543f). Both need a second human review under CLAUDE.md rule 4.
 
 ## Next, in order (pilot plan)
 
@@ -247,6 +247,7 @@ review).
     page under the profile menu gives new recovery codes and moves to a new phone. Reset by an
     admin with `admin_user.manage` (API only, no screen yet) or `admin:reset-2fa`; key rotation
     with `admin:rotate-2fa-key`. The end-to-end setup enrols the administrator in the browser.
+
 25. Visibility rule screens (ADR 0027; PR 55, merged 2026-11-04 as 90f98c8, approved by Vikas
     in chat; needs a second human review under CLAUDE.md
     rule 4, since visibility scopes what buyers may see). `/visibility` under Catalog, on the
@@ -260,8 +261,19 @@ review).
     targets beside their ids and takes `q` (customers gains `customerIdsMatching` and
     `customerGroupIdsMatching`). Journey 7 hides a category from a customer group and checks
     two buyers' storefronts.
-26. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
-    review** (branch `feature/product-page-actions`). The price box gains **Order now** (the
+26. Admin users screen and admin invitations (ADR 0028; PR 56, merged 2026-11-04 as 3a8543f,
+    approved by Vikas in chat; needs a second human review under CLAUDE.md rule 4:
+    authentication and access control). `/admin-users` under System for `admin_user.view`: name, email, admin roles, two-factor, status (Active, Invited,
+    Disabled) and last sign-in. Inviting makes an account with no password, gives the roles
+    the inviter may give, and emails a one-time link to `/accept-invitation` in the admin app,
+    good for 72 hours (`identity_invitation`, migration `0020`, new email kind
+    `admin_invitation`). Accepting sets the password only; the admin then signs in and enrols
+    a second factor. Row actions: change admin roles, send the invitation again, reset
+    two-factor (not your own), disable (not yourself, never the last active administrator) and
+    enable. New setting `ADMIN_PUBLIC_URL`, required in production. Journey 8 invites an admin,
+    accepts from Mailpit, enrols, and is disabled.
+27. Ordering from the storefront product page (first hand-test follow-up in item 16). **In
+    review** (PR 52, branch `feature/product-page-actions`). The price box gains **Order now** (the
     unit and quantity go to checkout as one line, in memory as from quick order) and **Add to
     shopping list** (pick a list or name a new one; the page links to it). Quick order and the
     product page share the list picker and `addToShoppingList`. No API change. Journey 6
@@ -290,8 +302,10 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   data protection and residency decisions. The foundations (websites with country, currency,
   locale, time zone and units; exact money; price lists per currency) already work per country.
 
-- Admin two-factor sign-in (ADR 0026): no passkeys, no remembered devices, and the reset has
-  no admin screen until the admin users screen exists.
+- Admin two-factor sign-in (ADR 0026): no passkeys, no remembered devices.
+- Admin users (ADR 0028): no password reset ("forgot password") for admins or buyers, no
+  editing an admin's name or email, no deleting admins. Two admins disabled at the same moment
+  could both pass the last-administrator check; `admin:create` recovers.
 - Job runner (ADR 0025): no admin action retries or removes a failed job; the Jobs screen only
   lists them. pg-boss keeps finished jobs for its default retention.
 - Pricing (ADR 0011): the build is a full rebuild and makes price list writes wait while it
@@ -333,7 +347,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
   are seeded; an admin creates `each` and the others before the first product.
 - Admin app: designed in `docs/design/admin` but waiting on APIs: RFQs,
   QuoteEditor, the Home dashboard widgets,
-  Admin users, and the customer detail tabs for orders, quotes, price lists, settings
+  and the customer detail tabs for orders, quotes, price lists, settings
   overrides and payment term (the Settings screen covers a customer's overrides). Their sidebar
   items stay hidden until the APIs exist. The price list screens have no "vs. list price"
   column, import history or Activity tab (ADR 0022).

@@ -23,6 +23,13 @@ const EXAMPLES: Record<(typeof NOTIFICATION_KINDS)[number], EmailData> = {
     acceptUrl: 'https://shop.example.in/accept-invitation#token=abc',
     expiresAt: new Date('2026-11-27T06:30:00Z'),
   },
+  admin_invitation: {
+    kind: 'admin_invitation',
+    displayName: 'Ravi Pillai',
+    invitedByName: 'Asha Menon',
+    acceptUrl: 'https://admin.example.in/accept-invitation#token=abc',
+    expiresAt: new Date('2026-11-23T06:30:00Z'),
+  },
   order_placed: { kind: 'order_placed', ...order },
   order_received: {
     kind: 'order_received',

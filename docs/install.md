@@ -45,19 +45,19 @@ you share.
 
 For production, set at least:
 
-| Variable                                         | Value                                                                                                                                |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`                                       | `production`                                                                                                                         |
-| `DATABASE_URL`                                   | `postgres://user:password@host:5432/database`                                                                                        |
-| `ADMIN_TOTP_KEY`                                 | 32 random bytes in base64 (`openssl rand -base64 32`). Encrypts admins' two-factor secrets; back it up with the database credentials |
-| `HOST`, `PORT`                                   | Where the API listens, for example `0.0.0.0` and `4000` behind the proxy                                                             |
-| `CORS_ORIGINS`                                   | The admin and storefront origins, comma-separated. They must be `https://` in production                                             |
-| `TRUSTED_PROXY_HOPS`                             | How many proxies sit in front of the API (1 for one reverse proxy), so rate limits see the client's address                          |
-| `STOREFRONT_WEBSITE`                             | The code of the website the storefront serves                                                                                        |
-| `STOREFRONT_PERSISTED_QUERIES`                   | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`         |
-| `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL` | All three are required in production. `STOREFRONT_PUBLIC_URL` is used for links in emails                                            |
-| `STRIPE_*`, `RAZORPAY_*`                         | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                                   |
-| `JOB_WORKERS`, `WORKER_PORT`                     | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001    |
+| Variable                                                             | Value                                                                                                                                              |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                           | `production`                                                                                                                                       |
+| `DATABASE_URL`                                                       | `postgres://user:password@host:5432/database`                                                                                                      |
+| `ADMIN_TOTP_KEY`                                                     | 32 random bytes in base64 (`openssl rand -base64 32`). Encrypts admins' two-factor secrets; back it up with the database credentials               |
+| `HOST`, `PORT`                                                       | Where the API listens, for example `0.0.0.0` and `4000` behind the proxy                                                                           |
+| `CORS_ORIGINS`                                                       | The admin and storefront origins, comma-separated. They must be `https://` in production                                                           |
+| `TRUSTED_PROXY_HOPS`                                                 | How many proxies sit in front of the API (1 for one reverse proxy), so rate limits see the client's address                                        |
+| `STOREFRONT_WEBSITE`                                                 | The code of the website the storefront serves                                                                                                      |
+| `STOREFRONT_PERSISTED_QUERIES`                                       | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`                       |
+| `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL`, `ADMIN_PUBLIC_URL` | All four are required in production. The two URLs are used for links in emails: the storefront's for buyers, the admin app's for admin invitations |
+| `STRIPE_*`, `RAZORPAY_*`                                             | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`                                                                 |
+| `JOB_WORKERS`, `WORKER_PORT`                                         | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001                  |
 
 Build-time, for the storefront: `VITE_STOREFRONT_WEBSITE`, the same website code.
 

@@ -52,6 +52,7 @@ const STATUS_TONES: Record<EmailStatus, 'info' | 'success' | 'destructive'> = {
 /** The catalogue's kinds in words (docs/notifications.md). */
 const KIND_LABELS: Record<string, string> = {
   buyer_invitation: 'Invitation',
+  admin_invitation: 'Admin invitation',
   order_placed: 'Order received (buyer)',
   order_received: 'New order (seller)',
   order_confirmed: 'Order confirmed',

@@ -1,6 +1,11 @@
 import type { CreatedInvitation, InvitationHooks } from '@muziris/customers';
 import type { Database, Transaction } from '@muziris/db';
-import { findUserById, type AuthenticatedUser } from '@muziris/identity';
+import {
+  findUserById,
+  type AuthenticatedUser,
+  type CreatedUserInvitation,
+  type UserInvitationHooks,
+} from '@muziris/identity';
 import type { JobQueue } from '@muziris/jobs';
 import { toDecimalString, type Money as AnyMoney } from '@muziris/money';
 import {
@@ -111,6 +116,35 @@ export function createEmails(deps: EmailDependencies) {
               customerName,
               // In the fragment, so the token never reaches a server log or a Referer header.
               acceptUrl: `${mail.storefrontUrl}/accept-invitation#token=${created.token}`,
+              expiresAt: created.invitation.expiresAt,
+            },
+            ctx,
+            created.invitation.createdAt,
+          ),
+      };
+    },
+
+    /**
+     * The admin invitation email (ADR 0028), with a link to the admin app's accept page. It comes
+     * from the storefront website's name, as buyer invitations do.
+     */
+    async adminInvitation(invitedBy: AuthenticatedUser): Promise<UserInvitationHooks> {
+      const website = await findWebsiteByCode(deps.db, deps.storefrontWebsite);
+      const ctx: EmailContext = website
+        ? context(website)
+        : { shopName: 'Muziris', locale: 'en-IN', timeZone: 'Asia/Kolkata' };
+      return {
+        inTransaction: (tx: Transaction, created: CreatedUserInvitation) =>
+          queue(
+            tx,
+            `admin_invitation:${created.invitation.id}`,
+            created.invitation.email,
+            {
+              kind: 'admin_invitation',
+              displayName: created.invitation.displayName,
+              invitedByName: invitedBy.displayName,
+              // In the fragment, so the token never reaches a server log or a Referer header.
+              acceptUrl: `${mail.adminUrl}/accept-invitation#token=${created.token}`,
               expiresAt: created.invitation.expiresAt,
             },
             ctx,

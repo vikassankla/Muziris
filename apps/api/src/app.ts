@@ -222,7 +222,7 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     }),
   );
   app.route('/webhooks', webhookRoutes({ ...emailDeps, gateways: deps.payments?.gateways ?? {} }));
-  app.route('/admin/v1/access', accessRoutes(authDeps));
+  app.route('/admin/v1/access', accessRoutes(emailDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(emailDeps));
   app.route('/admin/v1/jobs', jobRoutes(authDeps));

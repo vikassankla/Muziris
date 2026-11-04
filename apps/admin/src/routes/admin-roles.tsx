@@ -6,7 +6,7 @@ import { Breadcrumbs, Page, PageHeader } from '../components/page-header.js';
 import { ProblemAlert } from '../components/problem-view.js';
 import { NewRoleDialog } from '../components/role-dialog.js';
 import { Alert } from '../components/ui/alert.js';
-import { Badge, PlannedTag, Tag } from '../components/ui/badge.js';
+import { Badge, Tag } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { Checkbox } from '../components/ui/checkbox.js';
@@ -386,11 +386,13 @@ function AdminRolesPage({
           <Card>
             <CardHeader>
               <CardTitle>Admin users</CardTitle>
-              <PlannedTag />
             </CardHeader>
             <CardContent className="text-meta text-muted-foreground">
-              The admin users holding this role, with assigning and removing it, come with the admin
-              users API. At least one admin user always keeps the administrator role.
+              Roles are given and taken away on{' '}
+              <Link to="/admin-users" search={{}}>
+                Admin users
+              </Link>
+              . At least one active admin user always keeps the administrator role.
             </CardContent>
           </Card>
         </div>
