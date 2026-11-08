@@ -1,0 +1,11 @@
+#!/bin/sh
+# Docker Compose for the pilot install (ADR 0029), with the configuration from the env file:
+#   sudo deploy/muziris up -d --build
+# Every argument goes to `docker compose`. MUZIRIS_ENV_FILE points elsewhere (tests do).
+set -eu
+env_file=${MUZIRIS_ENV_FILE:-/etc/muziris/muziris.env}
+if [ ! -r "$env_file" ]; then
+  echo "Cannot read $env_file. Create it from deploy/muziris.env.example (docs/install.md)." >&2
+  exit 1
+fi
+exec docker compose --env-file "$env_file" -f "$(dirname "$0")/compose.yml" "$@"

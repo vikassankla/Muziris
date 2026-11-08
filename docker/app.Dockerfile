@@ -1,10 +1,13 @@
-# The application for local testing in Docker (docker-compose.yml, profile "app"). Not a
-# production image: it keeps dev dependencies and runs the TypeScript sources with tsx, as
-# `pnpm --filter @muziris/api start` does.
+# The application's images.
 #
-# Targets:
-#   api  the admin and storefront API, and the CLI commands (migrations, setup, admin:create)
-#   web  nginx serving the built admin app and storefront, proxying their API paths to api
+# For local testing in Docker (docker-compose.yml, profile "app"), with dev dependencies:
+#   api       the admin and storefront API, and the CLI commands (migrations, setup, admin:create)
+#   web       nginx serving the built admin app and storefront, proxying their API paths to api
+#
+# For the pilot install (deploy/compose.yml, ADR 0029):
+#   api-prod  the API with production dependencies only, still run from its TypeScript sources
+#             with tsx (working directory apps/api)
+#   edge      Caddy serving the built apps over HTTPS, proxying their API paths to api-prod
 
 FROM node:22-alpine AS deps
 RUN corepack enable
@@ -33,3 +36,30 @@ COPY docker/app-headers.conf /etc/nginx/snippets/app-headers.conf
 COPY --from=web-build /app/apps/admin/dist /srv/admin
 COPY --from=web-build /app/apps/storefront/dist /srv/storefront
 EXPOSE 8080 8081
+
+FROM node:22-alpine AS api-deploy
+RUN corepack enable
+WORKDIR /app
+# The API and its workspace packages with their production dependencies only, at the
+# lockfile's versions.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack install && pnpm fetch --prod
+COPY . .
+RUN pnpm install --prod --frozen-lockfile --offline --filter '@muziris/api...'
+
+FROM node:22-alpine AS api-prod
+# The storefront's persisted queries are the only operations production runs (ADR 0014).
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=4000 \
+  STOREFRONT_PERSISTED_QUERIES=/app/apps/storefront/persisted-queries.json \
+  PATH=/app/apps/api/node_modules/.bin:$PATH
+# Owned by root, so the API cannot change its own code.
+COPY --from=api-deploy /app /app
+WORKDIR /app/apps/api
+USER node
+EXPOSE 4000
+CMD ["tsx", "src/server.ts"]
+
+FROM caddy:2.11.7-alpine AS edge
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=web-build /app/apps/admin/dist /srv/admin
+COPY --from=web-build /app/apps/storefront/dist /srv/storefront
