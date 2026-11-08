@@ -210,7 +210,7 @@ importers:
     devDependencies:
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
 
   apps/storefront:
     dependencies:
@@ -321,8 +321,8 @@ importers:
         specifier: workspace:*
         version: link:../modules/visibility
       postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
+        specifier: ^4.0.0
+        version: 4.0.0
     devDependencies:
       '@playwright/test':
         specifier: 1.64.1
@@ -341,7 +341,7 @@ importers:
         version: link:../identity
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -356,7 +356,7 @@ importers:
         version: link:../../packages/money
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -371,7 +371,7 @@ importers:
         version: link:../identity
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -386,7 +386,7 @@ importers:
         version: 2.2.2
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -401,7 +401,7 @@ importers:
         version: link:../platform
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       nodemailer:
         specifier: ^10.3.1
         version: 10.3.1
@@ -440,7 +440,7 @@ importers:
         version: link:../workflow
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -459,7 +459,7 @@ importers:
         version: link:../orders
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -496,7 +496,7 @@ importers:
         version: link:../../packages/money
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -523,7 +523,7 @@ importers:
         version: link:../platform
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -545,7 +545,7 @@ importers:
         version: link:../visibility
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -582,7 +582,7 @@ importers:
         version: link:../visibility
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -616,7 +616,7 @@ importers:
         version: link:../platform
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -637,7 +637,7 @@ importers:
         version: link:../platform
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -653,7 +653,7 @@ importers:
         version: link:../../packages/db
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -667,23 +667,23 @@ importers:
         version: link:../jobs
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
+        specifier: ^4.0.0
+        version: 4.0.0
 
   packages/jobs:
     dependencies:
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
+        version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0)
       pg-boss:
         specifier: 12.38.0
         version: 12.38.0(@opentelemetry/api@1.10.0)
     devDependencies:
       postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
+        specifier: ^4.0.0
+        version: 4.0.0
 
   packages/money: {}
 
@@ -3255,9 +3255,9 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  postgres@3.4.9:
-    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
-    engines: {node: '>=12'}
+  postgres@4.0.0:
+    resolution: {integrity: sha512-kBh8qXtcvvIAc00DftQyOxz7M/3Zxww1tRMXZPLzipNXXl5PIzHml+9zB3Mrge2U8ldc0WF1ZdLp1iYQi7Kh3A==}
+    engines: {node: '>=20'}
 
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
@@ -5402,11 +5402,11 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9):
+  drizzle-orm@0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@4.0.0):
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
       pg: 8.23.1
-      postgres: 3.4.9
+      postgres: 4.0.0
 
   electron-to-chromium@1.5.467: {}
 
@@ -5966,7 +5966,7 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  postgres@3.4.9: {}
+  postgres@4.0.0: {}
 
   prelude-ls@1.2.1: {}
 
