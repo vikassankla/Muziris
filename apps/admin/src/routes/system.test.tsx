@@ -156,6 +156,25 @@ describe('settings', () => {
     });
   });
 
+  it('shows a stored amount the currency cannot hold, and still lets it be changed', async () => {
+    mockApi({
+      ...signedIn(['setting.view', 'setting.manage']),
+      ...sideData,
+      'GET /settings': () =>
+        json({
+          settings: [
+            { ...TERM_DAYS },
+            { ...FLAT_RATE, value: { amount: '150.555' }, source: 'website' },
+          ],
+        }),
+    });
+    renderApp(`/settings?website=${INDIA.id}`);
+    const rate = await screen.findByRole('group', { name: 'Flat shipping charge per order' });
+    expect(await within(rate).findByText('150.555 INR')).toBeTruthy();
+    expect(within(rate).getByRole('button', { name: 'Change' })).toBeTruthy();
+    expect(within(rate).getByRole('button', { name: 'Clear' })).toBeTruthy();
+  });
+
   it('shows a refused value in the dialog', async () => {
     mockApi({
       ...signedIn(['setting.view', 'setting.manage']),

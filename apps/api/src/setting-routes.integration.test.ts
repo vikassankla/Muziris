@@ -217,6 +217,36 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
     ).toBe(404);
   });
 
+  it('refuses a flat shipping charge with more decimals than the currency allows', async () => {
+    const { website } = await seed();
+    const ops = await signedInAdmin('ops@muziris.example', ['setting.view', 'setting.manage']);
+    const put = (scope: unknown, amount: string) =>
+      call('PUT', '/shipping.flat_rate', ops.cookie, { scope, value: { amount } });
+    const atWebsite = { type: 'website', id: website.id };
+    const flatRate = async () => {
+      const res = await call('GET', `?websiteId=${website.id}`, ops.cookie);
+      const { settings } = (await res.json()) as { settings: SettingJson[] };
+      return settings.find((s) => s.key === 'shipping.flat_rate');
+    };
+
+    const refused = await put(atWebsite, '150.555');
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toMatchObject({
+      code: 'setting_invalid_value',
+      title: 'The amount has more decimals than the currency allows',
+      detail: 'INR allows at most 2 decimal places',
+    });
+    expect(await flatRate()).toMatchObject({ value: { amount: '0' }, source: 'default' });
+
+    expect((await put(atWebsite, '150.55')).status).toBe(200);
+    expect(await flatRate()).toMatchObject({ value: { amount: '150.55' }, source: 'website' });
+
+    // A value set above a website reaches every website, so it must fit each one's currency.
+    expect((await put({ type: 'organization' }, '1.234')).status).toBe(422);
+    expect((await put({ type: 'global' }, '1.234')).status).toBe(422);
+    expect((await put({ type: 'organization' }, '1.23')).status).toBe(200);
+  });
+
   it('needs setting.view to read and setting.manage to change', async () => {
     const { website } = await seed();
     const viewer = await signedInAdmin('viewer@muziris.example', ['setting.view']);
