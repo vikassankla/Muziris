@@ -125,7 +125,8 @@ services:
           sleep 86400
         done
     depends_on:
-      postgres: { condition: service_healthy }
+      # After the migrations, so the first dump is not of an empty database.
+      migrate: { condition: service_completed_successfully }
 
 volumes:
   postgres-data:

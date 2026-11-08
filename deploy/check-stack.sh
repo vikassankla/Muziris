@@ -122,21 +122,29 @@ not_api_path "$admin" /storefront/v1/graphql
 not_api_path "$admin" /webhooks/stripe
 not_api_path "$shop" /admin/v1/me
 
-# Only the edge is published. `compose port` prints nothing, or ":0", for a port that is not.
-published() {
-  local where
-  where=$(compose port "$1" "$2" 2>/dev/null || true)
-  [ -n "$where" ] && [ "$where" != ":0" ]
-}
-if ! published api 4000 && ! curl -s --max-time 3 -o /dev/null http://127.0.0.1:4000/; then
-  pass "the API's port is not published"
+# Only the edge is published, on 80 and 443. `compose ps` shows a published port with "->".
+ports=$(compose ps --format '{{.Service}} {{.Ports}}')
+service_ports() { awk -v service="$1" '$1 == service { $1 = ""; print }' <<<"$ports"; }
+for service in api postgres backup; do
+  found=$(service_ports "$service")
+  if [ -z "$found" ]; then
+    fail "$service is not running, or shows no ports"
+  elif [[ $found == *"->"* ]]; then
+    fail "$service publishes a port:$found"
+  else
+    pass "$service publishes no port"
+  fi
+done
+edge_ports=$(service_ports edge | grep -o -- '->[0-9]*' | sort -u | tr '\n' ' ')
+if [ "$edge_ports" = "->443 ->80 " ]; then
+  pass "the edge publishes ports 80 and 443 only"
 else
-  fail "the API answers on port 4000 outside the stack"
+  fail "the edge publishes: $edge_ports"
 fi
-if ! published postgres 5432; then
-  pass "PostgreSQL's port is not published"
+if curl -s --max-time 3 -o /dev/null http://127.0.0.1:4000/; then
+  fail "the API answers on port 4000 outside the stack"
 else
-  fail "PostgreSQL's port is published"
+  pass "the API does not answer on port 4000 outside the stack"
 fi
 
 # The latest backup restores into an empty database.
@@ -160,7 +168,7 @@ else
   if [ "${tables:-0}" -gt 0 ]; then
     pass "the backup restores ($tables tables)"
   else
-    fail "the backup did not restore"
+    fail "the backup did not restore (${tables:-0} tables)"
   fi
 fi
 
