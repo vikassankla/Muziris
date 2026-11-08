@@ -166,8 +166,8 @@ review).
     change websites and override or clear settings at one scope, recording who did it
     (migration `0017`). The default buyer role is a setting, stored on the invitation (migration
     `0018`) and granted when it is accepted. Admin: a real website switcher, System > Websites
-    and System > Settings, a buyer role in the invite dialog. Not done: feature toggles, a
-    check of the screens by hand.
+    and System > Settings, a buyer role in the invite dialog. Not done: feature toggles. Checked
+    by hand on 2026-11-08 (item 32).
 14. Price list screens with CSV import and export (ADR 0022). **Merged** (PR 35, 2026-11-03,
     as 7284121, approved by Vikas in chat, with no second review recorded on GitHub). This touches pricing, so CLAUDE.md rule 4 asks for a second human review. A shared
     `@muziris/csv` package (also used by the US tax rate import); batch lookups by id in catalog
@@ -176,7 +176,7 @@ review).
     rows, all or nothing unless `skipInvalid=true`) and `GET .../prices.csv`. Admin: Pricing >
     Price lists and a price list's page (prices with tiers, import, export, assignments), the
     build banner and the price preview. No migrations. Not done: the "vs. list price" column,
-    import history, a check of the screens by hand.
+    import history. Checked by hand on 2026-11-08 (item 32).
 15. Tax screens, the readiness check and product tax codes (ADR 0023). **Merged** (PR 36,
     2026-11-03, as 091f85d, approved by Vikas in chat, with no second review recorded on GitHub). This touches tax, so CLAUDE.md rule 4 asks for a second human review; the four
     **(check)** items in ADR 0017 still need the tax adviser. Catalog gains `taxCodeUsage` and
@@ -184,8 +184,8 @@ review).
     Admin: System > Tax for the top bar website (Readiness, Registration, Rates with the US CSV
     import, and US Exemptions), a Tax section on the product page (HSN or SAC code with the GST
     rate covering it, US tax category), a missing tax code filter on the products list, and
-    exemptions on the customer page. No migrations. Not done: a check of the screens by hand,
-    warnings for rates about to end.
+    exemptions on the customer page. No migrations. Not done: warnings for rates about to end.
+    Checked by hand on 2026-11-08 (item 32).
 
 16. Fixes from the hand test of items 13 to 15 on the Docker stack (2026-11-03). **Merged**
     (PR 38, 2026-11-03, as 8489a88, approved by Vikas in chat, with no second review recorded
@@ -299,8 +299,9 @@ review).
 
 30. ADR 0029, the pilot deployment (launch prep). **Accepted** by Vikas in chat on 2026-11-04
     (PR 58).
-31. The pilot deployment recipe (ADR 0029). **In review** (branch `feature/deployment`); it
-    carries secrets and HTTPS, so CLAUDE.md rule 4 asks for a second human review.
+31. The pilot deployment recipe (ADR 0029). **Merged** (PR 59, 2026-11-04, as 062ce94,
+    approved by Vikas in chat after a second review, as CLAUDE.md rule 4 asks: it carries
+    secrets and HTTPS).
     `deploy/compose.yml` runs PostgreSQL, `migrate`, the API, Caddy 2.11.7 (`edge`) and a daily
     `pg_dump`; only ports 80 and 443 are published. `deploy/muziris` runs Compose with the
     root-only `/etc/muziris/muziris.env`. The Dockerfile gains `api-prod` (a production-only install from
@@ -310,10 +311,19 @@ review).
     restore; CI's new "Production stack" job runs it with Caddy's own certificates. The install
     guide is rewritten around the VM install. Not done: an install on a real VM with Let's
     Encrypt, and a first release tag.
+32. Hand checks of items 13 to 15 (launch prep, 2026-11-08). **Done**, in the admin app on a
+    local install with no SMTP. Checked and working: website fields, locks and refusals;
+    settings overrides, Clear and inheritance by scope; price lists, tiers, the build banner,
+    the price preview and customer assignment; Readiness in both countries; GSTIN validation;
+    GST and US rates, including refusals, overlaps, longest prefix, End and Delete; the US
+    CSV import (all or nothing); permits; exemptions on the Tax screen and the customer page;
+    the product Tax section and the missing tax code filter. Not repeated: accepting an
+    invitation with the default buyer role, and price CSV import and export (checked by hand
+    in PR 38). Nothing was fixed; the findings are under Open items.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
-Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and the hand
-checks of items 13 to 15.
+Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision
+on the hand check findings (Open items).
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order
@@ -325,6 +335,29 @@ journeys, MRO demo catalog, install guide, security pass, pilot launch.
 If a week slips, cut in this order: emails, then quick order CSV upload, then US tax tables.
 
 ## Open items
+
+- Hand check findings (item 32, 2026-11-08), none fixed yet:
+  1. Bug: Settings accepts `shipping.flat_rate` with more decimals than the currency allows
+     (₹150.555 saves). `formatAmount` then throws `RangeError` and the Settings page crashes on
+     every load, so the value can only be cleared through the API. Checkout rounds it and does
+     not crash. The fix touches a setting that steers pricing, so CLAUDE.md rule 4 applies.
+  2. Payment methods can be saved empty, and checkout then refuses every order with
+     `payment_method_not_available`, with no warning in the admin app. Gateway methods without
+     keys, or in the wrong currency, are dropped just as silently.
+  3. Ending a tax rate on a day before it starts says "Another rate applies on some of the
+     same days": `modules/tax/src/rates.ts` raises `rate_overlaps` for both cases.
+  4. A US rates CSV with the wrong header says the file has rows that are not valid, and
+     does not mention the columns.
+  5. An exemption certificate can be added with an expiry date in the past, and the list does
+     not mark it expired. Checkout ignores it correctly.
+  6. Display: the tab lists overflow by 1px and show a stray scrollbar on a price list's page
+     and Tax; Readiness says "(1 products)"; the GSTIN hint shows "State: State SH" for partial
+     input.
+  7. To consider: Settings' website selector does not follow the top bar, so the two can show
+     different websites; `?website=` on Tax is replaced by the top bar's website on load; the
+     Prices tab badge counts loaded rows (25), not the total (111); the prices table hides its
+     Price column behind a horizontal scroll at 1024 wide; the payment methods description
+     shows raw codes; Clear on a setting has no confirmation.
 
 - Selling to all countries (requested 2026-10-30) is a later phase, after the pilot. The pilot
   stays India and US. It needs general address formats and tax ids, a tax provider beyond the
