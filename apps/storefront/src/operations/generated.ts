@@ -21,7 +21,7 @@ export interface AddShoppingListLinesResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;
@@ -199,7 +199,7 @@ export interface CreateShoppingListResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;
@@ -224,7 +224,7 @@ export interface DeleteShoppingListResult {
   deleteShoppingList: {
     deleted: boolean;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
     } | null;
   };
@@ -249,7 +249,7 @@ export interface DuplicateShoppingListResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;
@@ -280,7 +280,7 @@ export interface MoveShoppingListLinesResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;
@@ -626,7 +626,7 @@ export interface RemoveShoppingListLinesResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;
@@ -656,7 +656,7 @@ export interface RenameShoppingListResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;
@@ -740,12 +740,17 @@ export interface ShellResult {
     parentId: string | null;
     position: number;
   }[];
+  features: {
+    quickOrder: boolean;
+    quickOrderCsv: boolean;
+    shoppingLists: boolean;
+  };
 }
 
 export const Shell: Operation<ShellResult, ShellVariables> = {
   name: 'Shell',
   kind: 'query',
-  hash: '1670a6f40f5a0abf1d46642f380bdc9d3b40c3e19a99cf3360439f11de9dc524',
+  hash: '382ba6ef63278a4109bae23729c1ce82b9f27f2b2247322d4bf2e37874f3cc0c',
 };
 
 export interface ShoppingListVariables {
@@ -868,7 +873,7 @@ export interface UpdateShoppingListLineResult {
       lineCount: number;
     } | null;
     refusal: {
-      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS';
+      code: 'NOT_ALLOWED' | 'LIST_NOT_FOUND' | 'LINE_NOT_FOUND' | 'TOO_MANY_LISTS' | 'TOO_MANY_LINES' | 'SAME_LIST' | 'LINE_PROBLEMS' | 'FEATURE_DISABLED';
       message: string;
       lines: readonly {
         index: number;

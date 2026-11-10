@@ -59,6 +59,7 @@ export const SHELL: ShellResult = {
     { id: 'hex', name: 'Hex bolts', parentId: 'bolts', position: 1 },
     { id: 'tools', name: 'Hand tools', parentId: null, position: 2 },
   ],
+  features: { quickOrder: true, quickOrderCsv: true, shoppingLists: true },
 };
 
 export const ROW = {
@@ -70,9 +71,14 @@ export const ROW = {
   price: { unitPrice: { amount: '12.50', currency: 'INR' }, unitCode: 'EA' },
 } as const;
 
-/** Handlers for a signed-in buyer: the Shell operation answers with SHELL. */
-export function signedIn(): Record<string, Handler> {
-  return { 'GraphQL Shell': () => data(SHELL) };
+/**
+ * Handlers for a signed-in buyer: the Shell operation answers with SHELL, every feature on
+ * unless turned off here.
+ */
+export function signedIn(features: Partial<ShellResult['features']> = {}): Record<string, Handler> {
+  return {
+    'GraphQL Shell': () => data({ ...SHELL, features: { ...SHELL.features, ...features } }),
+  };
 }
 
 /**

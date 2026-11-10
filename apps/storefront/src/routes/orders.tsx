@@ -220,7 +220,9 @@ function OrderPage() {
           {order.customerName} · placed {formatDateTime(order.placedAt, locale, timeZone)}
         </p>
       </div>
-      {fromList === undefined ? null : <EmptyListOffer listId={fromList} />}
+      {fromList === undefined || !shell.features.shoppingLists ? null : (
+        <EmptyListOffer listId={fromList} />
+      )}
       <Card>
         <CardContent className="grid gap-4 pt-5">
           <Table>

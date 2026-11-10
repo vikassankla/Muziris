@@ -10,7 +10,7 @@ import {
   type DatabaseHandle,
 } from '@muziris/db';
 import { createUser } from '@muziris/identity';
-import { createOrganization, createWebsite } from '@muziris/platform';
+import { createOrganization, createWebsite, setSetting } from '@muziris/platform';
 import {
   addPrice,
   createAssignment,
@@ -22,6 +22,11 @@ import { createRule, rebuildVisibility } from '@muziris/visibility';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
+import {
+  FEATURE_QUICK_ORDER,
+  FEATURE_QUICK_ORDER_CSV,
+  FEATURE_SHOPPING_LISTS,
+} from './features.js';
 import { signInAdmin, TEST_TWO_FACTOR_KEY } from './test-admin-sign-in.js';
 import { createLogger } from './logger.js';
 import { MAX_COST, MAX_DEPTH } from './storefront/limits.js';
@@ -67,7 +72,7 @@ describe.skipIf(!url)('storefront GraphQL API against PostgreSQL', () => {
         catalog_product_unit, customer_buyer_user, customer_customer, customer_group,
         platform_website, platform_organization, identity_session, identity_user,
         identity_rate_limit, shopping_list_line, shopping_list, access_buyer_user_role,
-        access_buyer_role_permission, access_buyer_role cascade`,
+        access_buyer_role_permission, access_buyer_role, platform_config_value cascade`,
     );
     logs = [];
     queries = 0;
@@ -757,6 +762,96 @@ describe.skipIf(!url)('storefront GraphQL API against PostgreSQL', () => {
         headers: { Cookie: meera, 'Muziris-Website': 'muziris-in' },
       });
       expect(got.status).not.toBe(200);
+    });
+  });
+
+  describe('feature toggles', () => {
+    const FEATURES = 'query { features { quickOrder quickOrderCsv shoppingLists } }';
+
+    it('has every feature on until an admin turns one off', async () => {
+      const w = await world();
+      const { body } = await gql(FEATURES, { cookie: w.lena });
+      expect(body.data).toEqual({
+        features: { quickOrder: true, quickOrderCsv: true, shoppingLists: true },
+      });
+    });
+
+    it('refuses shopping lists to a customer they are off for, and only to them', async () => {
+      const w = await world();
+      await setSetting(
+        handle.db,
+        FEATURE_SHOPPING_LISTS,
+        { type: 'customer', id: w.retailer.id },
+        false,
+      );
+
+      expect((await gql(FEATURES, { cookie: w.lena })).body.data).toEqual({
+        features: { quickOrder: true, quickOrderCsv: true, shoppingLists: false },
+      });
+      const read = await gql('query { shoppingLists { nodes { id } } }', { cookie: w.lena });
+      expect(read.body.data).toBeNull();
+      expect(read.body.errors?.map((e) => e.extensions.code)).toEqual(['FEATURE_DISABLED']);
+      const one = await gql(
+        'query { shoppingList(id: "7c1e0a11-0000-4000-8000-000000000001") { id } }',
+        { cookie: w.lena },
+      );
+      expect(one.body.errors?.map((e) => e.extensions.code)).toEqual(['FEATURE_DISABLED']);
+
+      const created = await gql(
+        'mutation { createShoppingList(name: "X") { list { id } refusal { code message } } }',
+        { cookie: w.lena },
+      );
+      expect(created.body.data).toEqual({
+        createShoppingList: {
+          list: null,
+          refusal: {
+            code: 'FEATURE_DISABLED',
+            message: "Shopping lists aren't available on your account",
+          },
+        },
+      });
+      const deleted = await gql(
+        'mutation { deleteShoppingList(listId: "7c1e0a11-0000-4000-8000-000000000001") { deleted refusal { code } } }',
+        { cookie: w.lena },
+      );
+      expect(deleted.body.data).toEqual({
+        deleteShoppingList: { deleted: false, refusal: { code: 'FEATURE_DISABLED' } },
+      });
+
+      // Another customer on the same website keeps them.
+      const other = await gql('query { shoppingLists { nodes { id } } }', { cookie: w.ravi });
+      expect(other.body).toEqual({ data: { shoppingLists: { nodes: [] } } });
+    });
+
+    it('refuses quick order on a website it is off for, and reports the CSV toggle', async () => {
+      const w = await world();
+      await setSetting(
+        handle.db,
+        FEATURE_QUICK_ORDER,
+        { type: 'website', id: w.website.id },
+        false,
+      );
+      await setSetting(
+        handle.db,
+        FEATURE_QUICK_ORDER_CSV,
+        { type: 'website', id: w.website.id },
+        false,
+      );
+
+      expect((await gql(FEATURES, { cookie: w.ravi })).body.data).toEqual({
+        features: { quickOrder: false, quickOrderCsv: false, shoppingLists: true },
+      });
+      const { body } = await gql(
+        'query { productsBySkus(skus: ["GLV-NITRILE-L"]) { missingSkus } }',
+        { cookie: w.ravi },
+      );
+      expect(body.data).toBeNull();
+      expect(body.errors).toEqual([
+        expect.objectContaining({
+          message: "Quick order isn't available on your account",
+          extensions: { code: 'FEATURE_DISABLED' },
+        }),
+      ]);
     });
   });
 

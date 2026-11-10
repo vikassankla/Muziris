@@ -23,4 +23,10 @@ query Shell {
     parentId
     position
   }
+  # Which features are on for this buyer (ADR 0031): their links and pages are hidden when off.
+  features {
+    quickOrder
+    quickOrderCsv
+    shoppingLists
+  }
 }

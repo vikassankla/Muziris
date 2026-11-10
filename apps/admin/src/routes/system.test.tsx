@@ -123,6 +123,41 @@ describe('settings', () => {
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull();
   });
 
+  it('shows the feature toggles in their own section, and turns one off', async () => {
+    const LISTS = {
+      key: 'features.shopping_lists',
+      group: 'Features',
+      label: 'Shopping lists',
+      description: 'Buyers can keep shopping lists and check out from them',
+      editor: { kind: 'boolean' },
+      allowedScopes: ['customer', 'customer_group', 'website', 'organization', 'global'],
+      defaultValue: true,
+      value: true,
+      source: 'default',
+    };
+    const requests = mockApi({
+      ...signedIn(['setting.view', 'setting.manage']),
+      ...sideData,
+      'GET /settings': () => json({ settings: [TERM_DAYS, LISTS] }),
+      'PUT /settings/features.shopping_lists': () => json({}),
+    });
+    renderApp(`/settings?website=${INDIA.id}`);
+    const user = userEvent.setup();
+    expect(await screen.findByRole('heading', { name: 'Features' })).toBeTruthy();
+    const lists = await screen.findByRole('group', { name: 'Shopping lists' });
+    expect(within(lists).getByText('On')).toBeTruthy();
+    await user.click(within(lists).getByRole('button', { name: 'Change' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Shopping lists' });
+    await user.click(within(dialog).getByRole('switch'));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(requests.find((r) => r.method === 'PUT')?.body).toEqual({
+        scope: { type: 'website', id: INDIA.id },
+        value: false,
+      });
+    });
+  });
+
   it('overrides a setting at the website and clears an override', async () => {
     const requests = mockApi({
       ...signedIn(['setting.view', 'setting.manage']),

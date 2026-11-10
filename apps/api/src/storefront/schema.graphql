@@ -51,6 +51,9 @@ type Query {
   """One order by its number, if the buyer may see it."""
   order(number: String!): Order
 
+  """Which storefront features are on for the signed-in buyer."""
+  features: Features!
+
   """
   Shopping lists the buyer may see on this website, most recently changed first.
   """
@@ -494,6 +497,17 @@ type OrderAddress {
   gstin: String
 }
 
+"""
+Which storefront features are on for the signed-in buyer. The API refuses those that are off.
+"""
+type Features {
+  quickOrder: Boolean!
+
+  """CSV upload on the quick order page; the file is read in the browser."""
+  quickOrderCsv: Boolean!
+  shoppingLists: Boolean!
+}
+
 type ShoppingListPage {
   nodes: [ShoppingListSummary!]!
 
@@ -678,6 +692,7 @@ enum ShoppingListRefusalCode {
   TOO_MANY_LINES
   SAME_LIST
   LINE_PROBLEMS
+  FEATURE_DISABLED
 }
 
 type ShoppingListLineProblem {

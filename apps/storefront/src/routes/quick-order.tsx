@@ -31,6 +31,7 @@ import {
 } from '../lib/quick-order.js';
 import { addToShoppingList, NEW_LIST } from '../lib/shopping-lists.js';
 import { ProductsBySkus, ShoppingLists } from '../operations/generated.js';
+import { requireFeature } from '../lib/features.js';
 import { authedRoute } from './authed.js';
 
 /** The largest CSV file read, well above 500 rows of SKU, quantity and unit. */
@@ -39,7 +40,14 @@ const MAX_FILE_BYTES = 256 * 1024;
 export const quickOrderRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/quick-order',
-  loader: async ({ location, abortController }) => {
+  beforeLoad: ({ context }) => {
+    requireFeature(context.shell, 'quickOrder');
+  },
+  loader: async ({ context, location, abortController }) => {
+    // With shopping lists off there is nothing to add to, and the API would refuse.
+    if (!context.shell.features.shoppingLists) {
+      return { shoppingLists: { nodes: [], nextAfter: null } };
+    }
     try {
       // The lists to add to: the 50 most recently changed are enough to pick from.
       return await runOperation(ShoppingLists, { first: 50 }, { signal: abortController.signal });
@@ -59,6 +67,7 @@ function QuickOrderPage() {
   const { shoppingLists } = quickOrderRoute.useLoaderData();
   const { shell } = authedRoute.useRouteContext();
   const { locale } = shell.website;
+  const { quickOrderCsv, shoppingLists: listsOn } = shell.features;
   const navigate = useNavigate();
   const [text, setText] = useState('');
   const [checked, setChecked] = useState<Checked>();
@@ -149,7 +158,8 @@ function QuickOrderPage() {
       <div>
         <h1 className="m-0 text-page-title font-[650] tracking-[-0.015em]">Quick order</h1>
         <p className="m-0 mt-1 text-muted-foreground">
-          Paste SKUs and quantities, or upload a CSV, then add them to a list or check out.
+          Paste SKUs and quantities{quickOrderCsv ? ', or upload a CSV,' : ','} then{' '}
+          {listsOn ? 'add them to a list or check out' : 'check out'}.
         </p>
       </div>
       <Card>
@@ -184,10 +194,12 @@ function QuickOrderPage() {
             <Button disabled={busy || text.trim() === ''} onClick={() => void check()}>
               Check items
             </Button>
-            <label className="text-meta text-muted-foreground">
-              <span className="mr-2">Or upload a CSV</span>
-              <input type="file" accept=".csv,text/csv,text/plain" onChange={readFile} />
-            </label>
+            {quickOrderCsv ? (
+              <label className="text-meta text-muted-foreground">
+                <span className="mr-2">Or upload a CSV</span>
+                <input type="file" accept=".csv,text/csv,text/plain" onChange={readFile} />
+              </label>
+            ) : null}
           </div>
           {failure?.message ? <Alert variant="warning">{failure.message}</Alert> : null}
           {failure?.error ? <ErrorState error={failure.error} /> : null}
@@ -257,20 +269,24 @@ function QuickOrderPage() {
             ) : null}
             {good.length > 0 ? (
               <div className="flex flex-wrap items-end gap-3 border-t pt-4">
-                <ListPicker
-                  lists={shoppingLists.nodes}
-                  target={target}
-                  onTarget={setTarget}
-                  newName={newName}
-                  onNewName={setNewName}
-                />
-                <Button
-                  variant="outline"
-                  disabled={busy || (target === NEW_LIST && newName.trim() === '')}
-                  onClick={() => void addToList()}
-                >
-                  Add to shopping list
-                </Button>
+                {listsOn ? (
+                  <>
+                    <ListPicker
+                      lists={shoppingLists.nodes}
+                      target={target}
+                      onTarget={setTarget}
+                      newName={newName}
+                      onNewName={setNewName}
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={busy || (target === NEW_LIST && newName.trim() === '')}
+                      onClick={() => void addToList()}
+                    >
+                      Add to shopping list
+                    </Button>
+                  </>
+                ) : null}
                 <span className="flex-1" />
                 <Button disabled={busy} onClick={goToCheckout}>
                   Go to checkout

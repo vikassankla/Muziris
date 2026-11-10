@@ -170,8 +170,8 @@ review).
     change websites and override or clear settings at one scope, recording who did it
     (migration `0017`). The default buyer role is a setting, stored on the invitation (migration
     `0018`) and granted when it is accepted. Admin: a real website switcher, System > Websites
-    and System > Settings, a buyer role in the invite dialog. Not done: feature toggles. Checked
-    by hand on 2026-11-08 (item 32).
+    and System > Settings, a buyer role in the invite dialog. Feature toggles came later (ADR
+    0031). Checked by hand on 2026-11-08 (item 32).
 14. Price list screens with CSV import and export (ADR 0022). **Merged** (PR 35, 2026-11-03,
     as 7284121, approved by Vikas in chat, with no second review recorded on GitHub). This touches pricing, so CLAUDE.md rule 4 asks for a second human review. A shared
     `@muziris/csv` package (also used by the US tax rate import); batch lookups by id in catalog
@@ -353,6 +353,15 @@ review).
     is read only: gateway cards with a copy button for the webhook address, "How to change the
     keys" (the env file, then `deploy/muziris up -d`), and a websites table linking to the
     Settings page. Keys stay in the env file (ADR 0019). No migrations.
+37. Feature toggles (ADR 0031). **In review** (branch `feature/feature-toggles`); they steer what
+    buyers may do, so CLAUDE.md rule 4 asks for a second human review. Three boolean settings,
+    on by default, at every scope: `features.quick_order`, `features.quick_order_csv` and
+    `features.shopping_lists`, in a "Features" section of the Settings page. The storefront API
+    refuses a feature that is off: `shoppingLists`, `shoppingList` and `productsBySkus` with
+    GraphQL error code `FEATURE_DISABLED`, every list mutation with refusal `FEATURE_DISABLED`.
+    The CSV toggle only hides the upload, since the file is read in the browser. `Shell` gains
+    `features`; the storefront hides the links and buttons of a feature that is off, and a page
+    reached by its address says "This isn't available on your account". No migrations.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
 Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision
