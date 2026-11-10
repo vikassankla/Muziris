@@ -22,7 +22,7 @@
     "worker": "tsx --env-file-if-exists=../../.env src/worker.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.5",
+    "@hono/node-server": "^2.1.6",
     "@muziris/access": "workspace:*",
     "@muziris/catalog": "workspace:*",
     "@muziris/csv": "workspace:*",
