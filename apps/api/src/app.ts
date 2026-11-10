@@ -15,6 +15,7 @@ import { authRoutes } from './auth-routes.js';
 import { catalogRoutes } from './catalog-routes.js';
 import { customerRoutes } from './customer-routes.js';
 import { jobRoutes } from './job-routes.js';
+import { paymentsAdminRoutes } from './payments-admin-routes.js';
 import { NO_JOBS } from './jobs.js';
 import { createEmails } from './emails.js';
 import { notificationRoutes } from './notification-routes.js';
@@ -195,11 +196,12 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     jobs: deps.jobs ?? NO_JOBS,
     twoFactorKey: deps.twoFactorKey,
   };
+  const mail = deps.mail ?? mailConfigFromEnv({}, { production: false });
   const emails = createEmails({
     db: deps.db,
     jobs: authDeps.jobs,
     logger: deps.logger,
-    mail: deps.mail ?? mailConfigFromEnv({}, { production: false }),
+    mail,
     storefrontWebsite: deps.storefrontWebsite ?? 'main',
   });
   const emailDeps = { ...authDeps, emails, storefrontWebsite: deps.storefrontWebsite ?? 'main' };
@@ -228,6 +230,14 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/jobs', jobRoutes(authDeps));
   app.route('/admin/v1/notifications', notificationRoutes(authDeps));
   app.route('/admin/v1/orders', orderRoutes(emailDeps));
+  app.route(
+    '/admin/v1/payments',
+    paymentsAdminRoutes({
+      ...authDeps,
+      gateways: deps.payments?.gateways ?? {},
+      storefrontUrl: mail.storefrontUrl,
+    }),
+  );
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
   app.route(

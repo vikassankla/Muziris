@@ -1626,6 +1626,49 @@ export function listJobs(signal?: AbortSignal) {
   });
 }
 
+const SETTING_PAYMENT_METHODS = ['terms', 'stripe_card', 'stripe_ach', 'razorpay'] as const;
+export type SettingPaymentMethod = (typeof SETTING_PAYMENT_METHODS)[number];
+
+const gatewaySchema = z.object({
+  gateway: z.enum(['stripe', 'razorpay']),
+  name: z.string(),
+  configured: z.boolean(),
+  mode: z.enum(['test', 'live']).nullable(),
+  publicKey: z.string().nullable(),
+  variables: z.array(z.object({ name: z.string(), set: z.boolean() })),
+  currencies: z.array(z.string()),
+  methods: z.array(z.enum(SETTING_PAYMENT_METHODS)),
+  webhookUrl: z.string(),
+  lastEvent: z
+    .object({
+      receivedAt: z.string(),
+      type: z.string(),
+      outcome: z.enum(['applied', 'ignored', 'amount_mismatch', 'unknown_payment']),
+    })
+    .nullable(),
+  refusedEvents7Days: z.number(),
+});
+export type PaymentGatewayStatus = z.infer<typeof gatewaySchema>;
+
+const websitePaymentsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  currency: z.string(),
+  listed: z.array(z.enum(SETTING_PAYMENT_METHODS)),
+  offered: z.array(z.enum(SETTING_PAYMENT_METHODS)),
+  warnings: z.array(z.string()),
+});
+export type WebsitePayments = z.infer<typeof websitePaymentsSchema>;
+
+/** The payment gateways and the methods each website offers (ADR 0030). Never a secret. */
+export function getPaymentGateways(signal?: AbortSignal) {
+  return api(
+    '/payments/gateways',
+    z.object({ gateways: z.array(gatewaySchema), websites: z.array(websitePaymentsSchema) }),
+    { signal },
+  );
+}
+
 const tierSchema = z.object({ minQuantity: z.string(), unitPrice: z.string() });
 
 const previewSchema = z.object({
