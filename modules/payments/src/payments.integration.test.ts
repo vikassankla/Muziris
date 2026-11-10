@@ -30,6 +30,7 @@ import {
   readRazorpayEvent,
   startPayment,
   type GatewayClients,
+  webhookActivity,
 } from './index.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -389,5 +390,43 @@ describe.skipIf(!url)('payments against PostgreSQL', () => {
     const calls = gateway.calls.length;
     expect(await check()).toMatchObject({ ok: true, payment: { status: 'paid' } });
     expect(gateway.calls).toHaveLength(calls);
+  });
+  it('reports the latest webhook event of each gateway and the refused ones of the last 7 days', async () => {
+    const event = (eventId: string, ref: string, kind: 'status' | 'none') => ({
+      eventId,
+      eventType: kind === 'none' ? 'payment.authorized' : 'payment.captured',
+      ref,
+      amountMinor: 100n,
+      currency: 'INR',
+      effect:
+        kind === 'none'
+          ? ({ kind: 'none' } as const)
+          : ({ kind: 'status', status: 'paid' } as const),
+    });
+    const day = 24 * 60 * 60 * 1000;
+    const at = (daysAgo: number) => new Date(NOW.getTime() - daysAgo * day);
+    expect(await webhookActivity(handle.db, at(7))).toEqual({
+      stripe: { lastEvent: null, refusedSince: 0 },
+      razorpay: { lastEvent: null, refusedSince: 0 },
+    });
+
+    // Unknown payments: one too old to count, two within the week.
+    await applyGatewayEvent(handle.db, 'razorpay', event('r1', 'order_x', 'status'), at(8));
+    await applyGatewayEvent(handle.db, 'razorpay', event('r2', 'order_y', 'status'), at(3));
+    await applyGatewayEvent(handle.db, 'razorpay', event('r3', 'order_z', 'status'), at(1));
+    // The latest event is an ignored one, which is not refused.
+    await applyGatewayEvent(handle.db, 'razorpay', event('r4', 'order_z', 'none'), at(0));
+    await applyGatewayEvent(handle.db, 'stripe', event('s1', 'pi_1', 'none'), at(2));
+
+    expect(await webhookActivity(handle.db, at(7))).toEqual({
+      stripe: {
+        lastEvent: { receivedAt: at(2), type: 'payment.authorized', outcome: 'ignored' },
+        refusedSince: 0,
+      },
+      razorpay: {
+        lastEvent: { receivedAt: at(0), type: 'payment.authorized', outcome: 'ignored' },
+        refusedSince: 2,
+      },
+    });
   });
 });

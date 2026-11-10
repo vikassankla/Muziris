@@ -343,6 +343,16 @@ review).
     picking one adds a line of one to the items. A list's page gains a checkbox per line and
     "Select all lines", and a "Move to" picker (the buyer's other lists, or a new list) that
     runs the existing `MoveShoppingListLines`. No API, schema or migration changes.
+36. System > Payments in the admin (ADR 0030). **In review** (branch `feature/payments-screen`);
+    it adds an admin permission and shows payment configuration, so CLAUDE.md rule 4 asks for a
+    second human review. New permission `payment.view` (the built-in administrator role has it,
+    as it has every permission). `GET /admin/v1/payments/gateways` gives, per gateway, whether it
+    is configured, test or live mode, the public key, which variables are set (never a value),
+    the webhook address, the last webhook event and the events refused in the last 7 days; and,
+    per website, the payment methods listed, those checkout offers and the warnings. The screen
+    is read only: gateway cards with a copy button for the webhook address, "How to change the
+    keys" (the env file, then `deploy/muziris up -d`), and a websites table linking to the
+    Settings page. Keys stay in the env file (ADR 0019). No migrations.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
 Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision

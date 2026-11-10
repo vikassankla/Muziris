@@ -1,5 +1,6 @@
 import {
   Building2,
+  CreditCard,
   Eye,
   FolderTree,
   Globe,
@@ -35,6 +36,7 @@ export type NavTo =
   | '/buyer-roles'
   | '/emails'
   | '/jobs'
+  | '/payments'
   | '/websites'
   | '/settings'
   | '/tax';
@@ -108,6 +110,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { to: '/websites', label: 'Websites', icon: Globe, permission: 'website.view' },
       { to: '/settings', label: 'Settings', icon: Settings, permission: 'setting.view' },
       { to: '/tax', label: 'Tax', icon: Receipt, permission: 'tax.view' },
+      { to: '/payments', label: 'Payments', icon: CreditCard, permission: 'payment.view' },
       { to: '/emails', label: 'Emails', icon: Mail, permission: 'notification.view' },
       { to: '/jobs', label: 'Jobs', icon: Timer, permission: 'job.view' },
       { to: '/admin-users', label: 'Admin users', icon: UserCog, permission: 'admin_user.view' },

@@ -1,4 +1,5 @@
 // Public interface of the payments module (ADR 0019). Other modules import only from here.
+export { webhookActivity, type WebhookActivity } from './activity.js';
 export {
   configuredMethods,
   PAYMENT_ENV_NAMES,

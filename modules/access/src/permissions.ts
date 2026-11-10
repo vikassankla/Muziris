@@ -29,6 +29,7 @@ export const ADMIN_PERMISSIONS = {
   'notification.view': 'See the emails sent and those that failed',
   'notification.manage': 'Send a failed email again',
   'job.view': 'See background jobs that are waiting, running or failed',
+  'payment.view': 'See payment gateways, the methods each website offers, and webhook events',
 } as const;
 
 export type AdminPermission = keyof typeof ADMIN_PERMISSIONS;

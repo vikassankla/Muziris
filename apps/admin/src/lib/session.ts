@@ -31,6 +31,7 @@ export const ADMIN_PERMISSION_KEYS = [
   'notification.view',
   'notification.manage',
   'job.view',
+  'payment.view',
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSION_KEYS)[number];
