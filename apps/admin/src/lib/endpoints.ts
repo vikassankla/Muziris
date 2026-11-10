@@ -1165,6 +1165,8 @@ const settingSchema = z.object({
   defaultValue: z.unknown(),
   value: z.unknown(),
   source: z.enum([...SCOPE_TYPES, 'default']),
+  /** What the value means for checkout, such as payment methods it cannot offer. */
+  warnings: z.array(z.string()).default([]),
 });
 export type Setting = z.infer<typeof settingSchema>;
 

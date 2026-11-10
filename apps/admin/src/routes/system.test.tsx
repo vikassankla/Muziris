@@ -175,6 +175,49 @@ describe('settings', () => {
     expect(within(rate).getByRole('button', { name: 'Clear' })).toBeTruthy();
   });
 
+  it('warns when checkout cannot offer the payment methods listed', async () => {
+    const warning =
+      'Checkout refuses every order on India: none of these methods can be used there.';
+    mockApi({
+      ...signedIn(['setting.view']),
+      ...sideData,
+      'GET /settings': () =>
+        json({
+          settings: [
+            {
+              key: 'payment.methods',
+              group: 'Payments',
+              label: 'Payment methods',
+              description: 'Payment methods checkout offers',
+              editor: {
+                kind: 'choices',
+                multiple: true,
+                options: [
+                  { value: 'terms', label: 'On payment terms' },
+                  { value: 'razorpay', label: 'Razorpay' },
+                ],
+              },
+              allowedScopes: ['customer', 'customer_group', 'website', 'organization', 'global'],
+              defaultValue: ['terms'],
+              value: ['razorpay'],
+              source: 'website',
+              warnings: [warning, 'Razorpay is not offered: its keys are not set on the server.'],
+            },
+            TERM_DAYS,
+          ],
+        }),
+    });
+    renderApp(`/settings?website=${INDIA.id}`);
+    const methods = await screen.findByRole('group', { name: 'Payment methods' });
+    const alert = await within(methods).findByRole('alert');
+    expect(within(alert).getByText(warning)).toBeTruthy();
+    expect(
+      within(alert).getByText('Razorpay is not offered: its keys are not set on the server.'),
+    ).toBeTruthy();
+    const term = screen.getByRole('group', { name: 'Payment term' });
+    expect(within(term).queryByRole('alert')).toBeNull();
+  });
+
   it('shows a refused value in the dialog', async () => {
     mockApi({
       ...signedIn(['setting.view', 'setting.manage']),

@@ -50,7 +50,7 @@ export interface AdminSetting {
   editor: SettingEditor;
 }
 
-const PAYMENT_METHOD_LABELS: Record<(typeof PAYMENT_METHODS)[number], string> = {
+export const PAYMENT_METHOD_LABELS: Record<(typeof PAYMENT_METHODS)[number], string> = {
   terms: 'On payment terms',
   stripe_card: 'Card (Stripe)',
   stripe_ach: 'US bank account (Stripe)',

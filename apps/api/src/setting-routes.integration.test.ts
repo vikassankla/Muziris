@@ -247,6 +247,61 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
     expect((await put({ type: 'organization' }, '1.23')).status).toBe(200);
   });
 
+  it('refuses an empty list of payment methods', async () => {
+    const { website } = await seed();
+    const ops = await signedInAdmin('ops@muziris.example', ['setting.view', 'setting.manage']);
+    const refused = await call('PUT', '/payment.methods', ops.cookie, {
+      scope: { type: 'website', id: website.id },
+      value: [],
+    });
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toMatchObject({
+      code: 'setting_invalid_value',
+      title: 'Choose at least one payment method',
+    });
+    const stored = await handle.db.execute(
+      sql`select 1 from platform_config_value where key = 'payment.methods'`,
+    );
+    expect(stored).toHaveLength(0);
+  });
+
+  it('warns when checkout cannot offer the payment methods listed', async () => {
+    const { website, customer } = await seed();
+    const ops = await signedInAdmin('ops@muziris.example', ['setting.view', 'setting.manage']);
+    const methodsAt = async (query: string) => {
+      const res = await call('GET', query, ops.cookie);
+      const { settings } = (await res.json()) as {
+        settings: (SettingJson & { warnings: string[] })[];
+      };
+      return settings.find((s) => s.key === 'payment.methods');
+    };
+
+    // The default, terms, always works; other settings carry no warnings.
+    expect(await methodsAt(`?websiteId=${website.id}`)).toMatchObject({ warnings: [] });
+    expect(await termDays(ops.cookie, `?websiteId=${website.id}`)).toMatchObject({
+      warnings: [],
+    });
+
+    // No gateway keys are configured in this app, so Razorpay alone leaves nothing.
+    expect(
+      (
+        await call('PUT', '/payment.methods', ops.cookie, {
+          scope: { type: 'customer', id: customer.id },
+          value: ['razorpay'],
+        })
+      ).status,
+    ).toBe(200);
+    expect(await methodsAt(`?websiteId=${website.id}&customerId=${customer.id}`)).toMatchObject({
+      value: ['razorpay'],
+      warnings: [
+        'Checkout refuses every order on Acme India: none of these methods can be used there.',
+        'Razorpay is not offered: its keys are not set on the server.',
+      ],
+    });
+    // The website itself still has terms.
+    expect(await methodsAt(`?websiteId=${website.id}`)).toMatchObject({ warnings: [] });
+  });
+
   it('needs setting.view to read and setting.manage to change', async () => {
     const { website } = await seed();
     const viewer = await signedInAdmin('viewer@muziris.example', ['setting.view']);

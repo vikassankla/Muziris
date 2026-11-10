@@ -326,6 +326,12 @@ review).
     currency allows, against the website's currency or, above a website, every website's. A value
     saved before this shows as stored (150.555 INR) instead of crashing the Settings page, so it
     can be changed or cleared there. No migrations.
+34. Fix for hand check finding 2 (item 32). **In review** (branch `fix/payment-methods-warning`,
+    stacked on item 33); it touches payment settings, so CLAUDE.md rule 4 asks for a second human
+    review. Saving `payment.methods` refuses an empty list. Reading settings gives each one
+    `warnings`; for payment methods they name a website where checkout would refuse every order,
+    a gateway method whose keys are not set, and one that does not take a website's currency.
+    The Settings page shows them under the setting. Checkout is unchanged. No migrations.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
 Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision
@@ -342,7 +348,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 
 ## Open items
 
-- Hand check findings (item 32, 2026-11-08). Finding 1 is fixed by item 33; the others are open:
+- Hand check findings (item 32, 2026-11-08). Finding 1 is fixed by item 33 and finding 2 by item 34; the others are open:
   1. Bug: Settings accepts `shipping.flat_rate` with more decimals than the currency allows
      (₹150.555 saves). `formatAmount` then throws `RangeError` and the Settings page crashes on
      every load, so the value can only be cleared through the API. Checkout rounds it and does

@@ -5,6 +5,7 @@ import { Field } from '../components/field.js';
 import { Breadcrumbs, Page, PageHeader } from '../components/page-header.js';
 import { ProblemAlert } from '../components/problem-view.js';
 import { EmptyState } from '../components/states.js';
+import { Alert, AlertDescription } from '../components/ui/alert.js';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
@@ -685,6 +686,13 @@ function SettingsPage() {
                           </Button>
                         ) : null}
                       </div>
+                    ) : null}
+                    {setting.warnings.length > 0 ? (
+                      <Alert variant="warning" className="basis-full">
+                        {setting.warnings.map((warning) => (
+                          <AlertDescription key={warning}>{warning}</AlertDescription>
+                        ))}
+                      </Alert>
                     ) : null}
                   </div>
                 );
