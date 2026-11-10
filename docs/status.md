@@ -337,15 +337,16 @@ review).
     `warnings`; for payment methods they name a website where checkout would refuse every order,
     a gateway method whose keys are not set, and one that does not take a website's currency.
     The Settings page shows them under the setting. Checkout is unchanged. No migrations.
-35. Storefront: SKU typeahead in quick order and moving lines between lists. **In review**
-    (branch `feature/storefront-lists-typeahead`). Quick order gains "Find a product": after two
+35. Storefront: SKU typeahead in quick order and moving lines between lists. **Merged** (PR 70,
+    2026-11-10, as 55438cb, approved by Vikas in chat after his review). Quick order gains "Find a product": after two
     characters and a short pause it runs the existing `Search` operation for 8 products, and
     picking one adds a line of one to the items. A list's page gains a checkbox per line and
     "Select all lines", and a "Move to" picker (the buyer's other lists, or a new list) that
     runs the existing `MoveShoppingListLines`. No API, schema or migration changes.
-36. System > Payments in the admin (ADR 0030). **In review** (branch `feature/payments-screen`);
-    it adds an admin permission and shows payment configuration, so CLAUDE.md rule 4 asks for a
-    second human review. New permission `payment.view` (the built-in administrator role has it,
+36. System > Payments in the admin (ADR 0030). **Merged** (PR 72, 2026-11-10, as 0fc0080,
+    approved by Vikas in chat after his review, with no second review recorded on GitHub). It adds
+    an admin permission and shows payment configuration, so CLAUDE.md rule 4 asks for a second
+    human review. New permission `payment.view` (the built-in administrator role has it,
     as it has every permission). `GET /admin/v1/payments/gateways` gives, per gateway, whether it
     is configured, test or live mode, the public key, which variables are set (never a value),
     the webhook address, the last webhook event and the events refused in the last 7 days; and,
@@ -353,8 +354,9 @@ review).
     is read only: gateway cards with a copy button for the webhook address, "How to change the
     keys" (the env file, then `deploy/muziris up -d`), and a websites table linking to the
     Settings page. Keys stay in the env file (ADR 0019). No migrations.
-37. Feature toggles (ADR 0031). **In review** (branch `feature/feature-toggles`); they steer what
-    buyers may do, so CLAUDE.md rule 4 asks for a second human review. Three boolean settings,
+37. Feature toggles (ADR 0031). **Merged** (PR 73, 2026-11-10, as 427dd94, approved by Vikas in
+    chat after his review, with no second review recorded on GitHub). They steer what buyers may
+    do, so CLAUDE.md rule 4 asks for a second human review. Three boolean settings,
     on by default, at every scope: `features.quick_order`, `features.quick_order_csv` and
     `features.shopping_lists`, in a "Features" section of the Settings page. The storefront API
     refuses a feature that is off: `shoppingLists`, `shoppingList` and `productsBySkus` with
