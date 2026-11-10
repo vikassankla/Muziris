@@ -44,6 +44,10 @@ accepted by Vikas in chat on 2026-11-04 (PR 54, merged 2026-11-04 as 636a17a). 0
 (item 25, PR 55, merged 2026-11-04 as 90f98c8); 0028 is built (item 26, PR 56, merged 2026-11-04
 as 3a8543f). Both need a second human review under CLAUDE.md rule 4.
 
+ADRs 0030 (a payments screen in the admin, keys kept in the environment) and 0031 (feature
+toggles for quick order and shopping lists) are proposed (branch `docs/adr-payments-toggles`),
+for Vikas to accept before they are built.
+
 ## Next, in order (pilot plan)
 
 **Week 2 (4 to 10 Nov)**
