@@ -678,8 +678,8 @@ importers:
         specifier: ^0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(pg@8.23.1)(postgres@3.4.9)
       pg-boss:
-        specifier: 12.38.0
-        version: 12.38.0(@opentelemetry/api@1.10.0)
+        specifier: 12.38.1
+        version: 12.38.1(@opentelemetry/api@1.10.0)
     devDependencies:
       postgres:
         specifier: ^3.4.9
@@ -2529,8 +2529,8 @@ packages:
   cookie-es@3.1.1:
     resolution: {integrity: sha512-UaXxwISYJPTr9hwQxMFYZ7kNhSXboMXP+Z3TRX6f1/NyaGPfuNUZOWP1pUEb75B2HjfklIYLVRfWiFZJyC6Npg==}
 
-  cron-parser@5.10.3:
-    resolution: {integrity: sha512-Fwlmlgiyoj5e7XDCy5T3ueFd3imgt714k7xjAzhkOBUrUgQxWtsjS7kWSEN3efDX34bebxBJAmPoCSisHvjlpw==}
+  cron-parser@5.10.4:
+    resolution: {integrity: sha512-TagNqYzoV/C7Ty7VAQjrQg+57WsEOuQEUh0tWT5Dc+l/GOuoAdWVIzFU0CqYdQswqdjUalrdmOvaMtQhErYZTA==}
     engines: {node: '>=18'}
 
   cross-spawn@7.0.6:
@@ -3167,8 +3167,8 @@ packages:
     resolution: {integrity: sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==}
     engines: {node: '>=8'}
 
-  pg-boss@12.38.0:
-    resolution: {integrity: sha512-felA3fyPSJwWk5cb/VwAgnudCAzWEdgBjjf+eukXm8pExlwkhjdBbOMukMyG5s8uZHO6fZZZcaIaTa3oKpfSCg==}
+  pg-boss@12.38.1:
+    resolution: {integrity: sha512-g7zSszWPsakw+Ng5Uqa/DiW8mz8CVnuO17VQ7CXaPsfgFj5Z+wSmP8CBGIgwGB82DNFpdP+wCbt89pal3fwxRQ==}
     engines: {node: '>=22.12.0'}
     hasBin: true
     peerDependencies:
@@ -5355,7 +5355,7 @@ snapshots:
 
   cookie-es@3.1.1: {}
 
-  cron-parser@5.10.3:
+  cron-parser@5.10.4:
     dependencies:
       luxon: 3.7.2
 
@@ -5875,10 +5875,10 @@ snapshots:
 
   path-key@3.1.1: {}
 
-  pg-boss@12.38.0(@opentelemetry/api@1.10.0):
+  pg-boss@12.38.1(@opentelemetry/api@1.10.0):
     dependencies:
       '@opentelemetry/api': 1.10.0
-      cron-parser: 5.10.3
+      cron-parser: 5.10.4
       pg: 8.23.1
       rrule-temporal: 2.2.8
       serialize-error: 13.1.0
