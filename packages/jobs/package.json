@@ -17,6 +17,6 @@
     "pg-boss": "12.38.0"
   },
   "devDependencies": {
-    "postgres": "^3.4.9"
+    "postgres": "^4.1.0"
   }
 }
