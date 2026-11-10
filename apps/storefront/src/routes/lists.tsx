@@ -1,6 +1,7 @@
 import { createRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { ListChecks, ListX } from 'lucide-react';
-import { useState, type SubmitEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
+import { ListPicker } from '../components/list-picker.js';
 import { ErrorState, EmptyState } from '../components/states.js';
 import { Alert } from '../components/ui/alert.js';
 import { Tag } from '../components/ui/badge.js';
@@ -20,10 +21,12 @@ import { runOperation } from '../lib/api.js';
 import { checkQuantity, formatPrice, lineTotal } from '../lib/format.js';
 import { signInOn401 } from '../lib/guard.js';
 import { formatDateTime } from '../lib/orders.js';
+import { NEW_LIST } from '../lib/shopping-lists.js';
 import {
   CreateShoppingList,
   DeleteShoppingList,
   DuplicateShoppingList,
+  MoveShoppingListLines,
   RemoveShoppingListLines,
   RenameShoppingList,
   ShoppingList,
@@ -238,6 +241,31 @@ function ListPage() {
   const navigate = useNavigate();
   const [problem, setProblem] = useState<{ message?: string; error?: unknown }>();
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [targets, setTargets] = useState<{ id: string; name: string }[]>();
+  const [target, setTarget] = useState('');
+  const [newName, setNewName] = useState('');
+  const [moved, setMoved] = useState<{ listId: string; name: string; count: number }>();
+  const anySelected = selected.size > 0;
+  const shownId = list?.id;
+
+  // The lists to move to: loaded once, when the buyer first selects a line.
+  useEffect(() => {
+    if (!anySelected || targets !== undefined) return;
+    const controller = new AbortController();
+    runOperation(ShoppingLists, { first: 50 }, { signal: controller.signal })
+      .then(({ shoppingLists }) => {
+        const others = shoppingLists.nodes.filter((l) => l.id !== shownId);
+        setTargets(others);
+        setTarget((current) => current || (others[0]?.id ?? NEW_LIST));
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setProblem({ error });
+      });
+    return () => {
+      controller.abort();
+    };
+  }, [anySelected, targets, shownId]);
 
   if (list === null) {
     return (
@@ -307,6 +335,60 @@ function ListPage() {
   }
 
   const available = list.lines.nodes.filter((line) => line.product !== null);
+  const chosen = list.lines.nodes.filter((line) => selected.has(line.id)).map((line) => line.id);
+  const allChosen = chosen.length > 0 && chosen.length === list.lines.nodes.length;
+
+  function toggle(lineId: string, on: boolean) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (on) next.add(lineId);
+      else next.delete(lineId);
+      return next;
+    });
+  }
+
+  /** Moves the selected lines to the picked list, making it first when it is new. */
+  async function move() {
+    const count = chosen.length;
+    setBusy(true);
+    setProblem(undefined);
+    setMoved(undefined);
+    try {
+      let toListId = target;
+      let toName = targets?.find((t) => t.id === target)?.name ?? '';
+      if (target === NEW_LIST) {
+        const { createShoppingList } = await runOperation(CreateShoppingList, {
+          name: newName.trim(),
+        });
+        const made = createShoppingList.list;
+        if (!made) {
+          setProblem({ message: createShoppingList.refusal?.message ?? 'The list was not made.' });
+          return;
+        }
+        toListId = made.id;
+        toName = made.name;
+        setTargets((current) => [...(current ?? []), { id: made.id, name: made.name }]);
+        setTarget(made.id);
+        setNewName('');
+      }
+      const { moveShoppingListLines } = await runOperation(MoveShoppingListLines, {
+        fromListId: listId,
+        toListId,
+        lineIds: chosen,
+      });
+      if (moveShoppingListLines.refusal) {
+        setProblem({ message: moveShoppingListLines.refusal.message });
+        return;
+      }
+      setSelected(new Set());
+      setMoved({ listId: toListId, name: moveShoppingListLines.list?.name ?? toName, count });
+      await router.invalidate();
+    } catch (error) {
+      setProblem({ error });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -342,6 +424,16 @@ function ListPage() {
           prices today, excluding GST.
         </p>
       </div>
+      {moved ? (
+        <Alert variant="info">
+          <span>
+            Moved {moved.count === 1 ? '1 line' : `${String(moved.count)} lines`} to {moved.name}.
+          </span>{' '}
+          <Link to="/lists/$listId" params={{ listId: moved.listId }} search={{}}>
+            Open {moved.name}
+          </Link>
+        </Alert>
+      ) : null}
       {problem?.message ? <Alert variant="warning">{problem.message}</Alert> : null}
       {problem?.error ? <ErrorState error={problem.error} /> : null}
       {list.lineCount === 0 ? (
@@ -368,9 +460,57 @@ function ListPage() {
             ) : null}
           </CardHeader>
           <CardContent>
+            {anySelected ? (
+              <div className="mb-3 flex flex-wrap items-end gap-3 rounded-md border bg-muted p-3">
+                {targets ? (
+                  <>
+                    <ListPicker
+                      label="Move to"
+                      lists={targets}
+                      target={target}
+                      onTarget={setTarget}
+                      newName={newName}
+                      onNewName={setNewName}
+                    />
+                    <Button
+                      disabled={busy || (target === NEW_LIST && newName.trim() === '')}
+                      onClick={() => void move()}
+                    >
+                      Move {chosen.length === 1 ? '1 line' : `${String(chosen.length)} lines`}
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-meta text-muted-foreground">Loading your lists…</span>
+                )}
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    setSelected(new Set());
+                  }}
+                >
+                  Clear selection
+                </Button>
+              </div>
+            ) : null}
             <Table>
               <TableHeader>
                 <tr>
+                  <TableHead className="w-8">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      aria-label="Select all lines"
+                      checked={allChosen}
+                      onChange={(event) => {
+                        setSelected(
+                          event.target.checked
+                            ? new Set(list.lines.nodes.map((line) => line.id))
+                            : new Set(),
+                        );
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead className="text-right">Unit price</TableHead>
@@ -386,6 +526,10 @@ function ListPage() {
                     key={`${line.id} ${line.quantity}`}
                     line={line}
                     busy={busy}
+                    selected={selected.has(line.id)}
+                    onSelect={(on) => {
+                      toggle(line.id, on);
+                    }}
                     onQuantity={(quantity) =>
                       void act(
                         async () =>
@@ -446,11 +590,15 @@ function ListPage() {
 function ListLine({
   line,
   busy,
+  selected,
+  onSelect,
   onQuantity,
   onRemove,
 }: {
   line: Line;
   busy: boolean;
+  selected: boolean;
+  onSelect: (selected: boolean) => void;
   onQuantity: (quantity: string) => void;
   onRemove: () => void;
 }) {
@@ -465,6 +613,17 @@ function ListLine({
 
   return (
     <TableRow>
+      <TableCell className="w-8">
+        <input
+          type="checkbox"
+          className="size-4 accent-primary"
+          aria-label={`Select ${product?.name ?? 'unavailable line'}`}
+          checked={selected}
+          onChange={(event) => {
+            onSelect(event.target.checked);
+          }}
+        />
+      </TableCell>
       <TableCell className="min-w-[200px] whitespace-normal">
         {product ? (
           <>

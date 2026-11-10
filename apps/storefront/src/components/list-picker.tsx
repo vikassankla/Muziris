@@ -8,14 +8,23 @@ interface ListPickerProps {
   onTarget: (target: string) => void;
   newName: string;
   onNewName: (name: string) => void;
+  /** The select's label; "Shopping list" unless given. */
+  label?: string;
 }
 
 /** Picks one of the buyer's lists, or "New list…" with a name field. */
-export function ListPicker({ lists, target, onTarget, newName, onNewName }: ListPickerProps) {
+export function ListPicker({
+  lists,
+  target,
+  onTarget,
+  newName,
+  onNewName,
+  label = 'Shopping list',
+}: ListPickerProps) {
   return (
     <>
       <div className="flex min-w-[200px] flex-col gap-1.5">
-        <Label htmlFor="target-list">Shopping list</Label>
+        <Label htmlFor="target-list">{label}</Label>
         <Select
           id="target-list"
           value={target}

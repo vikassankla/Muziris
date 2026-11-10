@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-04
+Last updated: 2026-11-10
 
 ## Goal
 
@@ -134,8 +134,8 @@ review).
     through the depth and cost limits. Storefront `/lists`, `/lists/$listId`, `/quick-order`
     (paste or CSV read in the browser, each row checked) and `/checkout` (from a list or an
     in-memory quick order; live preview; place with an idempotency key kept across retries;
-    after a list checkout, an offer to empty it). Not built: SKU typeahead in quick order,
-    moving lines between lists in the storefront (the API has it), and admin list screens.
+    after a list checkout, an offer to empty it). Not built: admin list screens. SKU typeahead
+    in quick order and moving lines between lists in the storefront came with item 35.
 11. Payments through Stripe and Razorpay, in test mode (ADR 0019). **Merged** (PR 29, 2026-11-02,
     as a6e00a5, approved by Vikas in chat, with no second review recorded on GitHub). This is
     payments and secrets, so CLAUDE.md rule 4 asks for a second human review.
@@ -324,22 +324,36 @@ review).
     the product Tax section and the missing tax code filter. Not repeated: accepting an
     invitation with the default buyer role, and price CSV import and export (checked by hand
     in PR 38). Nothing was fixed; the findings are under Open items.
-33. Fix for hand check finding 1 (item 32). **In review** (branch `fix/setting-money-decimals`);
-    it touches a setting that steers pricing, so CLAUDE.md rule 4 asks for a second human review.
+33. Fix for hand check finding 1 (item 32). **Merged** (PR 61, 2026-11-10, as 9077c01, approved
+    by Vikas in chat after his review; CLAUDE.md rule 4 asks for a second human review, as it
+    touches a setting that steers pricing).
     `PUT /admin/v1/settings/shipping.flat_rate` refuses an amount with more decimals than the
     currency allows, against the website's currency or, above a website, every website's. A value
     saved before this shows as stored (150.555 INR) instead of crashing the Settings page, so it
     can be changed or cleared there. No migrations.
-34. Fix for hand check finding 2 (item 32). **In review** (branch `fix/payment-methods-warning`,
-    stacked on item 33); it touches payment settings, so CLAUDE.md rule 4 asks for a second human
-    review. Saving `payment.methods` refuses an empty list. Reading settings gives each one
+34. Fix for hand check finding 2 (item 32). **Merged** (PR 62, 2026-11-10, as e8fd087, approved
+    by Vikas in chat after his review; CLAUDE.md rule 4 asks for a second human review, as it
+    touches payment settings). Saving `payment.methods` refuses an empty list. Reading settings gives each one
     `warnings`; for payment methods they name a website where checkout would refuse every order,
     a gateway method whose keys are not set, and one that does not take a website's currency.
     The Settings page shows them under the setting. Checkout is unchanged. No migrations.
+35. Storefront: SKU typeahead in quick order and moving lines between lists. **In review**
+    (branch `feature/storefront-lists-typeahead`). Quick order gains "Find a product": after two
+    characters and a short pause it runs the existing `Search` operation for 8 products, and
+    picking one adds a line of one to the items. A list's page gains a checkbox per line and
+    "Select all lines", and a "Move to" picker (the buyer's other lists, or a new list) that
+    runs the existing `MoveShoppingListLines`. No API, schema or migration changes.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
 Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision
-on the hand check findings (Open items).
+on hand check findings 3 to 7 (Open items).
+
+**Asked for by Vikas on 2026-11-10**, in this order, each through an ADR where it is a
+structural decision: a System > Payments screen in the admin (gateway status from the
+environment; keys stay in the env file, as ADR 0019 decides), feature toggles, SKU typeahead in
+quick order and moving lines between lists (item 35), bounce handling for emails, product
+images, unit conversion, translated product names, search facets, and subsidiaries inheriting
+price lists and visibility rules.
 
 **Week 4 (18 to 24 Nov):** shopping lists, quick order, checkout (payment on terms; Stripe and
 Razorpay in test mode), flat-rate shipping, GST and US tax tables, orders with the order

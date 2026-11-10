@@ -1,6 +1,7 @@
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useState, type ChangeEvent } from 'react';
 import { ListPicker } from '../components/list-picker.js';
+import { ProductFinder } from '../components/product-finder.js';
 import { ErrorState } from '../components/states.js';
 import { Alert } from '../components/ui/alert.js';
 import { Badge } from '../components/ui/badge.js';
@@ -129,6 +130,15 @@ function QuickOrderPage() {
     }
   }
 
+  /** Adds a found product as a new line of one, for the buyer to change the quantity. */
+  function addFound(sku: string) {
+    setText((current) => {
+      const kept = current.replace(/\s+$/, '');
+      return `${kept === '' ? '' : `${kept}\n`}${sku}, 1`;
+    });
+    setChecked(undefined);
+  }
+
   function goToCheckout() {
     handToCheckout(lines);
     void navigate({ to: '/checkout', search: {} });
@@ -144,6 +154,13 @@ function QuickOrderPage() {
       </div>
       <Card>
         <CardContent className="flex flex-col gap-3">
+          <div className="max-w-[420px]">
+            <ProductFinder
+              onPick={(product) => {
+                addFound(product.sku);
+              }}
+            />
+          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="quick-order-text">Items</Label>
             <textarea
