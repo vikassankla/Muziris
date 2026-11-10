@@ -34,6 +34,7 @@ import {
   UpdateShoppingListLine,
   type ShoppingListResult,
 } from '../operations/generated.js';
+import { requireFeature } from '../lib/features.js';
 import { authedRoute } from './authed.js';
 
 export const LISTS_PAGE_SIZE = 20;
@@ -57,6 +58,9 @@ export const listsRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/lists',
   validateSearch: validatePage,
+  beforeLoad: ({ context }) => {
+    requireFeature(context.shell, 'shoppingLists');
+  },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps, location, abortController }) => {
     try {
@@ -216,6 +220,9 @@ export const listRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/lists/$listId',
   validateSearch: validatePage,
+  beforeLoad: ({ context }) => {
+    requireFeature(context.shell, 'shoppingLists');
+  },
   loaderDeps: ({ search }) => search,
   loader: async ({ params, deps, location, abortController }) => {
     try {

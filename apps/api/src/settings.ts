@@ -8,6 +8,11 @@ import {
 } from '@muziris/orders';
 import { defineSetting, type SettingDefinition } from '@muziris/platform';
 import { z } from 'zod';
+import {
+  FEATURE_QUICK_ORDER,
+  FEATURE_QUICK_ORDER_CSV,
+  FEATURE_SHOPPING_LISTS,
+} from './features.js';
 
 // The settings an admin may change (ADR 0021), each listed once with how the admin app edits
 // it. A setting not listed here cannot be changed through the API. Secrets are environment
@@ -29,6 +34,7 @@ export const SETTING_GROUPS = [
   'Orders',
   'Emails',
   'Customers',
+  'Features',
 ] as const;
 
 export type SettingGroup = (typeof SETTING_GROUPS)[number];
@@ -96,6 +102,21 @@ export const ADMIN_SETTINGS: readonly AdminSetting[] = [
     group: 'Customers',
     label: 'Buyer role for invited buyers',
     editor: { kind: 'buyer_role' },
+  }),
+  setting(FEATURE_QUICK_ORDER, {
+    group: 'Features',
+    label: 'Quick order',
+    editor: { kind: 'boolean' },
+  }),
+  setting(FEATURE_QUICK_ORDER_CSV, {
+    group: 'Features',
+    label: 'Quick order CSV upload',
+    editor: { kind: 'boolean' },
+  }),
+  setting(FEATURE_SHOPPING_LISTS, {
+    group: 'Features',
+    label: 'Shopping lists',
+    editor: { kind: 'boolean' },
   }),
 ];
 

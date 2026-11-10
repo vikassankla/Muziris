@@ -26,20 +26,26 @@ import { authedRoute } from './authed.js';
 
 type FoundProduct = NonNullable<ProductResult['product']>;
 type Price = FoundProduct['price'];
-type Lists = ShoppingListsResult['shoppingLists']['nodes'];
+/** The buyer's lists to add to; null while shopping lists are off (ADR 0031). */
+type Lists = ShoppingListsResult['shoppingLists']['nodes'] | null;
 
 export const productRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/p/$sku',
-  loader: async ({ params, location, abortController }) => {
+  loader: async ({ context, params, location, abortController }) => {
     const signal = abortController.signal;
     try {
-      // The lists to add to: the 50 most recently changed are enough to pick from.
-      const [{ product }, { shoppingLists }] = await Promise.all([
+      // The lists to add to: the 50 most recently changed are enough to pick from. With shopping
+      // lists off there is nothing to add to, and the API would refuse.
+      const [{ product }, lists] = await Promise.all([
         runOperation(Product, { sku: params.sku }, { signal }),
-        runOperation(ShoppingLists, { first: 50 }, { signal }),
+        context.shell.features.shoppingLists
+          ? runOperation(ShoppingLists, { first: 50 }, { signal }).then(
+              (r) => r.shoppingLists.nodes,
+            )
+          : null,
       ]);
-      return { product, lists: shoppingLists.nodes };
+      return { product, lists };
     } catch (error) {
       return signInOn401(error, location.href);
     }
@@ -367,7 +373,7 @@ function LineActions({
   lists: Lists;
 }) {
   const navigate = useNavigate();
-  const [target, setTarget] = useState(lists[0]?.id ?? NEW_LIST);
+  const [target, setTarget] = useState(lists?.[0]?.id ?? NEW_LIST);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ line: CheckoutLine; outcome: Outcome }>();
@@ -404,21 +410,25 @@ function LineActions({
         <ShoppingCart aria-hidden="true" />
         Order now
       </Button>
-      <ListPicker
-        lists={lists}
-        target={target}
-        onTarget={setTarget}
-        newName={newName}
-        onNewName={setNewName}
-      />
-      <Button
-        variant="outline"
-        className="h-11 md:h-control"
-        disabled={!line || busy || (target === NEW_LIST && newName.trim() === '')}
-        onClick={() => void addToList()}
-      >
-        Add to shopping list
-      </Button>
+      {lists ? (
+        <>
+          <ListPicker
+            lists={lists}
+            target={target}
+            onTarget={setTarget}
+            newName={newName}
+            onNewName={setNewName}
+          />
+          <Button
+            variant="outline"
+            className="h-11 md:h-control"
+            disabled={!line || busy || (target === NEW_LIST && newName.trim() === '')}
+            onClick={() => void addToList()}
+          >
+            Add to shopping list
+          </Button>
+        </>
+      ) : null}
       {outcome?.kind === 'added' ? (
         <Alert variant="info" role="status">
           <span>

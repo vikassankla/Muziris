@@ -95,6 +95,7 @@ import {
 } from 'graphql';
 import { z } from 'zod';
 import type { Emails } from '../emails.js';
+import { FEATURE_OFF_MESSAGES, resolveFeatures, type Feature, type Features } from '../features.js';
 import type { FieldCostExtensions } from './limits.js';
 import { createLoader, type Loader } from './loader.js';
 
@@ -124,6 +125,8 @@ export interface StorefrontContext {
   payments: GatewayClients;
   /** Queues the order and payment emails (ADR 0020); none are queued without it. */
   emails: Emails | undefined;
+  /** The feature toggles for this buyer's customer and website (ADR 0031), read once. */
+  features: () => Promise<Features>;
   loaders: {
     product: Loader<string, Product | null>;
     /** Every category the buyer may see, read once per request. */
@@ -145,6 +148,7 @@ export function createContext(input: {
   const { db, now, user, website, checkout } = input;
   const buyer: BuyerOnWebsite = { buyerUserId: user.id, websiteId: website.id };
   let categories: Promise<ReadonlyMap<string, Category>> | undefined;
+  let features: Promise<Features> | undefined;
   return {
     db,
     now,
@@ -154,6 +158,22 @@ export function createContext(input: {
     checkout,
     payments: input.payments ?? {},
     emails: input.emails,
+    features: () => {
+      features ??= listCustomersForBuyer(db, { buyerUserId: user.id, reach: 'my_customer' }).then(
+        ([customer]) =>
+          resolveFeatures(db, {
+            organizationId: website.organizationId,
+            websiteId: website.id,
+            ...(customer
+              ? {
+                  customerId: customer.id,
+                  ...(customer.groupId === null ? {} : { customerGroupId: customer.groupId }),
+                }
+              : {}),
+          }),
+      );
+      return features;
+    },
     loaders: {
       product: createLoader<string, Product | null>(
         async (ids) => {
@@ -213,6 +233,29 @@ function listOf<T extends GraphQLNamedOutputType>(type: T) {
 }
 
 type Field<TSource> = GraphQLFieldConfig<TSource, StorefrontContext>;
+
+/** Refuses a query behind a feature toggle that is off for this buyer (ADR 0031). */
+async function requireFeature(ctx: StorefrontContext, feature: Feature): Promise<void> {
+  if (!(await ctx.features())[feature]) {
+    throw new GraphQLError(FEATURE_OFF_MESSAGES[feature], {
+      extensions: { code: 'FEATURE_DISABLED' },
+    });
+  }
+}
+
+const FeaturesType = new GraphQLObjectType<Features, StorefrontContext>({
+  name: 'Features',
+  description:
+    'Which storefront features are on for the signed-in buyer. The API refuses those that are off.',
+  fields: {
+    quickOrder: { type: nonNull(GraphQLBoolean) },
+    quickOrderCsv: {
+      type: nonNull(GraphQLBoolean),
+      description: 'CSV upload on the quick order page; the file is read in the browser.',
+    },
+    shoppingLists: { type: nonNull(GraphQLBoolean) },
+  },
+});
 
 function pageSize(first: unknown): number {
   const parsed = z.int().min(1).max(PAGE_SIZE_MAX).safeParse(first);
@@ -1105,11 +1148,16 @@ const LIST_REFUSALS = [
   'too_many_lines',
   'same_list',
   'line_problems',
+  'feature_disabled',
 ] as const;
+
+/** A module refusal, or shopping lists turned off for this buyer (ADR 0031). */
+type ListRefusal = ShoppingListRefusal | { code: 'feature_disabled' };
+const LISTS_OFF = { code: 'feature_disabled' } as const;
 
 const LIST_LINE_PROBLEMS = ['product_not_available', 'unit_not_sold', 'invalid_quantity'] as const;
 
-function listRefusalMessage(r: ShoppingListRefusal): string {
+function listRefusalMessage(r: ListRefusal): string {
   switch (r.code) {
     case 'not_allowed':
       return 'Your buyer role does not let you change shopping lists';
@@ -1125,6 +1173,8 @@ function listRefusalMessage(r: ShoppingListRefusal): string {
       return 'Choose a different list to move the lines to';
     case 'line_problems':
       return 'Some lines cannot be added; nothing was changed';
+    case 'feature_disabled':
+      return FEATURE_OFF_MESSAGES.shoppingLists;
   }
 }
 
@@ -1140,7 +1190,7 @@ const ShoppingListLineProblemType = new GraphQLObjectType<
   },
 });
 
-const ShoppingListRefusalType = new GraphQLObjectType<ShoppingListRefusal, StorefrontContext>({
+const ShoppingListRefusalType = new GraphQLObjectType<ListRefusal, StorefrontContext>({
   name: 'ShoppingListRefusal',
   description: 'Why a shopping list change was refused. The message is safe to show the buyer.',
   fields: {
@@ -1156,7 +1206,7 @@ const ShoppingListRefusalType = new GraphQLObjectType<ShoppingListRefusal, Store
 });
 
 const ShoppingListResultType = new GraphQLObjectType<
-  { list: ShoppingList | null; refusal: ShoppingListRefusal | null },
+  { list: ShoppingList | null; refusal: ListRefusal | null },
   StorefrontContext
 >({
   name: 'ShoppingListResult',
@@ -1165,7 +1215,7 @@ const ShoppingListResultType = new GraphQLObjectType<
 });
 
 const DeleteShoppingListResultType = new GraphQLObjectType<
-  { deleted: boolean; refusal: ShoppingListRefusal | null },
+  { deleted: boolean; refusal: ListRefusal | null },
   StorefrontContext
 >({
   name: 'DeleteShoppingListResult',
@@ -1254,7 +1304,7 @@ function idList(ids: readonly string[], what: string): string[] {
 
 const listIdArg = { listId: { type: nonNull(GraphQLID) } };
 
-const shoppingListMutations: Record<string, Field<unknown>> = {
+const listMutations: Record<string, Field<unknown>> = {
   createShoppingList: {
     type: nonNull(ShoppingListResultType),
     args: { name: { type: nonNull(GraphQLString) } },
@@ -1389,7 +1439,31 @@ const shoppingListMutations: Record<string, Field<unknown>> = {
   },
 };
 
+/** Every list mutation answers a refusal, changing nothing, while lists are off (ADR 0031). */
+const shoppingListMutations: Record<string, Field<unknown>> = Object.fromEntries(
+  Object.entries(listMutations).map(([name, field]) => [
+    name,
+    {
+      ...field,
+      resolve: async (root, args, ctx, info) => {
+        if (!(await ctx.features()).shoppingLists) {
+          return name === 'deleteShoppingList'
+            ? { deleted: false, refusal: LISTS_OFF }
+            : { list: null, refusal: LISTS_OFF };
+        }
+        if (!field.resolve) throw new Error(`${name} has no resolver`);
+        return field.resolve(root, args, ctx, info);
+      },
+    } satisfies Field<unknown>,
+  ]),
+);
+
 const shoppingListQueries: Record<string, Field<unknown>> = {
+  features: {
+    type: nonNull(FeaturesType),
+    description: 'Which storefront features are on for the signed-in buyer.',
+    resolve: (_root, _args, ctx) => ctx.features(),
+  },
   shoppingLists: {
     type: nonNull(ShoppingListPageType),
     description: 'Shopping lists the buyer may see on this website, most recently changed first.',
@@ -1398,6 +1472,7 @@ const shoppingListQueries: Record<string, Field<unknown>> = {
       after: { type: GraphQLString, description: "The previous page's nextAfter." },
     },
     resolve: async (_root, args: { first: number; after?: string | null }, ctx) => {
+      await requireFeature(ctx, 'shoppingLists');
       const page = await listShoppingLists(ctx.db, ctx.user.id, {
         websiteId: ctx.website.id,
         limit: pageSize(args.first),
@@ -1410,14 +1485,17 @@ const shoppingListQueries: Record<string, Field<unknown>> = {
     type: ShoppingListType,
     description: 'One shopping list, if the buyer may see it.',
     args: { id: { type: nonNull(GraphQLID) } },
-    resolve: async (_root, args: { id: string }, ctx) =>
-      (await findShoppingList(ctx.db, ctx.user.id, ctx.website.id, args.id)) ?? null,
+    resolve: async (_root, args: { id: string }, ctx) => {
+      await requireFeature(ctx, 'shoppingLists');
+      return (await findShoppingList(ctx.db, ctx.user.id, ctx.website.id, args.id)) ?? null;
+    },
   },
   productsBySkus: {
     type: nonNull(ProductsBySkusResultType),
     description: `Products the buyer may order, by SKU in any letter case, for quick order. At most ${String(MAX_QUICK_ORDER_SKUS)} SKUs.`,
     args: { skus: { type: inputOf(new GraphQLList(inputOf(GraphQLString))) } },
     resolve: async (_root, args: { skus: string[] }, ctx) => {
+      await requireFeature(ctx, 'quickOrder');
       if (args.skus.length > MAX_QUICK_ORDER_SKUS) {
         throw badInput(`Ask for at most ${String(MAX_QUICK_ORDER_SKUS)} SKUs`);
       }

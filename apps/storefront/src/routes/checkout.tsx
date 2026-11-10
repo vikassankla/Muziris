@@ -29,6 +29,7 @@ import {
   type CheckoutAddressesResult,
   type CheckoutPreviewResult,
 } from '../operations/generated.js';
+import { requireFeature } from '../lib/features.js';
 import { authedRoute } from './authed.js';
 
 /** A list holds at most 500 lines, read 50 at a time. */
@@ -86,6 +87,9 @@ export const checkoutRoute = createRoute({
     const list = search['list'];
     return typeof list === 'string' && list.length > 0 && list.length <= 100 ? { list } : {};
   },
+  beforeLoad: ({ context, search }) => {
+    if (search.list !== undefined) requireFeature(context.shell, 'shoppingLists');
+  },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps, location, abortController }) => {
     const signal = abortController.signal;
@@ -115,6 +119,7 @@ type Answer = CheckoutPreviewResult['checkoutPreview'];
 
 function CheckoutPage() {
   const { addresses, source } = checkoutRoute.useLoaderData();
+  const { features } = authedRoute.useRouteContext().shell;
 
   if (source.kind === 'none' || source.kind === 'list_not_found') {
     return (
@@ -123,16 +128,23 @@ function CheckoutPage() {
         title={source.kind === 'none' ? 'Nothing to check out' : "We can't find that list"}
         action={
           <div className="flex gap-2">
-            <Link to="/quick-order" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-              Quick order
-            </Link>
-            <Link
-              to="/lists"
-              search={{}}
-              className={buttonVariants({ variant: 'outline', size: 'sm' })}
-            >
-              Shopping lists
-            </Link>
+            {features.quickOrder ? (
+              <Link
+                to="/quick-order"
+                className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              >
+                Quick order
+              </Link>
+            ) : null}
+            {features.shoppingLists ? (
+              <Link
+                to="/lists"
+                search={{}}
+                className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              >
+                Shopping lists
+              </Link>
+            ) : null}
           </div>
         }
       >
@@ -279,11 +291,11 @@ function CheckoutForm({
           >
             {source.name}
           </Link>
-        ) : (
+        ) : shell.features.quickOrder ? (
           <Link to="/quick-order" className="text-meta text-muted-foreground">
             Quick order
           </Link>
-        )}
+        ) : null}
         <h1 className="m-0 mt-1 text-page-title font-[650] tracking-[-0.015em]">Checkout</h1>
         <p className="m-0 mt-1 text-muted-foreground">Ordering for {shell.viewer.customer.name}.</p>
       </div>

@@ -1,7 +1,8 @@
-import { useRouter, type ErrorComponentProps } from '@tanstack/react-router';
-import { PackageOpen, SearchX } from 'lucide-react';
+import { Link, useRouter, type ErrorComponentProps } from '@tanstack/react-router';
+import { Lock, PackageOpen, SearchX } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { isApiProblem, SERVER_ERROR_TITLE } from '../lib/api.js';
+import { FeatureUnavailableError } from '../lib/features.js';
 import { Alert, AlertTitle } from './ui/alert.js';
 import { Button } from './ui/button.js';
 import { Card } from './ui/card.js';
@@ -74,6 +75,23 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 /** A route's error component: the error state, with a retry that reloads the route. */
 export function RouteError({ error }: ErrorComponentProps) {
   const router = useRouter();
+  if (error instanceof FeatureUnavailableError) {
+    return (
+      <div className="mx-auto w-full max-w-[1280px] p-6">
+        <EmptyState
+          icon={<Lock />}
+          title={error.message}
+          action={
+            <Link to="/" className="text-meta">
+              Go to the home page
+            </Link>
+          }
+        >
+          Ask your company&apos;s buyer admin or your account manager if you need it.
+        </EmptyState>
+      </div>
+    );
+  }
   return (
     <div className="mx-auto w-full max-w-[1280px] p-6">
       <ErrorState

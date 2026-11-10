@@ -173,6 +173,51 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
     ).toMatchObject({ value: 45, source: 'website' });
   });
 
+  it('lists the feature toggles, on by default, and turns one off for a customer', async () => {
+    const { customer } = await seed();
+    const ops = await signedInAdmin('ops@muziris.example', ['setting.view', 'setting.manage']);
+    const features = async () => {
+      const { settings } = (await (
+        await call('GET', `?customerId=${customer.id}`, ops.cookie)
+      ).json()) as { settings: SettingJson[] };
+      return settings.filter((s) => s.key.startsWith('features.'));
+    };
+    const all = ['customer', 'customer_group', 'website', 'organization', 'global'];
+    expect(await features()).toEqual([
+      expect.objectContaining({
+        key: 'features.quick_order',
+        group: 'Features',
+        label: 'Quick order',
+        editor: { kind: 'boolean' },
+        allowedScopes: all,
+        value: true,
+        source: 'default',
+      }),
+      expect.objectContaining({
+        key: 'features.quick_order_csv',
+        group: 'Features',
+        label: 'Quick order CSV upload',
+        value: true,
+      }),
+      expect.objectContaining({
+        key: 'features.shopping_lists',
+        group: 'Features',
+        label: 'Shopping lists',
+        value: true,
+      }),
+    ]);
+
+    const put = await call('PUT', '/features.shopping_lists', ops.cookie, {
+      scope: { type: 'customer', id: customer.id },
+      value: false,
+    });
+    expect(put.status).toBe(200);
+    expect((await features()).find((s) => s.key === 'features.shopping_lists')).toMatchObject({
+      value: false,
+      source: 'customer',
+    });
+  });
+
   it('refuses unknown settings, bad values, scopes a setting does not allow, and missing roles', async () => {
     const { website, customer } = await seed();
     const ops = await signedInAdmin('ops@muziris.example', ['setting.view', 'setting.manage']);
