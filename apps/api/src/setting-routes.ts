@@ -2,6 +2,7 @@ import { findBuyerRole, type AdminPermission } from '@muziris/access';
 import { findCustomer, findCustomerGroup } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import { currencyExponent, isCurrencyCode, moneyFromDecimal } from '@muziris/money';
+import { PAYMENT_METHODS_SETTING, type PaymentMethod } from '@muziris/orders';
 import {
   clearSetting,
   findOrganization,
@@ -19,6 +20,7 @@ import { z, ZodError } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
 import type { Logger } from './logger.js';
+import { paymentMethodWarnings } from './payment-method-warnings.js';
 import { HttpProblem } from './problem.js';
 import { ADMIN_SETTINGS, findAdminSetting, type AdminSetting } from './settings.js';
 
@@ -32,6 +34,8 @@ export interface SettingRouteDependencies {
   now: () => Date;
   /** Origins allowed to send state-changing requests with cookies. */
   trustedOrigins: ReadonlySet<string>;
+  /** The gateway methods whose keys are configured, to warn about the others; none if left out. */
+  paymentMethods?: ReadonlySet<PaymentMethod>;
 }
 
 interface SettingEnv {
@@ -56,7 +60,12 @@ const putBody = z.object({ scope: scopeSchema, value: z.unknown() });
 
 const notFound = (what: string) => new HttpProblem(404, `${what}_not_found`, `No such ${what}`);
 
-function settingJson(setting: AdminSetting, value: unknown, source: string) {
+function settingJson(
+  setting: AdminSetting,
+  value: unknown,
+  source: string,
+  warnings: readonly string[],
+) {
   const { definition } = setting;
   return {
     key: definition.key,
@@ -68,6 +77,8 @@ function settingJson(setting: AdminSetting, value: unknown, source: string) {
     defaultValue: definition.defaultValue,
     value,
     source,
+    /** What the value means for checkout that an admin should know, in plain language. */
+    warnings,
   };
 }
 
@@ -159,6 +170,16 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
     }
   }
 
+  /** The website being looked at, or every active website when none is. */
+  async function websitesFor(context: ScopeContext) {
+    if (context.websiteId !== undefined) {
+      const website = await findWebsite(deps.db, context.websiteId);
+      return website ? [website] : [];
+    }
+    if (context.organizationId === undefined) return [];
+    return (await listWebsites(deps.db, context.organizationId)).filter((w) => w.isActive);
+  }
+
   function registered(key: string): AdminSetting {
     const setting = findAdminSetting(key);
     if (!setting) throw new HttpProblem(404, 'setting_not_found', 'No such setting');
@@ -174,6 +195,7 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
 
   app.get('/', need('setting.view'), async (c) => {
     const context = await contextFor(contextQuery.parse(c.req.query()));
+    const websites = await websitesFor(context);
     const stored = await loadStoredValues(
       deps.db,
       ADMIN_SETTINGS.map((s) => s.definition.key),
@@ -186,7 +208,15 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
           stored.filter((v) => v.key === setting.definition.key),
           context,
         );
-        return settingJson(setting, resolved.value, resolved.source);
+        const warnings =
+          setting.definition.key === PAYMENT_METHODS_SETTING.key
+            ? paymentMethodWarnings(
+                resolved.value as PaymentMethod[],
+                deps.paymentMethods ?? new Set(),
+                websites,
+              )
+            : [];
+        return settingJson(setting, resolved.value, resolved.source, warnings);
       }),
     });
   });
@@ -206,6 +236,14 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
         'The value is not valid for this setting',
         error.issues.map((issue) => issue.message).join('; '),
       );
+    }
+    // Checkout refuses every order with no payment method, so an empty list is never saved.
+    if (
+      setting.definition.key === PAYMENT_METHODS_SETTING.key &&
+      Array.isArray(value) &&
+      value.length === 0
+    ) {
+      throw new HttpProblem(422, 'setting_invalid_value', 'Choose at least one payment method');
     }
     if (setting.editor.kind === 'money') {
       await checkAmountFits(scope, (value as { amount: string }).amount);

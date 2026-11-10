@@ -230,7 +230,13 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
   app.route('/admin/v1/orders', orderRoutes(emailDeps));
   app.route('/admin/v1/pricing', pricingRoutes(authDeps));
   app.route('/admin/v1/search', searchRoutes(authDeps));
-  app.route('/admin/v1/settings', settingRoutes(authDeps));
+  app.route(
+    '/admin/v1/settings',
+    settingRoutes({
+      ...authDeps,
+      paymentMethods: configuredMethods(deps.payments?.gateways ?? {}),
+    }),
+  );
   app.route('/admin/v1/tax', taxRoutes(authDeps));
   app.route('/admin/v1/shopping-lists', shoppingListRoutes(authDeps));
   app.route('/admin/v1/visibility', visibilityRoutes(authDeps));
