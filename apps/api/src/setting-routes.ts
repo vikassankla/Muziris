@@ -1,10 +1,12 @@
 import { findBuyerRole, type AdminPermission } from '@muziris/access';
 import { findCustomer, findCustomerGroup } from '@muziris/customers';
 import type { Database } from '@muziris/db';
+import { currencyExponent, isCurrencyCode, moneyFromDecimal } from '@muziris/money';
 import {
   clearSetting,
   findOrganization,
   findWebsite,
+  listWebsites,
   loadStoredValues,
   resolveSetting,
   setSetting,
@@ -129,6 +131,34 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
     return { type: input.type, id: input.id };
   }
 
+  /** The currencies a value at this scope reaches: a website's, or every website's above one. */
+  async function currenciesFor(scope: Scope) {
+    if (scope.type === 'website') {
+      const website = await findWebsite(deps.db, scope.id);
+      return website ? [website.defaultCurrency].filter(isCurrencyCode) : [];
+    }
+    const organization = await findOrganization(deps.db);
+    const websites = organization ? await listWebsites(deps.db, organization.id) : [];
+    return [...new Set(websites.map((w) => w.defaultCurrency))].filter(isCurrencyCode);
+  }
+
+  /** An amount must fit each currency it reaches, or the admin app could not show it. */
+  async function checkAmountFits(scope: Scope, amount: string): Promise<void> {
+    for (const currency of await currenciesFor(scope)) {
+      try {
+        moneyFromDecimal(amount, currency);
+      } catch (error) {
+        if (!(error instanceof RangeError)) throw error;
+        throw new HttpProblem(
+          422,
+          'setting_invalid_value',
+          'The amount has more decimals than the currency allows',
+          `${currency} allows at most ${String(currencyExponent(currency))} decimal places`,
+        );
+      }
+    }
+  }
+
   function registered(key: string): AdminSetting {
     const setting = findAdminSetting(key);
     if (!setting) throw new HttpProblem(404, 'setting_not_found', 'No such setting');
@@ -176,6 +206,9 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
         'The value is not valid for this setting',
         error.issues.map((issue) => issue.message).join('; '),
       );
+    }
+    if (setting.editor.kind === 'money') {
+      await checkAmountFits(scope, (value as { amount: string }).amount);
     }
     if (setting.editor.kind === 'buyer_role' && typeof value === 'string') {
       if (!(await findBuyerRole(deps.db, value))) throw notFound('buyer_role');

@@ -142,7 +142,14 @@ function formatValue(
     case 'money': {
       const amount = (value as { amount?: unknown } | null)?.amount;
       if (typeof amount !== 'string') return '';
-      return display ? formatAmount(amount, display) : `${amount} in each website’s currency`;
+      if (!display) return `${amount} in each website’s currency`;
+      try {
+        return formatAmount(amount, display);
+      } catch (error) {
+        // A value saved before the API checked decimals: show it, so it can be corrected.
+        if (error instanceof RangeError) return `${amount} ${display.currency}`;
+        throw error;
+      }
     }
     case 'choices': {
       const chosen = Array.isArray(value) ? (value as unknown[]) : [value];

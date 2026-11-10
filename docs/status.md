@@ -320,6 +320,12 @@ review).
     the product Tax section and the missing tax code filter. Not repeated: accepting an
     invitation with the default buyer role, and price CSV import and export (checked by hand
     in PR 38). Nothing was fixed; the findings are under Open items.
+33. Fix for hand check finding 1 (item 32). **In review** (branch `fix/setting-money-decimals`);
+    it touches a setting that steers pricing, so CLAUDE.md rule 4 asks for a second human review.
+    `PUT /admin/v1/settings/shipping.flat_rate` refuses an amount with more decimals than the
+    currency allows, against the website's currency or, above a website, every website's. A value
+    saved before this shows as stored (150.555 INR) instead of crashing the Settings page, so it
+    can be changed or cleared there. No migrations.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
 Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision
@@ -336,7 +342,7 @@ If a week slips, cut in this order: emails, then quick order CSV upload, then US
 
 ## Open items
 
-- Hand check findings (item 32, 2026-11-08), none fixed yet:
+- Hand check findings (item 32, 2026-11-08). Finding 1 is fixed by item 33; the others are open:
   1. Bug: Settings accepts `shipping.flat_rate` with more decimals than the currency allows
      (₹150.555 saves). `formatAmount` then throws `RangeError` and the Settings page crashes on
      every load, so the value can only be cleared through the API. Checkout rounds it and does
