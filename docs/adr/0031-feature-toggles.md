@@ -1,6 +1,6 @@
 # 0031: Feature toggles for quick order and shopping lists
 
-- Status: proposed
+- Status: accepted (Vikas, in chat, 2026-11-10)
 - Date: 2026-11-10
 
 ## Context

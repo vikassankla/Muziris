@@ -1,6 +1,6 @@
 # 0030: A payments screen in the admin, with keys kept in the environment
 
-- Status: proposed
+- Status: accepted (Vikas, in chat, 2026-11-10)
 - Date: 2026-11-10
 
 ## Context
