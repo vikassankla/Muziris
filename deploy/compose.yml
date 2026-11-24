@@ -21,6 +21,10 @@ x-api: &api
     STOREFRONT_WEBSITE: ${STOREFRONT_WEBSITE:?set STOREFRONT_WEBSITE}
     SMTP_URL: ${SMTP_URL:?set SMTP_URL}
     MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM}
+    # Postmark (ADR 0032): the stream, and the bounce webhook's basic auth; both or neither.
+    POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-outbound}
+    POSTMARK_WEBHOOK_USER: ${POSTMARK_WEBHOOK_USER:-}
+    POSTMARK_WEBHOOK_PASSWORD: ${POSTMARK_WEBHOOK_PASSWORD:-}
     # Payment gateways (ADR 0019): each is on only when all three of its variables are set.
     STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
     STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}

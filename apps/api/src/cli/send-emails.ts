@@ -13,7 +13,9 @@ if (env.mail.smtpUrl === undefined) {
   process.stderr.write('SMTP_URL is not set; nothing was sent\n');
   process.exit(1);
 }
-const transport = smtpTransport(env.mail.smtpUrl, env.mail.from);
+const transport = smtpTransport(env.mail.smtpUrl, env.mail.from, {
+  messageStream: env.postmark.messageStream,
+});
 const database = createDatabase({
   url: env.DATABASE_URL,
   maxConnections: 1,

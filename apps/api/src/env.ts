@@ -1,5 +1,10 @@
 import { parseTotpKey, TotpKeyError, type TotpKey } from '@muziris/identity';
-import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
+import {
+  mailConfigFromEnv,
+  postmarkConfigFromEnv,
+  type MailConfig,
+  type PostmarkConfig,
+} from '@muziris/notifications';
 import { paymentGatewaysFromEnv, type PaymentGateways } from '@muziris/payments';
 import { z } from 'zod';
 
@@ -78,6 +83,8 @@ export type Env = Omit<z.infer<typeof envSchema>, 'STOREFRONT_ADHOC_QUERIES' | '
   payments: PaymentGateways;
   /** SMTP_URL, MAIL_FROM and the two public URLs (ADR 0020, 0028); all required in production. */
   mail: MailConfig;
+  /** POSTMARK_MESSAGE_STREAM and the webhook's user and password (ADR 0032). */
+  postmark: PostmarkConfig;
 };
 
 /**
@@ -107,6 +114,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   // Mail and payments first: their errors name several variables at once.
   const mail = mailConfigFromEnv(source, { production: parsed.NODE_ENV === 'production' });
   const payments = paymentGatewaysFromEnv(source);
+  const postmark = postmarkConfigFromEnv(source);
   const { ADMIN_TOTP_KEY, ...rest } = parsed;
   let twoFactorKey: TotpKey | undefined;
   if (ADMIN_TOTP_KEY !== undefined) {
@@ -128,6 +136,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     twoFactorKey,
     payments,
     mail,
+    postmark,
     STOREFRONT_ADHOC_QUERIES:
       parsed.STOREFRONT_ADHOC_QUERIES ?? (parsed.NODE_ENV === 'production' ? 'deny' : 'allow'),
   };

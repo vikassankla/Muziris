@@ -24,7 +24,11 @@ const database = createDatabase({
   applicationName: 'muziris-worker',
 });
 const transport =
-  env.mail.smtpUrl === undefined ? undefined : smtpTransport(env.mail.smtpUrl, env.mail.from);
+  env.mail.smtpUrl === undefined
+    ? undefined
+    : smtpTransport(env.mail.smtpUrl, env.mail.from, {
+        messageStream: env.postmark.messageStream,
+      });
 if (!transport) logger.warn('SMTP_URL is not set; emails are queued but not sent');
 
 const jobs = await startJobRunner({
