@@ -49,8 +49,9 @@ toggles for quick order and shopping lists) were accepted by Vikas in chat on 20
 (PR 71).
 
 ADR 0032 (email bounces and spam complaints through Postmark, which Vikas chose as the mail
-provider on 2026-11-24) was accepted by Vikas in chat on 2026-11-24 (PR 82). Nothing is built
-for it yet; the build needs a second human review under CLAUDE.md rule 4.
+provider on 2026-11-24) was accepted by Vikas in chat on 2026-11-24 (PR 82, merged 2026-11-24 as
+cb0a249). It is built (item 38, in review); the build needs a second human review under
+CLAUDE.md rule 4.
 
 ## Next, in order (pilot plan)
 
@@ -368,6 +369,18 @@ review).
     The CSV toggle only hides the upload, since the file is read in the browser. `Shell` gains
     `features`; the storefront hides the links and buttons of a feature that is off, and a page
     reached by its address says "This isn't available on your account". No migrations.
+38. Email bounces and spam complaints through Postmark (ADR 0032). **In review** (branch
+    `feature/email-bounces`); it adds a webhook secret and an endpoint that changes outbox state
+    from outside, and touches the invitation flow, so CLAUDE.md rule 4 asks for a second human
+    review. Migration `0021`: `notification_suppression`, `notification_bounce_event`, and the
+    outbox's `bounce_type` column and `bounced` and `suppressed` statuses. The sender skips
+    suppressed addresses and fails at once, suppressing the address, on a 5xx reply to
+    `RCPT TO`. `POST /webhooks/postmark` behind basic auth (`POSTMARK_WEBHOOK_USER` and
+    `_PASSWORD`; 404 without them). Admin: Bounced and "Not sent: address suppressed" on System >
+    Emails, a Suppressed addresses tab (add and remove under `notification.manage`), and a
+    Settings warning under `notifications.order_email`. Postmark's field names were checked
+    against its documentation on 2026-11-24. Not done: a run against a real Postmark server
+    (it needs an account and a verified sending domain), and a look at the new tab in a browser.
 
 **Next (ahead of the plan):** the rest of launch prep: an install on a real VM with Let's
 Encrypt, the Stripe and Razorpay test-mode run (it needs test keys in `.env`), and a decision

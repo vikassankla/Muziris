@@ -106,6 +106,28 @@ In the gateway's dashboard, send events to:
 
 Keep test-mode keys for the pilot.
 
+### Email through Postmark
+
+ADR 0032. In Postmark:
+
+1. Create a server, and use its default transactional stream, `outbound`.
+2. Verify the sending domain of `MAIL_FROM`: add the DKIM and Return-Path DNS records Postmark
+   shows.
+3. Copy the server's API token. Set
+   `SMTP_URL=smtp://<server token>:<server token>@smtp.postmarkapp.com:587`.
+4. Choose a webhook user name and a password of 24 or more random characters
+   (`openssl rand -hex 24`), and set `POSTMARK_WEBHOOK_USER` and `POSTMARK_WEBHOOK_PASSWORD`.
+5. Under the stream's webhooks, add
+   `https://<user>:<password>@<STOREFRONT_DOMAIN>/webhooks/postmark` and tick Bounce and Spam
+   complaint. Send Postmark's test webhook: the API answers 200.
+
+Then `sudo deploy/muziris up -d`. Postmark signs nothing, so the password is what proves a
+webhook is Postmark's. To go further, allow `/webhooks/postmark` only from Postmark's published
+webhook IP ranges in your firewall; they change, so check Postmark's list when you do.
+
+A bounced address stops getting emails. To send to it again, remove it under System > Emails >
+Suppressed addresses and reactivate it in Postmark.
+
 ### Commands on the VM
 
 The API's commands run inside its container:
@@ -240,7 +262,7 @@ Configuration comes from environment variables only. `.env.example` lists them w
 comments. The API checks them at startup, and when one is wrong it names the variable without
 printing its value.
 
-Secrets (the database password inside `DATABASE_URL`, `ADMIN_TOTP_KEY`, `SMTP_URL`, the payment keys) belong in
+Secrets (the database password inside `DATABASE_URL`, `ADMIN_TOTP_KEY`, `SMTP_URL`, the payment keys, `POSTMARK_WEBHOOK_PASSWORD`) belong in
 your deployment's secret store. Never put them in the repository, the admin settings or a URL
 you share.
 
@@ -258,6 +280,7 @@ For production, set at least:
 | `STOREFRONT_PERSISTED_QUERIES`                                       | `../storefront/persisted-queries.json`. Production runs persisted queries only, and refuses `STOREFRONT_ADHOC_QUERIES=allow`                       |
 | `SMTP_URL`, `MAIL_FROM`, `STOREFRONT_PUBLIC_URL`, `ADMIN_PUBLIC_URL` | All four are required in production. The two URLs are used for links in emails: the storefront's for buyers, the admin app's for admin invitations |
 | `STRIPE_*`, `RAZORPAY_*`                                             | Optional, all three per gateway. Live keys are refused unless `PAYMENTS_LIVE=true`. `RAZORPAY_WEBHOOK_SECRET` needs 16 or more random characters   |
+| `POSTMARK_WEBHOOK_USER`, `POSTMARK_WEBHOOK_PASSWORD`                 | Optional, both or neither: the bounce webhook's basic auth (see Email through Postmark). The password needs 24 or more random characters           |
 | `JOB_WORKERS`, `WORKER_PORT`                                         | Optional. `false` stops the API running background jobs; then run the worker (see Running it). The worker's port defaults to 4001                  |
 
 Build-time, for the storefront: `VITE_STOREFRONT_WEBSITE`, the same website code.

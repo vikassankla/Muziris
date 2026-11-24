@@ -135,3 +135,18 @@ the pilot.
   passwords, tokens, cookies, gateway keys and the SMTP URL by field name, and now database
   values (finding 1).
 - **Client addresses.** `X-Forwarded-For` is trusted only as far as `TRUSTED_PROXY_HOPS`.
+
+## Added after the pass
+
+- **Postmark's bounce webhook (ADR 0032, 2026-11-24).** Postmark signs nothing, so
+  `POST /webhooks/postmark` needs basic authentication: a user name and a password of 24 or
+  more characters from the environment, compared in constant time over SHA-256 digests, and
+  redacted from logs. Without both it answers 404. It is rate limited and size limited like the
+  payment webhooks, and records each event once by Postmark's id. It can only mark an email
+  bounced and suppress an address, so a forged request at worst stops emails to one address;
+  allowing only Postmark's IP ranges is left to the firewall.
+- **Suppressed addresses are personal data.** `notification_suppression` keeps email
+  addresses after a buyer user or customer is deleted, because its job is to stop mail to them.
+  An admin with `notification.manage` can remove one. Postmark's free-text description and
+  details, which can quote addresses and server replies, are never stored or logged, and logs
+  name the email and suppression ids only.
