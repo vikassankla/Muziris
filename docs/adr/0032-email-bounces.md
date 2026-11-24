@@ -1,6 +1,6 @@
 # 0032: Email bounces and spam complaints, through Postmark
 
-- Status: proposed
+- Status: accepted (Vikas, in chat, 2026-11-24)
 - Date: 2026-11-24
 
 ## Context
