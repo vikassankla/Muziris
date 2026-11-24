@@ -101,10 +101,11 @@ describe.skipIf(!url)('the notification outbox against PostgreSQL', () => {
     expect(await sendDueEmails(handle.db, transport, NOW)).toEqual({
       sent: 1,
       retrying: 0,
+      suppressed: 0,
       failed: [],
     });
-    expect(transport.sent).toEqual([{ to: 'asha@example.in', ...MESSAGE }]);
     const [email] = (await listEmails(handle.db, { status: 'sent' })).emails;
+    expect(transport.sent).toEqual([{ outboxId: email?.id, to: 'asha@example.in', ...MESSAGE }]);
     expect(email).toMatchObject({ attempts: 1, sentAt: NOW, lastError: null });
     expect(await sendDueEmails(handle.db, transport, minutes(1))).toMatchObject({ sent: 0 });
     // A body without secrets stays for the log.

@@ -3,11 +3,16 @@ export { MAIL_ENV_NAMES, mailConfigFromEnv, type MailConfig } from './config.js'
 export {
   NOTIFICATION_KINDS,
   OUTBOX_STATUSES,
+  SUPPRESSION_REASONS,
+  SUPPRESSION_SOURCES,
   type NotificationKind,
   type OutboxStatus,
+  type SuppressionReason,
+  type SuppressionSource,
 } from './db/schema.js';
 export {
   listEmails,
+  isRecipientRefused,
   MAX_ATTEMPTS,
   NotificationError,
   queueEmail,
@@ -26,6 +31,32 @@ export {
   type SendResult,
 } from './outbox.js';
 export { ORDER_EMAIL_SETTING } from './settings.js';
+export {
+  addSuppression,
+  applyPostmarkEvent,
+  findSuppression,
+  listSuppressions,
+  normalizeEmail,
+  OUTBOX_METADATA_KEY,
+  readPostmarkEvent,
+  removeSuppression,
+  SuppressionError,
+  type ListSuppressionsQuery,
+  type PostmarkEvent,
+  type PostmarkEventResult,
+  type Suppression,
+  type SuppressionErrorCode,
+  type SuppressionPage,
+} from './suppression.js';
+export {
+  POSTMARK_ENV_NAMES,
+  POSTMARK_SMTP_HOST,
+  postmarkConfigFromEnv,
+  postmarkHeaders,
+  webhookCredentialsMatch,
+  type PostmarkConfig,
+  type PostmarkWebhookCredentials,
+} from './postmark.js';
 export { smtpTransport } from './smtp.js';
 export {
   escapeHtml,
