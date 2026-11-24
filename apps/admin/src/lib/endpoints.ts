@@ -1032,7 +1032,7 @@ export function transitionOrder(
 
 // Emails (ADR 0020)
 
-export const EMAIL_STATUSES = ['queued', 'sent', 'failed'] as const;
+export const EMAIL_STATUSES = ['queued', 'sent', 'failed', 'bounced', 'suppressed'] as const;
 export type EmailStatus = (typeof EMAIL_STATUSES)[number];
 
 const emailSchema = z.object({
@@ -1045,6 +1045,8 @@ const emailSchema = z.object({
   attempts: z.number(),
   nextAttemptAt: z.string(),
   lastError: z.string().nullable(),
+  /** Postmark's bounce type, once it bounced (ADR 0032). */
+  bounceType: z.string().nullable().default(null),
   createdAt: z.string(),
   sentAt: z.string().nullable(),
 });
@@ -1071,6 +1073,64 @@ export async function retryEmail(emailId: string): Promise<OutboxEmail> {
       method: 'POST',
     })
   ).email;
+}
+
+// Suppressed addresses (ADR 0032)
+
+export const SUPPRESSION_REASONS = [
+  'hard_bounce',
+  'spam_complaint',
+  'smtp_rejected',
+  'manual',
+] as const;
+export type SuppressionReason = (typeof SUPPRESSION_REASONS)[number];
+
+const suppressionSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  reason: z.enum(SUPPRESSION_REASONS),
+  source: z.enum(['postmark', 'smtp', 'admin']),
+  bounceType: z.string().nullable(),
+  bounceTypeCode: z.number().nullable(),
+  outboxId: z.string().nullable(),
+  firstSeenAt: z.string(),
+  lastSeenAt: z.string(),
+});
+export type Suppression = z.infer<typeof suppressionSchema>;
+
+/** Suppressed addresses, newest first, optionally those containing a search text. */
+export function listSuppressions(
+  query: { after?: string | undefined; limit?: number; search?: string | undefined },
+  signal?: AbortSignal,
+): Promise<Page<Suppression>> {
+  return page(
+    '/notifications/suppressions',
+    'suppressions',
+    suppressionSchema,
+    { ...pageQuery(query.after, query.limit ?? PAGE_SIZE), search: query.search },
+    signal,
+  );
+}
+
+/** Adds an address emails are not sent to. */
+export async function addSuppression(email: string): Promise<Suppression> {
+  return (
+    await api('/notifications/suppressions', z.object({ suppression: suppressionSchema }), {
+      method: 'POST',
+      body: { email },
+    })
+  ).suppression;
+}
+
+/** Removes an address from Muziris's list; Postmark keeps its own deactivation. */
+export async function removeSuppression(suppressionId: string): Promise<Suppression> {
+  return (
+    await api(
+      `/notifications/suppressions/${id(suppressionId)}`,
+      z.object({ suppression: suppressionSchema }),
+      { method: 'DELETE' },
+    )
+  ).suppression;
 }
 
 // Websites (ADR 0021)
