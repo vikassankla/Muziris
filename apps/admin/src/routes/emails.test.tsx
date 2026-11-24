@@ -69,4 +69,114 @@ describe('emails', () => {
     expect(await screen.findByText('Order MZ-000042 received')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull();
   });
+
+  it('shows a bounced email with its bounce type, and one not sent to a suppressed address', async () => {
+    mockApi({
+      ...signedIn(['notification.view']),
+      'GET /notifications': () =>
+        json({
+          emails: [
+            {
+              ...EMAIL,
+              status: 'bounced',
+              bounceType: 'HardBounce',
+              lastError: null,
+              attempts: 1,
+              sentAt: '2026-11-02T06:01:00.000Z',
+            },
+            { ...INVITE, status: 'suppressed', bounceType: null, lastError: null, attempts: 0 },
+          ],
+          nextAfter: null,
+        }),
+    });
+    renderApp('/emails');
+    expect(await screen.findByText('Bounced')).toBeTruthy();
+    expect(screen.getByText('Hard bounce')).toBeTruthy();
+    expect(screen.getByText('Not sent: address suppressed')).toBeTruthy();
+  });
+});
+
+const SUPPRESSION = {
+  id: '7c1e0a11-0000-4000-8000-000000000081',
+  email: 'ravi@example.in',
+  reason: 'hard_bounce',
+  source: 'postmark',
+  bounceType: 'HardBounce',
+  bounceTypeCode: 1,
+  outboxId: EMAIL.id,
+  firstSeenAt: '2026-11-02T06:05:00.000Z',
+  lastSeenAt: '2026-11-03T06:05:00.000Z',
+};
+
+describe('suppressed addresses', () => {
+  it('lists suppressed addresses, searches them, and removes one after a warning about Postmark', async () => {
+    const requests = mockApi({
+      ...signedIn(['notification.view', 'notification.manage']),
+      'GET /notifications/suppressions': () =>
+        json({ suppressions: [SUPPRESSION], nextAfter: null }),
+      [`DELETE /notifications/suppressions/${SUPPRESSION.id}`]: () =>
+        json({ suppression: SUPPRESSION }),
+    });
+    renderApp('/emails?tab=suppressed&q=ravi');
+    expect(await screen.findByText('ravi@example.in')).toBeTruthy();
+    expect(screen.getByText('Hard bounce')).toBeTruthy();
+    expect(screen.getByText('Postmark')).toBeTruthy();
+    expect(
+      requests.find((r) => r.path === '/notifications/suppressions')?.query.get('search'),
+    ).toBe('ravi');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove ravi@example.in' }));
+    expect(
+      await screen.findByText(/reactivate it in Postmark too, or emails to it will bounce again/),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove from the list' }));
+    expect(
+      requests.some(
+        (r) => r.method === 'DELETE' && r.path === `/notifications/suppressions/${SUPPRESSION.id}`,
+      ),
+    ).toBe(true);
+  });
+
+  it('adds an address', async () => {
+    const requests = mockApi({
+      ...signedIn(['notification.view', 'notification.manage']),
+      'GET /notifications/suppressions': () => json({ suppressions: [], nextAfter: null }),
+      'POST /notifications/suppressions': () =>
+        json(
+          {
+            suppression: {
+              ...SUPPRESSION,
+              email: 'meena@example.in',
+              reason: 'manual',
+              source: 'admin',
+              bounceType: null,
+              bounceTypeCode: null,
+              outboxId: null,
+            },
+          },
+          201,
+        ),
+    });
+    renderApp('/emails?tab=suppressed');
+    expect(await screen.findByText('No suppressed addresses')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Add an address' }));
+    await userEvent.type(screen.getByLabelText('Email address'), 'meena@example.in');
+    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
+    expect(await screen.findByText('Address added')).toBeTruthy();
+    const post = requests.find(
+      (r) => r.method === 'POST' && r.path === '/notifications/suppressions',
+    );
+    expect(post?.body).toEqual({ email: 'meena@example.in' });
+  });
+
+  it('shows the list without changes to an admin who may only look', async () => {
+    mockApi({
+      ...signedIn(['notification.view']),
+      'GET /notifications/suppressions': () =>
+        json({ suppressions: [SUPPRESSION], nextAfter: null }),
+    });
+    renderApp('/emails?tab=suppressed');
+    expect(await screen.findByText('ravi@example.in')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add an address' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove ravi@example.in' })).toBeNull();
+  });
 });

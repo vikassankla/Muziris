@@ -31,6 +31,8 @@ export const REDACTED_PATHS = [
   'STRIPE_WEBHOOK_SECRET',
   'RAZORPAY_KEY_SECRET',
   'RAZORPAY_WEBHOOK_SECRET',
+  // Postmark's webhook password (ADR 0032).
+  'POSTMARK_WEBHOOK_PASSWORD',
   // The SMTP URL can carry the mail server's password (ADR 0020).
   'smtpUrl',
   '*.smtpUrl',

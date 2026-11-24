@@ -148,6 +148,13 @@
       "when": 1793777896059,
       "tag": "0020_admin_invitations",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795508317040,
+      "tag": "0021_email_bounces",
+      "breakpoints": true
     }
   ]
 }

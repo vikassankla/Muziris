@@ -2,6 +2,7 @@ import { findBuyerRole, type AdminPermission } from '@muziris/access';
 import { findCustomer, findCustomerGroup } from '@muziris/customers';
 import type { Database } from '@muziris/db';
 import { currencyExponent, isCurrencyCode, moneyFromDecimal } from '@muziris/money';
+import { ORDER_EMAIL_SETTING } from '@muziris/notifications';
 import { PAYMENT_METHODS_SETTING, type PaymentMethod } from '@muziris/orders';
 import {
   clearSetting,
@@ -20,6 +21,7 @@ import { z, ZodError } from 'zod';
 import { requirePermission, type AdminAccessVariables } from './access-routes.js';
 import { requireSession, trustedOriginGuard } from './auth-routes.js';
 import type { Logger } from './logger.js';
+import { orderEmailWarnings } from './order-email-warnings.js';
 import { paymentMethodWarnings } from './payment-method-warnings.js';
 import { HttpProblem } from './problem.js';
 import { ADMIN_SETTINGS, findAdminSetting, type AdminSetting } from './settings.js';
@@ -201,24 +203,28 @@ export function settingRoutes(deps: SettingRouteDependencies): Hono<SettingEnv> 
       ADMIN_SETTINGS.map((s) => s.definition.key),
       context,
     );
-    return c.json({
-      settings: ADMIN_SETTINGS.map((setting) => {
+    const settings = await Promise.all(
+      ADMIN_SETTINGS.map(async (setting) => {
         const resolved = resolveSetting(
           setting.definition,
           stored.filter((v) => v.key === setting.definition.key),
           context,
         );
+        const key = setting.definition.key;
         const warnings =
-          setting.definition.key === PAYMENT_METHODS_SETTING.key
+          key === PAYMENT_METHODS_SETTING.key
             ? paymentMethodWarnings(
                 resolved.value as PaymentMethod[],
                 deps.paymentMethods ?? new Set(),
                 websites,
               )
-            : [];
+            : key === ORDER_EMAIL_SETTING.key
+              ? await orderEmailWarnings(deps.db, resolved.value)
+              : [];
         return settingJson(setting, resolved.value, resolved.source, warnings);
       }),
-    });
+    );
+    return c.json({ settings });
   });
 
   app.put('/:key', need('setting.manage'), async (c) => {

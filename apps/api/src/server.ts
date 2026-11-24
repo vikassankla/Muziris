@@ -25,7 +25,11 @@ const persistedQueries = await loadPersistedQueries(env.STOREFRONT_PERSISTED_QUE
 // Emails are queued with their changes and sent by the notifications.send job (ADR 0020, 0025).
 // Without SMTP_URL they wait in the outbox until it is set.
 const transport =
-  env.mail.smtpUrl === undefined ? undefined : smtpTransport(env.mail.smtpUrl, env.mail.from);
+  env.mail.smtpUrl === undefined
+    ? undefined
+    : smtpTransport(env.mail.smtpUrl, env.mail.from, {
+        messageStream: env.postmark.messageStream,
+      });
 if (!transport && env.JOB_WORKERS)
   logger.warn('SMTP_URL is not set; emails are queued but not sent');
 
@@ -56,6 +60,7 @@ const app = createApp({
     allowAdhocQueries: env.STOREFRONT_ADHOC_QUERIES === 'allow',
   },
   mail: env.mail,
+  postmark: env.postmark,
   storefrontWebsite: env.STOREFRONT_WEBSITE,
   ...(env.twoFactorKey ? { twoFactorKey: env.twoFactorKey } : {}),
 });

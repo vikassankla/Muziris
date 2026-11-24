@@ -14,6 +14,7 @@ import {
   type DatabaseHandle,
 } from '@muziris/db';
 import { createUser } from '@muziris/identity';
+import { addSuppression } from '@muziris/notifications';
 import { createWebsite } from '@muziris/platform';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -47,7 +48,8 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
       sql`truncate catalog_product_unit, platform_config_value, platform_website,
         platform_organization, customer_customer, customer_group, access_buyer_role_permission,
         access_buyer_role, access_admin_user_role, access_admin_role_permission,
-        access_admin_role, identity_session, identity_user, identity_rate_limit cascade`,
+        access_admin_role, identity_session, identity_user, identity_rate_limit,
+        notification_suppression cascade`,
     );
   });
 
@@ -345,6 +347,39 @@ describe.skipIf(!url)('setting routes against PostgreSQL', () => {
     });
     // The website itself still has terms.
     expect(await methodsAt(`?websiteId=${website.id}`)).toMatchObject({ warnings: [] });
+  });
+
+  it('warns when the new-order email address is suppressed (ADR 0032)', async () => {
+    const { website } = await seed();
+    const ops = await signedInAdmin('ops@muziris.example', ['setting.view', 'setting.manage']);
+    const orderEmail = async () => {
+      const { settings } = (await (
+        await call('GET', `?websiteId=${website.id}`, ops.cookie)
+      ).json()) as {
+        settings: (SettingJson & { warnings: string[] })[];
+      };
+      return settings.find((s) => s.key === 'notifications.order_email');
+    };
+    expect(await orderEmail()).toMatchObject({ value: '', warnings: [] });
+    expect(
+      (
+        await call('PUT', '/notifications.order_email', ops.cookie, {
+          scope: { type: 'website', id: website.id },
+          value: 'Orders@Acme.example',
+        })
+      ).status,
+    ).toBe(200);
+    expect(await orderEmail()).toMatchObject({ warnings: [] });
+    await addSuppression(handle.db, {
+      email: 'orders@acme.example',
+      reason: 'manual',
+      now: new Date('2026-11-24T06:00:00Z'),
+    });
+    expect(await orderEmail()).toMatchObject({
+      warnings: [
+        'New order emails to this address are not sent: an admin added it to the suppressed addresses on 2026-11-24. Fix the address, or remove it under System > Emails > Suppressed addresses.',
+      ],
+    });
   });
 
   it('needs setting.view to read and setting.manage to change', async () => {

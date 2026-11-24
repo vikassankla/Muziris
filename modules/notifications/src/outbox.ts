@@ -1,7 +1,14 @@
 import type { Database, Transaction } from '@muziris/db';
 import { and, asc, desc, eq, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { outbox, type NotificationKind, type OutboxStatus } from './db/schema.js';
+import {
+  outbox,
+  OUTBOX_STATUSES,
+  suppression,
+  type NotificationKind,
+  type OutboxStatus,
+} from './db/schema.js';
+import { suppressAddress } from './suppression.js';
 import type { RenderedEmail } from './templates.js';
 
 /** The database or an open transaction: an email is queued in the transaction of its change. */
@@ -35,6 +42,8 @@ export interface OutboxEmail {
   attempts: number;
   nextAttemptAt: Date;
   lastError: string | null;
+  /** Postmark's bounce type, once it bounced (ADR 0032). */
+  bounceType: string | null;
   createdAt: Date;
   sentAt: Date | null;
 }
@@ -50,6 +59,7 @@ function toEmail(row: typeof outbox.$inferSelect): OutboxEmail {
     attempts: row.attempts,
     nextAttemptAt: row.nextAttemptAt,
     lastError: row.lastError,
+    bounceType: row.bounceType,
     createdAt: row.createdAt,
     sentAt: row.sentAt,
   };
@@ -93,6 +103,8 @@ export async function queueEmail(db: Executor, input: QueueEmailInput): Promise<
 }
 
 export interface MailMessage {
+  /** The outbox row's id, sent along so a later bounce can find the email (ADR 0032). */
+  outboxId: string;
   to: string;
   subject: string;
   text: string;
@@ -119,9 +131,32 @@ export function sendErrorCode(error: unknown): string {
   return 'send_failed';
 }
 
+/**
+ * The relay refused the recipient itself, for good: a 5xx reply to RCPT TO, which nodemailer
+ * reports as EENVELOPE. Retrying cannot help, and the address is suppressed (ADR 0032). A 5xx
+ * about authentication or the message is about our setup, and is retried as before.
+ */
+export function isRecipientRefused(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const { code, command, responseCode } = error as {
+    code?: unknown;
+    command?: unknown;
+    responseCode?: unknown;
+  };
+  return (
+    code === 'EENVELOPE' &&
+    command === 'RCPT TO' &&
+    typeof responseCode === 'number' &&
+    responseCode >= 500 &&
+    responseCode <= 599
+  );
+}
+
 export interface SendResult {
   sent: number;
   retrying: number;
+  /** Not sent because the address is suppressed (ADR 0032). */
+  suppressed: number;
   /** Emails that gave up on this run, for the caller to log. */
   failed: OutboxEmail[];
 }
@@ -137,7 +172,7 @@ export async function sendDueEmails(
   options: { limit?: number } = {},
 ): Promise<SendResult> {
   const limit = options.limit ?? 50;
-  const result: SendResult = { sent: 0, retrying: 0, failed: [] };
+  const result: SendResult = { sent: 0, retrying: 0, suppressed: 0, failed: [] };
   for (let i = 0; i < limit; i += 1) {
     const done = await db.transaction(async (tx) => {
       const [row] = await tx
@@ -150,8 +185,22 @@ export async function sendDueEmails(
       if (!row) return true;
       // A sent or abandoned secret does not stay in the database.
       const emptied = row.sensitive ? { textBody: '', htmlBody: '' } : {};
+      const [suppressed] = await tx
+        .select({ id: suppression.id })
+        .from(suppression)
+        .where(eq(suppression.email, row.recipient))
+        .limit(1);
+      if (suppressed) {
+        await tx
+          .update(outbox)
+          .set({ status: 'suppressed', lastError: null, updatedAt: now, ...emptied })
+          .where(eq(outbox.id, row.id));
+        result.suppressed += 1;
+        return false;
+      }
       try {
         await transport.send({
+          outboxId: row.id,
           to: row.recipient,
           subject: row.subject,
           text: row.textBody,
@@ -160,7 +209,17 @@ export async function sendDueEmails(
       } catch (error) {
         const attempts = row.attempts + 1;
         const lastError = sendErrorCode(error);
-        const delay = RETRY_DELAYS_MINUTES[attempts - 1];
+        const refused = isRecipientRefused(error);
+        const delay = refused ? undefined : RETRY_DELAYS_MINUTES[attempts - 1];
+        if (refused) {
+          await suppressAddress(tx, {
+            email: row.recipient,
+            reason: 'smtp_rejected',
+            source: 'smtp',
+            outboxId: row.id,
+            now,
+          });
+        }
         if (delay === undefined) {
           const [failed] = await tx
             .update(outbox)
@@ -202,7 +261,7 @@ export async function sendDueEmails(
 }
 
 const listQuerySchema = z.object({
-  status: z.enum(['queued', 'sent', 'failed']).optional(),
+  status: z.enum(OUTBOX_STATUSES).optional(),
   after: z.uuid().optional(),
   limit: z.int().min(1).max(100).default(50),
 });

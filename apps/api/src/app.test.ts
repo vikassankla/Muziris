@@ -309,4 +309,21 @@ describe('loadEnv', () => {
     expect(message).toMatch(/STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET/);
     expect(message).not.toContain('topsecret');
   });
+
+  it('reads Postmark, refusing a half-set webhook without echoing its password (ADR 0032)', () => {
+    expect(loadEnv(valid).postmark).toEqual({ messageStream: 'outbound', webhook: undefined });
+    const password = 'p'.repeat(24);
+    expect(
+      loadEnv({ ...valid, POSTMARK_WEBHOOK_USER: 'muziris', POSTMARK_WEBHOOK_PASSWORD: password })
+        .postmark.webhook,
+    ).toEqual({ user: 'muziris', password });
+    let message = '';
+    try {
+      loadEnv({ ...valid, POSTMARK_WEBHOOK_PASSWORD: 'half-set-s3cret' });
+    } catch (error) {
+      message = String(error);
+    }
+    expect(message).toContain('POSTMARK_WEBHOOK_USER: required with POSTMARK_WEBHOOK_PASSWORD');
+    expect(message).not.toContain('half-set-s3cret');
+  });
 });

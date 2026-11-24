@@ -38,8 +38,11 @@ export function jobHandlers(deps: {
     'notifications.send': async () => {
       if (!deps.transport) return;
       const result = await sendDueEmails(deps.db, deps.transport, now());
-      if (result.sent > 0 || result.retrying > 0) {
-        deps.logger.info({ sent: result.sent, retrying: result.retrying }, 'emails.sent');
+      if (result.sent > 0 || result.retrying > 0 || result.suppressed > 0) {
+        deps.logger.info(
+          { sent: result.sent, retrying: result.retrying, suppressed: result.suppressed },
+          'emails.sent',
+        );
       }
       for (const email of result.failed) {
         deps.logger.error(

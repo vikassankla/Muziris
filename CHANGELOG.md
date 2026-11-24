@@ -256,6 +256,12 @@ All notable changes are listed here. The project follows semantic versioning fro
 - Admin: "Send again" on an invitation, `POST /admin/v1/customers/invitations/:invitationId/resend`,
   and System > Emails over `/admin/v1/notifications`, with the new permissions
   `notification.view` and `notification.manage`.
+- Email bounces and spam complaints through Postmark (ADR 0032): a suppression list the sender
+  checks before each email, `POST /webhooks/postmark` behind basic auth, emails that fail at
+  once when the relay refuses the recipient, the `bounced` and `suppressed` statuses, a
+  Suppressed addresses tab on System > Emails, and a Settings warning when the new-order address
+  is suppressed. Migration `0021`. New settings `POSTMARK_MESSAGE_STREAM`,
+  `POSTMARK_WEBHOOK_USER` and `POSTMARK_WEBHOOK_PASSWORD`.
 
 ### Changed
 

@@ -1,7 +1,7 @@
 import type { Database } from '@muziris/db';
 import type { TotpKey } from '@muziris/identity';
 import type { JobQueue } from '@muziris/jobs';
-import { mailConfigFromEnv, type MailConfig } from '@muziris/notifications';
+import { mailConfigFromEnv, type MailConfig, type PostmarkConfig } from '@muziris/notifications';
 import type { TaxProvider } from '@muziris/orders';
 import { configuredMethods, type GatewayClients, type PaymentGateways } from '@muziris/payments';
 import { Hono, type Context } from 'hono';
@@ -65,6 +65,8 @@ export interface AppDependencies {
    * name, locale and time zone invitations use. Development defaults when omitted.
    */
   mail?: MailConfig;
+  /** Postmark's stream and webhook credentials (ADR 0032); without them its webhook answers 404. */
+  postmark?: PostmarkConfig;
   storefrontWebsite?: string;
   /**
    * The job runner's queue (ADR 0025): writes enqueue their builds and emails through it. Tests
@@ -223,7 +225,14 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
       emails,
     }),
   );
-  app.route('/webhooks', webhookRoutes({ ...emailDeps, gateways: deps.payments?.gateways ?? {} }));
+  app.route(
+    '/webhooks',
+    webhookRoutes({
+      ...emailDeps,
+      gateways: deps.payments?.gateways ?? {},
+      postmarkWebhook: deps.postmark?.webhook,
+    }),
+  );
   app.route('/admin/v1/access', accessRoutes(emailDeps));
   app.route('/admin/v1/catalog', catalogRoutes(authDeps));
   app.route('/admin/v1/customers', customerRoutes(emailDeps));
