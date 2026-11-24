@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { OUTBOX_METADATA_KEY } from './suppression.js';
 
 // Postmark (ADR 0032): the message stream, the headers that tie a bounce to its email, and the
@@ -86,8 +86,6 @@ export function postmarkHeaders(
   };
 }
 
-const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest();
-
 /** Checks an Authorization header against the webhook's user and password, in constant time. */
 export function webhookCredentialsMatch(
   authorization: string | undefined,
@@ -95,7 +93,12 @@ export function webhookCredentialsMatch(
 ): boolean {
   const match = /^Basic ([A-Za-z0-9+/=]{1,512})$/.exec(authorization?.trim() ?? '');
   const decoded = match?.[1] === undefined ? '' : Buffer.from(match[1], 'base64').toString('utf8');
-  // Hashing first makes both sides the same length, so the comparison leaks nothing.
-  const same = timingSafeEqual(digest(decoded), digest(`${expected.user}:${expected.password}`));
-  return match !== null && same;
+  const given = Buffer.from(decoded, 'utf8');
+  const wanted = Buffer.from(`${expected.user}:${expected.password}`, 'utf8');
+  // The given value is copied into a buffer of the expected length, so the comparison always
+  // takes as long as the expected value, whatever was sent. The lengths are checked after it.
+  const padded = Buffer.alloc(wanted.length);
+  given.copy(padded, 0, 0, wanted.length);
+  const same = timingSafeEqual(padded, wanted);
+  return match !== null && same && given.length === wanted.length;
 }

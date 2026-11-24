@@ -140,7 +140,7 @@ the pilot.
 
 - **Postmark's bounce webhook (ADR 0032, 2026-11-24).** Postmark signs nothing, so
   `POST /webhooks/postmark` needs basic authentication: a user name and a password of 24 or
-  more characters from the environment, compared in constant time over SHA-256 digests, and
+  more characters from the environment, compared in constant time (padded to the expected length, then the lengths checked), and
   redacted from logs. Without both it answers 404. It is rate limited and size limited like the
   payment webhooks, and records each event once by Postmark's id. It can only mark an email
   bounced and suppress an address, so a forged request at worst stops emails to one address;
