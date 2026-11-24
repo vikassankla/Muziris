@@ -3,7 +3,7 @@
 Where the build stands and what comes next. Update this file at the end of every working
 session, so the next session (human or AI) starts from here.
 
-Last updated: 2026-11-10
+Last updated: 2026-11-24
 
 ## Goal
 
@@ -47,6 +47,10 @@ as 3a8543f). Both need a second human review under CLAUDE.md rule 4.
 ADRs 0030 (a payments screen in the admin, keys kept in the environment) and 0031 (feature
 toggles for quick order and shopping lists) were accepted by Vikas in chat on 2026-11-10
 (PR 71).
+
+ADR 0032 (email bounces and spam complaints through Postmark, which Vikas chose as the mail
+provider on 2026-11-24) was accepted by Vikas in chat on 2026-11-24 (PR 82). Nothing is built
+for it yet; the build needs a second human review under CLAUDE.md rule 4.
 
 ## Next, in order (pilot plan)
 
